@@ -18,6 +18,7 @@ import { registerCoachTools } from "./coach-tools";
 import { registerJournalTools } from "./journal-tools";
 import { registerBodyTools } from "./body-tools";
 import { registerBikeWorkoutTools } from "./bike-workout-tools";
+import { registerWeatherTools } from "./weather-tools";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
 
@@ -403,6 +404,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
   registerJournalTools(server, env);
   registerBodyTools(server, env);
   registerBikeWorkoutTools(server, env);
+  registerWeatherTools(server, env);
 
   return server;
 }
