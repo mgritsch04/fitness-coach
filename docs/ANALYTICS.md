@@ -15,7 +15,7 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 | `get_sleep_report` | `days` (7–365, Std. 30) | Schlaf-Detail je Nacht (#20) |
 | `get_early_warning` | – | Frühwarnung Überlastung/Infekt (#24), auch in `get_dashboard.earlyWarning` |
 
-`get_dashboard` enthält zusätzlich `ftpEstimate` (siehe unten), `hrZones` (wie `hrZoneTime` unten, für gestapelte Wochenbalken) und je Workout `hrZoneMin` (Minuten je Zone 0–5 oder `null`); `settings.origin.ftpW` ist `"data"`, wenn die FTP geschätzt ist.
+`get_dashboard` enthält zusätzlich `ftpEstimate` (siehe unten), `hrZones` (wie `hrZoneTime` unten, für gestapelte Wochenbalken) und je Workout `hrZoneMin` (Minuten je Zone 0–5 oder `null`); `settings.origin.ftpW` ist `"data"`, wenn die FTP geschätzt ist. Mit `compact: true` kommen `days` und `workouts` als `{ keys, rows }` (Spaltennamen einmal, je Zeile ein Werte-Array) und `compact: 1`; das halbiert die Antwort ungefähr (#69). Das Artefakt packt das in `app/core.js` aus.
 
 ## get_training_load
 - `current`: `{ day, ctl, atl, tsb, formZone, formLabel, rampRate7d, acwr, load7d, load28d }` oder `null`.

@@ -217,13 +217,16 @@
 
   // ---------- Dashboard-Daten ----------
   let unwatch = null;
+  // get_dashboard mit compact: true liefert days/workouts als { keys, rows } (#69); hier wieder zu Objekten.
+  const expand = (c) => (c && Array.isArray(c.keys) && Array.isArray(c.rows) ? c.rows.map((v) => Object.fromEntries(c.keys.map((k, i) => [k, v[i]]))) : c);
   function setData(p, storedAt) {
+    if (p && typeof p === "object" && p.compact) p = { ...p, days: expand(p.days), workouts: expand(p.workouts) };
     if (!p || typeof p !== "object" || !Array.isArray(p.days)) { banner("Unerwartete Antwort vom Server.", "bad", { label: "Erneut laden", run: () => reload() }); return; }
     state.data = p; state.storedAt = storedAt ?? null; banner(null); document.body.classList.add("has-data"); renderAll();
   }
   function startWatch() {
     unwatch?.();
-    unwatch = state.mcp.watchTool(SERVER, "get_dashboard", { days: FETCH_DAYS }, (ev) => {
+    unwatch = state.mcp.watchTool(SERVER, "get_dashboard", { days: FETCH_DAYS, compact: true }, (ev) => {
       $("app").classList.remove("loading");
       if (ev.type === "data") return setData(ev.result.payload, ev.result.cache?.storedAt);
       const c = ev.error?.code;
@@ -236,7 +239,7 @@
     if (!state.mcp) return;
     $("app").classList.add("loading");
     try {
-      const r = await state.mcp.callTool(SERVER, "get_dashboard", { days: FETCH_DAYS }, { cache: { staleTime: 0, gcTime: 86_400_000, refresh: true } });
+      const r = await state.mcp.callTool(SERVER, "get_dashboard", { days: FETCH_DAYS, compact: true }, { cache: { staleTime: 0, gcTime: 86_400_000, refresh: true } });
       setData(r.payload, null);
     } catch (e) { banner(errText(e), "bad", { label: "Erneut laden", run: () => reload() }); }
     finally { $("app").classList.remove("loading"); }
@@ -267,6 +270,10 @@
   function mountOne(s) {
     try { s.mount?.($(`sec-${s.id}`)); s.mounted = true; } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
   }
+  // Am Handy laden Abschnitte ihre eigenen Werkzeuge erst, wenn ihr Reiter offen ist (#69); am Rechner sind alle sichtbar.
+  const phone = window.matchMedia?.("(max-width: 640px)");
+  const wanted = (s) => !phone?.matches || (s.tab ?? "mehr") === tab;
+  const readyWanted = () => { if (booted) for (const s of live()) if (wanted(s)) readyOne(s); };
   function readyOne(s) {
     if (s.isReady) return;
     s.isReady = true;
@@ -281,7 +288,7 @@
       const host = $(`sec-${id}`); host.hidden = hidden;
       if (!hidden) {
         if (!s.mounted) mountOne(s);
-        if (booted) readyOne(s);
+        if (booted && wanted(s)) readyOne(s);
         if (state.data) try { s.render?.(state.data); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
       }
     },
@@ -306,6 +313,7 @@
     for (const s of sections) $(`sec-${s.id}`)?.classList.toggle("on", (s.tab ?? "mehr") === id);
     for (const b of $("tabbar").children) b.setAttribute("aria-current", b.dataset.tab === id ? "page" : "false");
     if (scroll) window.scrollTo({ top: 0 });
+    readyWanted();
     rerender();
   }
 
@@ -342,7 +350,8 @@
     $("app").classList.add("loading");
     startWatch();
     booted = true;
-    for (const s of live()) readyOne(s);
+    readyWanted();
+    phone?.addEventListener?.("change", readyWanted);
   }
 
   window.FC = Object.freeze({
