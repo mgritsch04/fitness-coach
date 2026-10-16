@@ -56,6 +56,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 41 | „Heute dran“ (#122) | geplante Einheit auf „Heute“, Wochenstreifen, Direkt-Start Gym-Modus / MyWhoosh-Workout | am Handy sofort sehen, was dran ist | P1 | S | Zeile 21, 38 | Vorschau, User-Test | Done ⚙️ (#124; im Dashboard v13; User-Test #126) |
 | 42 | Kraft und Rad im Wechselspiel (#113) | Wirkung von Beineinheiten auf Erholung/HRV und die nächste Radeinheit, bewährter Abstand | Kraft und Rad besser kombinieren | P2 | M | Zeile 17 | Unit-Tests, User-Test | Done ⚙️ (#120; im Dashboard v13; User-Test #123) |
 | 43 | Gym-Modus: letztes Mal und Bestwert (#127) | je Übung „Letztes Mal“, Hinweis bei neuem geschätztem 1RM | Motivation, Orientierung im Gym | P2 | S | Zeile 38 | Vorschau, User-Test | In Progress (Haupt-Thread) |
+| 44 | HRV-Trend nach Plews (#125) | 7-Tage-Mittel und Schwankung (CV) der HRV gegen den eigenen Normalbereich, Einordnung | Ermüdung früh erkennen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#128; User-Test #130) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
