@@ -15,6 +15,8 @@ import {
   type WorkoutRow,
 } from "./analysis";
 import { coachAdvice } from "./coach";
+import { trainingOverview } from "./training";
+import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
 import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -70,15 +72,20 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     respRate: trend(series, "respRate", today),
   };
   const view = series.filter((p) => p.day >= viewFrom);
-  const coach = coachAdvice(series, today, trends, settings.sleepNeedH);
+  const baseCoach = coachAdvice(series, today, trends, settings.sleepNeedH);
   for (const n of strengthCoachNotes(strengthSessions, today)) {
-    coach.reasons.push({ factor: "strength", effect: n.effect, text: n.text });
-    if (n.effect === "down" && (coach.readiness === "hard" || coach.readiness === "moderate")) coach.warnings.push(n.text);
+    baseCoach.reasons.push({ factor: "strength", effect: n.effect, text: n.text });
+    if (n.effect === "down" && (baseCoach.readiness === "hard" || baseCoach.readiness === "moderate")) baseCoach.warnings.push(n.text);
   }
+  // Tagebuch (journal.ts): Check-in von heute fließt in die Tagesempfehlung ein.
+  const [journal, rpeRows] = await Promise.all([readJournal(db, statsFrom, today), readRpe(db, viewFrom)]);
+  const journalToday = journal.find((j) => j.day === today) ?? null;
+  const coach = applyJournal(baseCoach, journalToday);
+  const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
 
-  return {
+  const result = {
     generatedAt: new Date(opts.now ?? Date.now()).toISOString(),
     today,
     range: { from: viewFrom, to: today, days },
@@ -98,6 +105,9 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
         sport: w.sport,
         sources: w.sources,
         durationMin: Math.round((w.duration_s ?? 0) / 60),
+        sourceId: w.source_id,
+        rpe: rpeBy.get(`${w.source}:${w.source_id}`) ?? null,
+        sessionRpe: rpeBy.has(`${w.source}:${w.source_id}`) ? sessionRpe(Math.round((w.duration_s ?? 0) / 60), rpeBy.get(`${w.source}:${w.source_id}`)!) : null,
         distanceKm: w.distance_m != null ? Number((w.distance_m / 1000).toFixed(2)) : null,
         energyKj: w.energy_kj != null ? Math.round(w.energy_kj) : null,
         avgHr: w.avg_hr,
@@ -126,4 +136,12 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     },
     sync: { whoop: whoopSync, wahoo: wahooSync },
   };
+  const journalOut = {
+    today: journalToday,
+    recent: journal.filter((j) => j.day >= addDays(today, -13)),
+    /** Erholung am Folgetag mit/ohne Tag (Beobachtung, keine Ursache). */
+    tagEffects: tagEffects(journal, series),
+  };
+  // Coach-Gedächtnis: Ziele, Wochenplan mit Soll/Ist, Abgleich heutige Einheit ↔ Tagesform.
+  return { ...result, journal: journalOut, training: await trainingOverview(db, result) };
 }
