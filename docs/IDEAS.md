@@ -52,6 +52,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 37 | FTP-Test im Wochenplan (#98) | Plan schlägt einen passenden Tag für den FTP-Test vor, mit Anleitung | FTP aktuell halten | P2 | S | Zeile 25 | Unit-Tests, User-Test | Done ⚙️ (#99; User-Test #103) |
 | 38 | Gym-Modus am Handy (#107) | Einheit aus Vorlage starten, Sätze abhaken, Pausen-Timer, Bildschirm bleibt an, Einzelsätze speichern | Krafttraining live erfassen statt nachtragen | P1 | S | Zeile 17 | Vorschau, User-Test | Done ⚙️ (#105; im Dashboard v11; User-Test #116) |
 | 39 | Krafteinheiten im Wochenplan (#108) | Übungen, Sätze, Wiederholungen und Gewicht je Krafttag | wissen, was im Gym dran ist | P1 | S | Zeile 17 | Unit-Tests, User-Test | Done ⚙️ (Coach-Thread; User-Test #110) |
+| 40 | Coach-Chat: Fragen zum Antippen, Verlauf bleibt (#118) | 4 Fragen passend zum Tag, Chat übersteht Neuladen (3 Tage) | Coach am Handy schneller fragen | P2 | S | Zeile 36 | Vorschau, User-Test | In Progress (Haupt-Thread) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
