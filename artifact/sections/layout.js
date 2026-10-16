@@ -15,7 +15,7 @@ FC.section({
   NAMES: { warning: "Frühwarnung", briefing: "Morgen-Briefing", today: "Heute", journal: "Check-in", coach: "Coach", plan: "Wochenplan und Ziele", recovery: "Erholung und Schlaf", sleep: "Schlaf im Detail",
     insights: "Was beeinflusst deine Erholung?", health: "Körpersignale", strain: "Belastung und Erholung", load: "Trainingslast", fit: "Rolle und Leistung",
     hrzones: "Pulszonen", strength: "Krafttraining", weeks: "Wochen", periods: "Monate und Jahre", year: "Jahr im Überblick", workouts: "Workouts",
-    settings: "Einstellungen", sources: "Datenquellen", body: "Gewicht", export: "Daten exportieren", bikewo: "Workout für MyWhoosh", records: "Bestleistungen", review: "Wochenrückblick", weather: "Radwetter", ftp: "FTP-Test" },
+    settings: "Einstellungen", sources: "Datenquellen", body: "Gewicht", export: "Daten exportieren", bikewo: "Workout für MyWhoosh", records: "Bestleistungen", review: "Wochenrückblick", weather: "Radwetter", ftp: "FTP-Test", endurance: "Ausdauer-Profil", gym: "Gym-Modus" },
   TABS: [["heute", "Heute"], ["coach", "Coach"], ["verlauf", "Verlauf"], ["training", "Training"], ["mehr", "Mehr"]],
   mount(root) {
     root.innerHTML = `
