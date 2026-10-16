@@ -6,6 +6,8 @@ import type { CoachAdvice, Readiness } from "./coach";
 import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goals";
 import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
+import { readStrengthSessions } from "./strength";
+import { STRENGTH_PLAN_NOTE, strengthWorkout, type StrengthWorkout } from "./strength-plan";
 import { projectEvent, type EventProjection } from "./projection";
 import {
   PHASE_LABEL,
@@ -169,6 +171,8 @@ export interface TrainingOverview {
   intensity: IntensityCheck | null;
   /** FTP-Test fällig? Mit vorgeschlagenem Tag aus dem Plan (null, wenn kein Test nötig). */
   ftpTest: FtpTestPlan | null;
+  /** Konkrete Krafteinheiten (Übungen, Sätze, Gewicht) für die Plantage ab heute. */
+  strengthWorkouts: { days: StrengthWorkout[]; note: string };
   /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
   fueling: { days: Fueling[]; note: string };
   disclaimer: string;
@@ -182,7 +186,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
   const next = nextStored ?? proposePlan(inp, nextWs, goals, prefs);
   const planned = thisWeek.plan.days.find((d) => d.day === inp.today) ?? null;
   const projection = eventProjection(inp, goals, prefs, thisWeek.plan);
-  const tests = await readFtpTests(db).catch(() => []);
+  const [tests, sessions] = await Promise.all([readFtpTests(db).catch(() => []), readStrengthSessions(db, addDays(inp.today, -120)).catch(() => [])]);
   return {
     goals: goalProgress(goals, inp),
     prefs,
@@ -193,6 +197,10 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     notes,
     intensity: intensityCheck(inp),
     ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null),
+    strengthWorkouts: {
+      days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions)),
+      note: STRENGTH_PLAN_NOTE,
+    },
     fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null), note: FUELING_NOTE },
     disclaimer: "Trainingsplan und Belastungen sind Schätzungen nach Faustregeln, keine medizinische Beratung. Bei Schmerzen oder Krankheit pausieren.",
   };
