@@ -205,7 +205,8 @@ export function mergeWorkouts(rows: WorkoutRow[]): MergedWorkout[] {
 
 // --- Belastung je Workout -----------------------------------------------------------------------
 
-export type LoadMethod = "power" | "hr" | "none";
+/** srpe: Krafttraining aus Dauer × Anstrengung (core/strength.ts). */
+export type LoadMethod = "power" | "hr" | "none" | "srpe";
 
 export interface WorkoutLoad {
   load: number | null;

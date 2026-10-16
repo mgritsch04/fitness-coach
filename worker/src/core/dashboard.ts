@@ -17,6 +17,7 @@ import {
 import { coachAdvice } from "./coach";
 import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
+import { applyStrengthLoads, exerciseProgress, readStrengthSessions, strengthCoachNotes, weeklyVolume } from "./strength";
 
 /** Vorlauf, damit die 42-Tage-Fitness (CTL) am Anfang der Ansicht schon eingeschwungen ist. */
 const LOAD_WARMUP_DAYS = 120;
@@ -31,17 +32,22 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const loadFrom = addDays(viewFrom, -LOAD_WARMUP_DAYS);
   const statsFrom = addDays(viewFrom, -BASELINE_DAYS);
 
-  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync] = await Promise.all([
+  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync, strengthSessions] = await Promise.all([
     readDaily(db, statsFrom) as Promise<unknown> as Promise<DailyRow[]>,
     readSleeps(db, statsFrom) as Promise<unknown> as Promise<SleepRow[]>,
     readWorkouts(db, loadFrom) as Promise<unknown> as Promise<WorkoutRow[]>,
     readLatestBody(db) as Promise<{ max_hr: number | null; weight_kg: number | null; height_m: number | null } | null>,
     getSyncState(db, "whoop"),
     getSyncState(db, "wahoo"),
+    readStrengthSessions(db, loadFrom),
   ]);
 
   const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null);
-  const workouts = mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) }));
+  // Krafteinheiten: Belastung aus Session-RPE statt Puls, Einheiten ohne Workout kommen dazu.
+  const workouts = applyStrengthLoads(
+    mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) })),
+    strengthSessions,
+  );
 
   const loadsByDay = new Map<string, number>();
   for (const w of workouts) if (w.load != null) loadsByDay.set(w.day, (loadsByDay.get(w.day) ?? 0) + w.load);
@@ -60,6 +66,10 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   };
   const view = series.filter((p) => p.day >= viewFrom);
   const coach = coachAdvice(series, today, trends, settings.sleepNeedH);
+  for (const n of strengthCoachNotes(strengthSessions, today)) {
+    coach.reasons.push({ factor: "strength", effect: n.effect, text: n.text });
+    if (n.effect === "down" && (coach.readiness === "hard" || coach.readiness === "moderate")) coach.warnings.push(n.text);
+  }
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
 
@@ -95,8 +105,16 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     notes: [
       "Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL) und Form (TSB) sind Schätzungen.",
       settings.ftpW ? null : "Ohne FTP wird die Belastung aus dem Puls geschätzt. Trage deine FTP ein, sobald Leistungsdaten (Wahoo/MyWhoosh) vorliegen.",
+      workouts.some((w) => w.method === "srpe") ? "Krafteinheiten zählen mit Dauer × Anstrengung (Session-RPE), geschätztes 1RM nach Epley." : null,
       unestimated ? `${unestimated} Workouts ohne Puls oder Leistung zählen nicht zur Trainingslast.` : null,
     ].filter(Boolean),
+    strength: {
+      sessions: strengthSessions
+        .filter((x) => x.day >= viewFrom)
+        .map((x) => ({ id: x.id, day: x.day, name: x.name, durationMin: x.durationMin, rpe: x.rpe, sets: x.sets.length, exercises: [...new Set(x.sets.map((y) => y.exerciseName))] })),
+      weeks: weeklyVolume(strengthSessions.filter((x) => x.day >= viewFrom)),
+      progress: exerciseProgress(strengthSessions, today).map(({ history, ...p }) => ({ ...p, history: history.slice(-12) })),
+    },
     sync: { whoop: whoopSync, wahoo: wahooSync },
   };
 }
