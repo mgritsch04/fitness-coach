@@ -11,7 +11,8 @@ _Zuletzt aktualisiert: 2026-10-16 · Workflow: [`DEVELOPMENT_WORKFLOW.md`](DEVEL
 - **Machbarkeitstest bestanden (2026-10-16):** Ein Claude-Artefakt ruft den Worker über den Custom Connector „Fitness Coach“ auf (Test-Artefakt: https://claude.ai/artifact/AgMooNUSyF6JdY3xKQAaF2).
 - **WHOOP-App (#2):** Redirect `https://fitness-coach.fitness-coach-worker.workers.dev/auth/whoop/callback`, Datenschutz `…/privacy`.
 - **Connector mit Anmeldung (2026-10-16):** `/mcp` nur nach OAuth-Login über WHOOP; dein WHOOP-Konto ist als Besitzer eingetragen, andere Konten werden abgewiesen. In claude.ai: Connector „Fitness Coach“, *Sign in now*, *Use Claude's published identity*. Werkzeuge `ping`, `whoop_status`, `whoop_recovery`; WHOOP-Recovery kommt im Artefakt an (von dir bestätigt).
-- **Nächster Schritt:** Gemeinsames Datenmodell und Speicherung in D1 (IDEAS Zeile 2), danach WHOOP-Abgleich aller Daten (Zeile 3).
+- **Datenmodell und WHOOP-Abgleich (2026-10-16, #8):** Tabellen `daily` (Recovery + Strain), `sleeps`, `workouts`, `body_measurements` in D1, anbieterneutral (`source` + `source_id`). WHOOP wird stündlich abgeglichen (Cron, Erstabgleich 30 Tage); erster Abgleich lief fehlerfrei. Connector-Werkzeuge `get_daily`, `get_sleep`, `get_workouts`, `get_body`, `sync_now`.
+- **Nächster Schritt:** Dashboard-Artefakt mit Tagesansicht und Verlauf (IDEAS Zeile 7); Duplikat-Abgleich der Workouts, sobald Wahoo Daten liefert.
 
 ## Legende
 `DONE` fertig mit Beleg · `PARTIAL` teilweise · `IN PROGRESS` in Arbeit · `PLANNED` geplant · `BLOCKED` blockiert · `NEEDS USER TEST` braucht deinen Praxistest
@@ -23,3 +24,4 @@ Prüfstufen: **Impl.** Code vorhanden · **Auto** automatischer Test/Build grün
 | Workflow, Labels, Vorlagen, Backlog | ✅ `docs/`, `.github/ISSUE_TEMPLATE/` | – | – |
 | Machbarkeit Artefakt → Connector | ✅ `worker/` (#4) | – | ✅ von dir bestätigt (2026-10-16) |
 | Connector-Anmeldung über WHOOP, Recovery live lesen | ✅ `worker/src/auth.ts`, `providers/whoop/` (#5) | ✅ CI: Typprüfung, Unit-Tests | ✅ von dir bestätigt (2026-10-16) |
+| Datenmodell in D1, WHOOP-Abgleich stündlich | ✅ `worker/src/core/`, `providers/whoop/sync.ts` (#8) | ✅ CI: 25 Tests inkl. SQL gegen echtes Schema | ⚙️ erster Abgleich in Produktion fehlerfrei |
