@@ -99,6 +99,21 @@ for (const [name, vp, scheme, tab] of shots) {
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "heute") {
+    // „Neu im Dashboard“ (#152): Liste da, Sprung in den Training-Tab, „Alles gesehen“ bleibt nach Neuladen.
+    const news = await p.$$eval("#wnList li", (l) => l.length);
+    await p.screenshot({ path: join(out, "phone-news.png") });
+    await p.click("#wnList .wn-more").catch(() => errors.push(`${name}: Neu im Dashboard ohne „weitere zeigen“`)); await p.waitForTimeout(100);
+    if ((await p.$$eval("#wnList li", (l) => l.length)) <= news) errors.push(`${name}: „weitere zeigen“ zeigt nicht mehr`);
+    if (!news) errors.push(`${name}: Neu im Dashboard ist leer`);
+    else {
+      await p.click("#wnList li button"); await p.waitForTimeout(300);
+      const at = await p.evaluate(() => document.querySelector("#tabbar [aria-current=page]")?.dataset.tab ?? "alle");
+      if (at !== "training") errors.push(`${name}: Neu im Dashboard springt nach ${at} statt Training`);
+      await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
+      await p.click("#wnSeen"); await p.reload(); await p.waitForTimeout(800);
+      await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(300);
+      if (await p.evaluate(() => !document.getElementById("sec-whatsnew").hidden)) errors.push(`${name}: Neu im Dashboard nach „Alles gesehen“ noch da`);
+    }
     // „Heute dran“ (#122): Wochenstreifen da, Knopf startet den Gym-Modus mit der Planeinheit.
     const n = await p.$$eval("#agBody .ag-day", (d) => d.length);
     if (n !== 7) errors.push(`${name}: Heute dran zeigt ${n} statt 7 Tage`);
