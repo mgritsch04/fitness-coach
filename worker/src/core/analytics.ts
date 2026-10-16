@@ -40,6 +40,7 @@ import { timingReport } from "./timing";
 import { durabilityReport, readRideStreams } from "./durability";
 import { aerobicReport, readHrRideStreams } from "./aerobic";
 import { intervalReport, readIntervalRides } from "./intervals";
+import { cadenceReport } from "./cadence";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -286,6 +287,12 @@ export async function durabilityView(db: D1Database, days: number, now?: number)
 export async function intervalQualityView(db: D1Database, days: number, now?: number) {
   const c = await analysisContext(db, { days: 7, now });
   return intervalReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days);
+}
+
+/** Trittfrequenz-Profil (#161): Kadenz-Verteilung, Median je Leistungszone und Verlauf in Zone 2. */
+export async function cadenceView(db: D1Database, days: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  return cadenceReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days);
 }
 
 /** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
