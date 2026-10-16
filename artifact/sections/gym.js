@@ -25,6 +25,8 @@ FC.section({
     .gy-set { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 8px; align-items: center; }
     .gy-set input { width: 100%; min-width: 0; font-size: 1rem; padding: 8px; text-align: center; }
     .gy-plates { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 2px 0 8px; font-size: .9rem; }
+    .gy-warm { margin: -4px 0 8px; font-size: .85rem; color: var(--ink-2); }
+    .gy-warm ol { margin: 2px 0 0; padding-left: 1.4em; }
     .gy-plates strong { font-variant-numeric: tabular-nums; }
     .gy-set .n { color: var(--ink-3); font-size: .85rem; }
     .gy-set .ok { height: 44px; border-radius: 10px; font-size: 1.2rem; padding: 0; }
@@ -210,12 +212,28 @@ FC.section({
     const upd = () => { barB.textContent = `Stange ${this.bar()} kg`; this.showPlates(x.sets.find((t) => !t.done)?.kg ?? x.sets.at(-1)?.kg); };
     barB.onclick = () => { const b = this.BARS; try { localStorage.setItem("fc-gym-bar", String(b[(b.indexOf(this.bar()) + 1) % b.length])); } catch { /* nur Komfort */ } upd(); };
     queueMicrotask(upd);
-    return row;
+    // Aufwärm-Treppe (#148) nur vor dem ersten Arbeitssatz.
+    return x.sets.some((t) => t.done) ? row : el("div", {}, row, el("div", { class: "gy-warm", id: "gyWarm" }));
+  },
+  /** Aufwärmsätze zum Arbeitsgewicht: Stange × 10, dann ~40/60/80 % (Faustregel, auf 5 kg gerundet). */
+  warmup(kg, bar) {
+    if (!(kg >= 40) || kg <= bar) return [];
+    const out = [{ kg: bar, reps: 10 }];
+    [[0.4, 5], [0.6, 3], [0.8, 2]].forEach(([f, reps]) => {
+      const w = Math.round((kg * f) / 5) * 5; // 5-kg-Schritte: ohne 1,25er-Scheiben
+      if (w > out.at(-1).kg && w < kg) out.push({ kg: w, reps });
+    });
+    return out;
   },
   showPlates(kg) {
     const out = FC.$("gyPlates"); if (!out) return;
     const p = this.plates(kg, this.bar());
     out.textContent = p ? p.text : "Gewicht eintragen";
+    const warm = FC.$("gyWarm"); if (!warm) return;
+    const bar = this.bar(), steps = this.warmup(kg, bar);
+    warm.hidden = !steps.length;
+    const f = (n) => n.toLocaleString("de-DE");
+    warm.replaceChildren(FC.el("span", { text: "Aufwärmen (Faustregel, nicht gespeichert):" }), FC.el("ol", {}, ...steps.map((w) => FC.el("li", { text: w.kg === bar ? `Leere Stange × ${w.reps}` : `${f(w.kg)} kg × ${w.reps} (je Seite ${this.plates(w.kg, bar).text})` }))));
   },
   toggle(x, i, s, reps, kg) {
     const st = this.st;
