@@ -3,8 +3,14 @@
   "name": "fitness-coach",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "workers_dev": true,
   "rules": [{ "type": "Text", "globs": ["**/*.md"], "fallthrough": true }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // OAuth-Daten des Connectors (nur Hashes und verschlüsselte Props, siehe workers-oauth-provider)
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "1f8c2eaf808b491abbb80e342c3ad71b" }],
+  // Datenkern: WHOOP-Tokens, Besitzer, später alle Messwerte
+  "d1_databases": [
+    { "binding": "DB", "database_name": "fitness-coach", "database_id": "7e6a4f8f-1948-43a9-a753-77c080ddd24f", "migrations_dir": "migrations" }
+  ]
 }
