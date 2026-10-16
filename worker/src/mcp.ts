@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -472,6 +472,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await durabilityView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_aerobic_decoupling",
+    {
+      description:
+        "Aerobe Basis: Pa:HR-Entkopplung gleichmäßiger Fahrten ab 50 min (ohne 10 min Aufwärmen, aus FIT-Sekundenwerten) im Verlauf, " +
+        "Median der letzten 4 Fahrten gegen die 4 davor, Einordnung und längste Fahrt unter 5 %. Schätzung.",
+      inputSchema: { days: z.number().int().min(28).max(365).optional().describe("Zeitraum in Tagen, Standard 120") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await aerobicView(env.DB, d ?? 120)),
   );
 
   server.registerTool(
