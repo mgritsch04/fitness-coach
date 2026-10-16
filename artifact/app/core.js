@@ -62,7 +62,7 @@
     if (opts.zero) vals.push(0);
     const ticks = niceTicks(opts.yMin ?? Math.min(...vals), opts.yMax ?? Math.max(...vals));
     const y0 = ticks[0], y1 = ticks.at(-1);
-    const tStep = ticks.length > 1 ? ticks[1] - ticks[0] : 1, tickDec = tStep >= 1 ? 0 : tStep >= 0.1 ? 1 : 2;
+    const tStep = ticks.length > 1 ? ticks[1] - ticks[0] : 1, tickDec = [0, 1, 2].find((k) => Math.abs(tStep * 10 ** k - Math.round(tStep * 10 ** k)) < 1e-9) ?? 2;
     const x = (i) => m.l + step * (i + 0.5), y = (v) => m.t + ih - ((v - y0) / (y1 - y0)) * ih;
     const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": opts.aria ?? "" });
     for (const z of opts.zones ?? []) svg.append(sv("rect", { x: m.l, width: iw, y: y(Math.min(z.to, y1)), height: Math.max(0, y(Math.max(z.from, y0)) - y(Math.min(z.to, y1))), fill: z.color }));
