@@ -6,6 +6,9 @@ export interface Env {
   OAUTH_PROVIDER: OAuthHelpers;
   WHOOP_CLIENT_ID: string;
   WHOOP_CLIENT_SECRET: string;
+  /** Fehlen, bis die Wahoo-App angelegt und die Secrets im Cloudflare-Dashboard gesetzt sind. */
+  WAHOO_CLIENT_ID?: string;
+  WAHOO_CLIENT_SECRET?: string;
 }
 
 /** Was nach der Anmeldung verschlüsselt am Connector-Token hängt. */
