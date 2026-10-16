@@ -1,6 +1,7 @@
 // Auswertungen für die Connector-Werkzeuge get_training_load, get_fitness_profile, get_health_trends,
 // get_period_summaries und get_strain_recovery. Liest einmal aus D1 und rechnet mit den reinen
 // Funktionen aus analysis.ts und performance.ts. Alle Werte außer selbst gesetzten sind Schätzungen.
+import { applyStrengthLoads, readStrengthSessions } from "./strength";
 import {
   addDays,
   daySeries,
@@ -59,18 +60,23 @@ export async function analysisContext(db: D1Database, opts: ContextOptions = {})
   const ftpFrom = addDays(today, -(FTP_WINDOW_DAYS - 1));
   const earliest = [loadFrom, ftpFrom].sort()[0];
 
-  const [daily, sleeps, rawWorkouts, body, powerRows] = await Promise.all([
+  const [daily, sleeps, rawWorkouts, body, powerRows, strengthSessions] = await Promise.all([
     readDaily(db, statsFrom) as Promise<unknown> as Promise<DailyRow[]>,
     readSleeps(db, statsFrom) as Promise<unknown> as Promise<SleepRow[]>,
     readWorkouts(db, earliest) as Promise<unknown> as Promise<WorkoutRow[]>,
     readLatestBody(db) as Promise<{ max_hr: number | null; weight_kg: number | null } | null>,
     readPowerCurves(db, "0000-00-00").then(flattenCurves),
+    readStrengthSessions(db, earliest),
   ]);
 
   const curveRecent = powerCurve(powerRows, ftpFrom);
   const ftpEstimate = estimateFtp(curveRecent, rawWorkouts, ftpFrom);
   const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null, ftpEstimate?.watts ?? null);
-  const workouts = mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) }));
+  // Krafteinheiten wie im Dashboard: Session-RPE statt Puls (core/strength.ts).
+  const workouts = applyStrengthLoads(
+    mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) })),
+    strengthSessions,
+  );
 
   const loadsByDay = new Map<string, number>();
   for (const w of workouts) if (w.load != null) loadsByDay.set(w.day, (loadsByDay.get(w.day) ?? 0) + w.load);

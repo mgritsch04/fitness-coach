@@ -78,3 +78,12 @@ Detail einer Fahrt mit Sekundenwerten (FIT-Import), Code `worker/src/core/workou
 - `intervals`: `{ thresholdW, basis: "ftp"|"average", intervals: [{ startS, durationS, avgPowerW, pctFtp, avgHr, maxHr, avgCadence }] }` – 30-s-Mittel über 88 % FTP (ohne FTP 115 % des Fahrtdurchschnitts), ab 60 s, Lücken bis 15 s überbrückt.
 - `decoupling`: `{ pct, firstHalf, secondHalf }` (Leistung/Puls je Hälfte) oder `null` (unter 20 min Daten).
 - `powerCurve`: Bestleistungen dieser Fahrt `{"Sekunden": Watt}`.
+
+## Krafttraining (`core/strength.ts`, #33)
+
+- **Erfassen:** `log_strength_session` (Übungen mit Sätzen, Wiederholungen, Gewicht; `rpe` = Anstrengung der Einheit 1–10). Übungsnamen deutsch oder englisch, ein Katalog ordnet Muskelgruppen zu; unbekannte Übungen mit `muscles`. Verknüpfung mit einem WHOOP-Krafttraining am selben Tag (bei Startzeit höchstens 90 min daneben), Dauer und Startzeit von dort.
+- **Belastung:** Session-RPE (Foster) im TSS-Maßstab, Punkte je Stunde nach RPE (7 ≈ 70, 9 ≈ 100, 10 ≈ 120), `loadMethod: "srpe"`. Ersetzt die Puls-Schätzung des verknüpften Workouts, wenn höher; Einheiten ohne Workout zählen als Quelle `manual`. Fließt in Fitness/Ermüdung/Form (Dashboard und Auswertungen).
+- **1RM:** Epley, Gewicht · (1 + Wdh/30), nur bis 12 Wiederholungen. Fortschritt je Übung: bestes 1RM je Einheit; `plateau`, wenn die letzten drei Einheiten (mind. 3 in 6 Wochen) keine neue Bestmarke über 1 % bringen; `decline` bei −5 % in 4 Wochen.
+- **Volumen:** Arbeitssätze je Muskelgruppe und Woche (Hauptmuskel 1, Hilfsmuskel 0,5) und Tonnage.
+- **Coach:** Schwere Beineinheit gestern/heute (≥ 6 Beinsätze oder ≥ 3 bei RPE ≥ 8) → keine harten Rad-Intervalle; nach 14 Tagen ohne Kraft eine Erinnerung.
+- **Vorlagen:** `save_strength_template`, `suggest_strength_session` (letztes Gewicht, nach komplett geschafften Sätzen +2,5 kg bzw. +5 kg bei Beinen/Kreuzheben).
