@@ -47,10 +47,12 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 32 | Schneller laden (#69) | get_dashboard kompakter, KV-Cache, Tabs laden faul | schnelleres Handy-Dashboard | P2 | M | – | Messung vorher/nachher | Done ⚙️ (#81: 157 → 79 KB, Handy-Start 1 statt 11 Aufrufe; KV-Cache bewusst weggelassen; User-Test #82) |
 | 33 | Wochenrückblick (#76) | Soll/Ist, Belastung, Erholung, Schlaf, Highlights, Text von Claude | dranbleiben, Woche einordnen | P1 | M | Zeile 15 | Unit-Tests, User-Test | Done ⚙️ (#80; im Dashboard v8; User-Test #85) |
 | 34 | Ausdauer-Profil (#92) | Critical Power, W′, Effizienz-Trend (Watt pro Herzschlag) | Fortschritt auf dem Rad sehen | P2 | M | Zeile 8 | Unit-Tests, User-Test | Done ⚙️ (#96; im Dashboard v10; User-Test #101) |
-| 35 | Erholungs-Prognose (#93) | Erholung morgen aus Belastung, Schlafplan und eigener Historie schätzen | Tag vorher planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | In Progress (Analyse-Thread) |
+| 35 | Erholungs-Prognose (#93) | Erholung morgen aus Belastung, Schlafplan und eigener Historie schätzen | Tag vorher planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#109; im Dashboard v11; User-Test #112) |
 | 36 | Coach-Fragen mit Werkzeugen (#100) | Claude holt sich zur Frage Schlaf, Kraft, Plan, Rückblick, Wetter usw. selbst | bessere Antworten im Chat | P1 | S | Zeile 9 | Vorschau, User-Test | Done ⚙️ (#102; im Dashboard v10; User-Test #104) |
 | 37 | FTP-Test im Wochenplan (#98) | Plan schlägt einen passenden Tag für den FTP-Test vor, mit Anleitung | FTP aktuell halten | P2 | S | Zeile 25 | Unit-Tests, User-Test | Done ⚙️ (#99; User-Test #103) |
-| 38 | Gym-Modus am Handy (#107) | Einheit aus Vorlage starten, Sätze abhaken, Pausen-Timer, Bildschirm bleibt an, Einzelsätze speichern | Krafttraining live erfassen statt nachtragen | P1 | S | Zeile 17 | Vorschau, User-Test | In Progress (Haupt-Thread) |
+| 38 | Gym-Modus am Handy (#107) | Einheit aus Vorlage starten, Sätze abhaken, Pausen-Timer, Bildschirm bleibt an, Einzelsätze speichern | Krafttraining live erfassen statt nachtragen | P1 | S | Zeile 17 | Vorschau, User-Test | Done ⚙️ (#105; im Dashboard v11; User-Test #116) |
+| 39 | Krafteinheiten im Wochenplan (#108) | Übungen, Sätze, Wiederholungen und Gewicht je Krafttag | wissen, was im Gym dran ist | P1 | S | Zeile 17 | Unit-Tests, User-Test | Done ⚙️ (Coach-Thread; User-Test #110) |
+| 40 | Coach-Chat: Fragen zum Antippen, Verlauf bleibt (#118) | 4 Fragen passend zum Tag, Chat übersteht Neuladen (3 Tage) | Coach am Handy schneller fragen | P2 | S | Zeile 36 | Vorschau, User-Test | In Progress (Haupt-Thread) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 

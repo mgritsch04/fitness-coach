@@ -114,6 +114,11 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.fill("#askInput", "Wie entwickelt sich meine Kniebeuge?"); await p.click("#askBtn"); await p.waitForTimeout(400);
     const tr = await p.evaluate(() => window.__toolResult);
     if (!(tr > 100)) errors.push(`${name}: Coach-Werkzeug krafttraining lieferte nichts (${tr})`);
+    // Fragen-Vorschlag antippen, dann neu laden: der Chat bleibt erhalten (#118).
+    await p.click("#askChips .chip"); await p.waitForTimeout(300);
+    await p.reload(); await p.waitForTimeout(800);
+    const kept = await p.$$eval("#chat .q", (q) => q.length);
+    if (kept !== 2) errors.push(`${name}: Coach-Chat nach Neuladen ${kept} statt 2 Fragen`);
   }
   const sw = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (sw > 0) errors.push(`${name}: horizontal overflow ${sw}px`);
