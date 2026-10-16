@@ -13,18 +13,19 @@ Eine private Seite in claude.ai (Artifact) mit eingebauter Datenbank (`db`-Capab
 ## Datendokumente in `board`
 | Dokument | Inhalt | schreibt |
 |---|---|---|
-| `usage` | `{at, five_hour: {utilization, resetsAt}, seven_day: {…}, history: [{at, u}], updater: {mode, runs, stopAt, stopped}}` | Cloud-Updater |
-| `live` | `{at, rows: [{title, task, bucket, env, cost, updated}]}` | Cloud-Updater |
+| `usage` | `{at, five_hour: {utilization, resetsAt}, seven_day: {…}, history: [{at, u}], updater: {mode, runs, stopAt, stopped}}` | Updater |
+| `live` | `{at, rows: [{title, task, bucket, env, cost, updated}]}` | Updater |
 | `agents` | `{rows: [{name, aufgabe, status, seit}]}` | umsetzende Session |
 | `features` | `{rows: [{nr, titel, wer, stand}]}` | umsetzende Session |
 | `usertests` | `{rows: [{nr, titel, bereit}]}` | umsetzende Session |
-| `forecast` | `{at, rate, rateBasis, inProgress: [...], items: [{nr, titel, size}]}` | umsetzende Session |
+| `forecast` | `{at, rate, rateBasis, inProgress: [...], items: [{nr, titel, size, hinweis}]}` | umsetzende Session |
 
-## Cloud-Updater
-- Eine eigene Cloud-Session mit kleinem Modell (Haiku), die Nutzung und Sitzungen aus den Sitzungsdaten von Claude Code liest (`get_session`/`list_sessions`) und per `ArtifactData` in `board` schreibt.
-- Takt: etwa alle 1–2 min, solange Sitzungen aktiv sind; sonst Ruhemodus (alle 30 min). Pro Lauf ein Wegwerf-Helfer, damit der Verlauf der Updater-Session klein bleibt. Begrenzte Laufzeit (`stopAt`), danach beendet.
-- Erkenntnis aus dem Wohnungsplaner: Die Seite kann die Sitzungsliste nicht selbst abfragen (Connector „Claude Code Remote“ ist im Browser per Richtlinie gesperrt) und stündliche Routinen haben die nötigen Werkzeuge nicht – deshalb der Updater. Er kostet Kontingent und läuft nur auf deinen Wunsch.
-- Keine Zugangsdaten im Seiten-Code.
+## Updater
+- Läuft als **geplanter Task stündlich** (jeweils um :20, kürzer erlaubt die Plattform nicht) im Thread „Entwicklungsstand-Dashboard“ des Projekts „Fitness“. Jeder Lauf startet einen Wegwerf-Hilfsagenten mit **Haiku**, der nach [`DASHBOARD_UPDATER.md`](DASHBOARD_UPDATER.md) arbeitet (Kopie für die Läufe: `/mnt/project-files/dashboard/updater-anleitung.md`).
+- Quellen: Threads des Projekts (`list_thread_sessions`), Kosten/Aufgabe aktiver Threads (`get_session`), Nutzung aus dem neuesten `rate_limit_event` einer aktiven Sitzung (`list_events`). Schreibt per `ArtifactData` nur `board/usage` und `board/live`, und nur bei Änderung.
+- Ende: `stopAt` = 2026-10-18 00:00 UTC; danach löscht der Thread den geplanten Task. Verlängern oder stoppen nur auf deinen Wunsch („Updater stoppen“ / „Updater verlängern bis …“ im Thread).
+- Kosten: pro Lauf ein Haiku-Agent (rund 80 000 Token, überwiegend Cache) plus ein kurzer Weckruf des Threads; zählt gegen dein Kontingent.
+- Erkenntnis aus dem Wohnungsplaner: Die Seite kann die Sitzungsliste nicht selbst abfragen, deshalb der Updater. Keine Zugangsdaten im Seiten-Code.
 
 ## Stand
-Noch nicht angelegt (IDEAS Zeile 10). Link wird hier und in `PROJECT_STATUS.md` eingetragen.
+Live seit 2026-10-16: https://claude.ai/artifact/DLsyumhy4w8L66F1VNA9pk (Startdaten für `features`, `agents`, `usertests`, `forecast` eingetragen; ab dann pflegt sie der integrierende Thread).
