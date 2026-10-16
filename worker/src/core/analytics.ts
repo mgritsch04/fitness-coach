@@ -30,6 +30,7 @@ import {
   flattenCurves,
 } from "./performance";
 import { recoveryFactors, strainRecovery } from "./insights";
+import { earlyWarning } from "./warnings";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -212,4 +213,8 @@ export function recoveryFactorsView(c: AnalysisContext) {
       "Zusammenhänge sind Beobachtungen aus deinen Daten, keine Ursache-Wirkung und keine Diagnose.",
     ],
   };
+}
+
+export function earlyWarningView(c: AnalysisContext) {
+  return { today: c.today, ...earlyWarning(c.series, c.today) };
 }

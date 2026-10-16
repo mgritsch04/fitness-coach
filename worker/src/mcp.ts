@@ -10,7 +10,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -352,6 +352,17 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(recoveryFactorsView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 365 }))),
+  );
+
+  server.registerTool(
+    "get_early_warning",
+    {
+      description:
+        "Frühwarnung Überlastung/Infekt: Ruhepuls, HRV, Atemfrequenz, Hauttemperatur und SpO2 von heute (oder gestern) gegen die persönliche Basis; " +
+        "level none/watch/caution/alert, auffällige Signale, Hinweis für heute. Trainingshinweis, keine Diagnose.",
+      annotations: { readOnlyHint: true },
+    },
+    async () => json(earlyWarningView(await analysisContext(env.DB, { days: 7 }))),
   );
 
   registerStrengthTools(server, env);
