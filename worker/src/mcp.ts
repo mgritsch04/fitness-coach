@@ -12,6 +12,7 @@ import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
 import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
+import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
 import { registerJournalTools } from "./journal-tools";
 
@@ -340,6 +341,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     async ({ days: d }) => json(strainRecoveryView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 365 }))),
   );
 
+  registerStrengthTools(server, env);
   registerCoachTools(server, env);
   registerJournalTools(server, env);
 

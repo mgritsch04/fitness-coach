@@ -7,7 +7,7 @@ export type Readiness = "rest" | "easy" | "moderate" | "hard";
 
 export interface Reason {
   /** Kurzer Schlüssel für die Oberfläche. */
-  factor: "recovery" | "hrv" | "rhr" | "sleep" | "sleep_debt" | "form" | "ramp" | "monotony" | "data" | "journal";
+  factor: "recovery" | "hrv" | "rhr" | "sleep" | "sleep_debt" | "form" | "ramp" | "monotony" | "data" | "strength" | "journal";
   effect: "up" | "down" | "neutral";
   text: string;
 }

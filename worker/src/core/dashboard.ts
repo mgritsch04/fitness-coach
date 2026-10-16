@@ -20,6 +20,7 @@ import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./jo
 import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
+import { applyStrengthLoads, exerciseProgress, readStrengthSessions, strengthCoachNotes, weeklyVolume } from "./strength";
 
 /** Vorlauf, damit die 42-Tage-Fitness (CTL) am Anfang der Ansicht schon eingeschwungen ist. */
 const LOAD_WARMUP_DAYS = 120;
@@ -35,7 +36,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const statsFrom = addDays(viewFrom, -BASELINE_DAYS);
 
   const ftpFrom = addDays(today, -89);
-  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync, powerRows] = await Promise.all([
+  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync, powerRows, strengthSessions] = await Promise.all([
     readDaily(db, statsFrom) as Promise<unknown> as Promise<DailyRow[]>,
     readSleeps(db, statsFrom) as Promise<unknown> as Promise<SleepRow[]>,
     readWorkouts(db, loadFrom) as Promise<unknown> as Promise<WorkoutRow[]>,
@@ -43,12 +44,17 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     getSyncState(db, "whoop"),
     getSyncState(db, "wahoo"),
     readPowerCurves(db, ftpFrom).then(flattenCurves),
+    readStrengthSessions(db, loadFrom),
   ]);
 
   // FTP-Schätzung (performance.ts) gilt nur, solange keine eigene FTP gesetzt ist.
   const ftpEstimate = estimateFtp(powerCurve(powerRows, ftpFrom), rawWorkouts, ftpFrom);
   const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null, ftpEstimate?.watts ?? null);
-  const workouts = mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) }));
+  // Krafteinheiten: Belastung aus Session-RPE statt Puls, Einheiten ohne Workout kommen dazu.
+  const workouts = applyStrengthLoads(
+    mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) })),
+    strengthSessions,
+  );
 
   const loadsByDay = new Map<string, number>();
   for (const w of workouts) if (w.load != null) loadsByDay.set(w.day, (loadsByDay.get(w.day) ?? 0) + w.load);
@@ -66,10 +72,15 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     respRate: trend(series, "respRate", today),
   };
   const view = series.filter((p) => p.day >= viewFrom);
+  const baseCoach = coachAdvice(series, today, trends, settings.sleepNeedH);
+  for (const n of strengthCoachNotes(strengthSessions, today)) {
+    baseCoach.reasons.push({ factor: "strength", effect: n.effect, text: n.text });
+    if (n.effect === "down" && (baseCoach.readiness === "hard" || baseCoach.readiness === "moderate")) baseCoach.warnings.push(n.text);
+  }
   // Tagebuch (journal.ts): Check-in von heute fließt in die Tagesempfehlung ein.
   const [journal, rpeRows] = await Promise.all([readJournal(db, statsFrom, today), readRpe(db, viewFrom)]);
   const journalToday = journal.find((j) => j.day === today) ?? null;
-  const coach = applyJournal(coachAdvice(series, today, trends, settings.sleepNeedH), journalToday);
+  const coach = applyJournal(baseCoach, journalToday);
   const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
@@ -113,8 +124,16 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
       "Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL) und Form (TSB) sind Schätzungen.",
       settings.origin.ftpW === "data" ? `FTP ${settings.ftpW} W ist geschätzt (${ftpEstimate?.note ?? ""}). Trage deine FTP ein, wenn du sie kennst.` : null,
       settings.ftpW ? null : "Ohne FTP wird die Belastung aus dem Puls geschätzt. Trage deine FTP ein, sobald Leistungsdaten (Wahoo/MyWhoosh) vorliegen.",
+      workouts.some((w) => w.method === "srpe") ? "Krafteinheiten zählen mit Dauer × Anstrengung (Session-RPE), geschätztes 1RM nach Epley." : null,
       unestimated ? `${unestimated} Workouts ohne Puls oder Leistung zählen nicht zur Trainingslast.` : null,
     ].filter(Boolean),
+    strength: {
+      sessions: strengthSessions
+        .filter((x) => x.day >= viewFrom)
+        .map((x) => ({ id: x.id, day: x.day, name: x.name, durationMin: x.durationMin, rpe: x.rpe, sets: x.sets.length, exercises: [...new Set(x.sets.map((y) => y.exerciseName))] })),
+      weeks: weeklyVolume(strengthSessions.filter((x) => x.day >= viewFrom)),
+      progress: exerciseProgress(strengthSessions, today).map(({ history, ...p }) => ({ ...p, history: history.slice(-12) })),
+    },
     sync: { whoop: whoopSync, wahoo: wahooSync },
   };
   const journalOut = {
