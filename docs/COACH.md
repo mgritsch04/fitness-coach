@@ -89,3 +89,6 @@ Ist ein Test fällig (noch keiner gespeichert oder der letzte ist ≥ 6 Wochen h
 
 ## Krafteinheit konkret (`core/strength-plan.ts`)
 Für jeden Plantag ab heute mit Kraft liefert `training.strengthWorkouts` passende Übungen zum Fokus des Plans (z. B. „Beine + Rumpf“: Kniebeuge 4 × 5, Rumänisches Kreuzheben 3 × 6 …). Bei ≤ 30 min sind es drei Übungen, bei ≤ 45 min vier, sonst fünf. Das Gewicht stammt aus den gespeicherten Krafteinheiten mit derselben Regel wie bei Vorlagen: alle Sätze geschafft ergibt +2,5 kg, bei Beinen und Kreuzheben +5 kg. Beim leichten Fokus sind es etwa 60 %. Ohne Vorwert lautet die Regel „2 Wiederholungen Reserve“. Ein unbekannter Fokus (z. B. von Claude angepasst) bekommt Ganzkörper. Angezeigt wird das im Tagesdetail des Wochenplans; im Coach-Kontext stehen die nächsten zwei Einheiten.
+
+## Erholungs-Prognose im Coach-Kontext (#114)
+`get_coach_context` enthält `recoveryForecast`: die Erholung von morgen mit Spanne und Szenarien, berechnet von `recoveryForecastView` aus `core/analytics.ts` (Analyse-Thread, #93). Sie dient für Fragen wie „heute Abend noch trainieren?“. Bei `available = false` steht nur der Grund dabei.
