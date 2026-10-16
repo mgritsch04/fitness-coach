@@ -43,3 +43,7 @@ Duplikate: Dieselbe Fahrt kann über MyWhoosh-FIT, Wahoo (wenn ein KICKR-Workout
 - https://forum.intervals.icu/t/mywhoosh-data-not-working-anymore/111818
 - https://forums.garmin.com/apps-software/mobile-apps-web/f/garmin-connect-web/400631/download-from-mywhoosh
 - https://knowledge.enduco.app/en/articles/12840740-mywhoosh
+
+## Wetter – Open-Meteo (#66)
+
+Offizielle, kostenlose API ohne Schlüssel (https://open-meteo.com, Daten CC BY 4.0). Der Worker ruft Geocoding (`geocoding-api.open-meteo.com/v1/search`) und Vorhersage (`api.open-meteo.com/v1/forecast`, stündlich: Temperatur, Regen, Wind, Böen, Wettercode, Tageslicht) ab. Gesendet werden nur der eingegebene Ortsname bzw. die auf eine Nachkommastelle gerundeten Koordinaten, keine Gesundheitsdaten. Die Vorhersage wird 30 min im KV zwischengespeichert. Werkzeuge: `set_weather_location`, `get_ride_weather`.

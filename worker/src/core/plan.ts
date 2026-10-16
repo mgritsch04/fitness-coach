@@ -358,7 +358,7 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   }
   const strengthDays = placeStrength(days, strengthWanted, rest, phase, habit.minutes);
   if (habit.estimated && strengthWanted) notes.push(`Kraft: ${habit.perWeek}× pro Woche à ~${habit.minutes} min wie in den letzten Wochen. Ändern über die Trainingsvorlieben.`);
-  if (strengthDays < strengthWanted) notes.push(`Nur ${strengthDays} von ${strengthWanted} Krafteinheiten passten sinnvoll in die Woche.`);
+  if (strengthDays < strengthWanted) notes.push(`Nur ${strengthDays} von ${strengthWanted} Krafteinheiten passten sinnvoll in die Woche: Kraft nicht vor harten Tagen, und ein Tag pro Woche bleibt ganz frei.`);
   if (strengthDays) notes.push("Kraft nie direkt vor Intervallen oder der langen Fahrt: schwere Beine kosten sonst die Qualität der Radeinheit. Am selben Tag erst Rad, dann Kraft.");
 
   const planned = days.reduce((a, s) => a + s.targetLoad, 0);
@@ -403,7 +403,8 @@ export function placeStrength(days: PlannedSession[], wanted: number, fixedRest:
     if (legs && (beforeHeavy(i) || s.type === "long")) return null;
     if (s.type === "long") return 0.5;
     if (s.type === "threshold" || s.type === "vo2max" || s.type === "tempo") return light ? null : 3;
-    if (s.type === "rest") return afterLong(i) ? 1 : 2;
+    // Mindestens ein ganz freier Tag pro Woche bleibt frei (Erholung, auch bei täglicher Kraft-Gewohnheit).
+    if (s.type === "rest") return days.filter((x) => x.type === "rest").length <= 1 ? null : afterLong(i) ? 1 : 2;
     if (s.type === "endurance") return 2.5;
     if (s.type === "recovery") return 1.5;
     return null;

@@ -15,6 +15,7 @@ import { weekReview } from "../src/core/review";
 import { weekView } from "../src/core/training";
 import { weekStart } from "../src/core/analysis";
 import { buildBikeWorkout, toZwo, zwoFileName } from "../src/core/bike-workout";
+import { bestWindow, parseForecast, rideAdvice } from "../src/core/weather";
 import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 
 let seed = 42;
@@ -90,6 +91,19 @@ process.stdout.write(JSON.stringify({
   })(),
   get_records: await recordsView(db, await ctx(14), 30),
   get_endurance_profile: enduranceView(await ctx(180)),
+  get_ride_weather: (() => {
+    // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
+    const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];
+    for (const [k, day] of ["2026-03-31", "2026-04-01"].entries()) for (let h = 0; h < 24; h++) {
+      time.push(`${day}T${String(h).padStart(2, "0")}:00`); t.push(k ? 7 + h / 4 : 9 + Math.min(h, 14) / 1.5);
+      const rain = !k && h >= 15; p.push(rain ? 70 : 10); mm.push(rain ? 0.8 : 0); w.push(k ? 24 : 9); c.push(rain ? 61 : 2); d.push(h >= 7 && h <= 19 ? 1 : 0);
+    }
+    const hours = parseForecast({ hourly: { time, temperature_2m: t, precipitation_probability: p, precipitation: mm, wind_speed_10m: w, wind_gusts_10m: w.map((x) => x * 1.6), weather_code: c, is_day: d } });
+    const plans = [{ type: "endurance" as const, title: "Grundlage", durationMin: 90 }, { type: "threshold" as const, title: "Schwelle", durationMin: 75 }];
+    return { location: { name: "Graz, Österreich (Beispiel)", lat: 47.1, lon: 15.4 }, timezone: "Europe/Vienna", fetchedAt: "2026-03-31T07:10:00Z", source: "Open-Meteo",
+      days: ["2026-03-31", "2026-04-01"].map((day, i) => { const best = bestWindow(hours, day, Math.ceil(plans[i].durationMin / 60), i ? undefined : "2026-03-31T09:00");
+        return { day, planned: plans[i], best, advice: rideAdvice(best, plans[i], "moderate"), hours: hours.filter((h) => h.time.startsWith(day)) }; }) };
+  })(),
   get_ftp_tests: await (async () => {
     const c = await ctx(7);
     await saveFtpTest(db, { day: "2026-01-12", source: "mywhoosh", source_id: "t1", protocol: "ramp", basis_w: 310, ftp_w: 233, weight_kg: 77.4, applied: 0 });

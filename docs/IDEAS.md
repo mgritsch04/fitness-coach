@@ -38,13 +38,14 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 23 | Körperwerte und Export (#30) | Gewichtsverlauf, manuelle Eingabe, W/kg, CSV-Export | vollständiges Bild | P3 | S | Zeile 11 | User-Test | Done ⚙️ (#74; im Dashboard #78; User-Test #77) |
 | 25 | Handy-Version (#37) | Tab-Leiste unten, Tabellen als Karten, große Zahlen | Dashboard am Handy | P1 | S | Zeile 11 | User-Test | Done ⚙️ (#18; User-Test #44) |
 | 24 | Krafttraining (#33) | Übungen/Sätze/Gewicht erfassen, Volumen je Muskelgruppe, 1RM-Verlauf, sRPE-Belastung in der Gesamtlast, Coach plant Kraft und Rad zusammen | du trainierst Kraft + Rennrad | P1 | L | Zeile 16 (RPE) hilfreich | Unit-Tests, User-Test | Done ⚙️ (#56; User-Test #47) |
-| 26 | MyWhoosh-Workouts exportieren (#63) | Coach-Intervalle als Workout-Datei (% FTP), Download im Dashboard; Format vorher offiziell prüfen | strukturiert auf der Rolle trainieren | P1 | M | Zeile 8, 15 | Unit-Tests, User-Test | In Progress (Haupt-Thread; Format ZWO über den offiziellen Workout Builder) |
-| 27 | FTP-Test-Assistent (#64) | Ramp-/20-min-Test vorschlagen (TSB > 0), aus FIT auswerten, Verlauf | FTP aktuell halten | P2 | M | Zeile 6, 8 | Unit-Tests, User-Test | Ready |
-| 28 | Bestleistungen-Feed (#65) | neue Rekorde Watt/1RM/Strecke, Woche gegen Vorwoche | Motivation | P2 | S | Zeile 8, 24 | Unit-Tests, User-Test | In Progress (Analyse-Thread, PR #79) |
-| 29 | Wetter-Empfehlung (#66) | Open-Meteo, bestes Zeitfenster für draußen | Rennrad draußen planen | P2 | M | Zeile 9 | Unit-Tests, User-Test | Ready |
+| 26 | MyWhoosh-Workouts exportieren (#63) | Coach-Intervalle als Workout-Datei (% FTP), Download im Dashboard; Format vorher offiziell prüfen | strukturiert auf der Rolle trainieren | P1 | M | Zeile 8, 15 | Unit-Tests, User-Test | Done ⚙️ (#84, ZWO über den offiziellen Workout Builder; User-Test #89) |
+| 27 | FTP-Test-Assistent (#64) | Ramp-/20-min-Test vorschlagen (TSB > 0), aus FIT auswerten, Verlauf | FTP aktuell halten | P2 | M | Zeile 6, 8 | Unit-Tests, User-Test | In Progress (Analyse-Thread) |
+| 28 | Bestleistungen-Feed (#65) | neue Rekorde Watt/1RM/Strecke, Woche gegen Vorwoche | Motivation | P2 | S | Zeile 8, 24 | Unit-Tests, User-Test | Done ⚙️ (#79; User-Test #83) |
+| 29 | Wetter-Empfehlung (#66) | Open-Meteo, bestes Zeitfenster für draußen | Rennrad draußen planen | P2 | M | Zeile 9 | Unit-Tests, User-Test | In Progress (Haupt-Thread) |
 | 30 | Dashboard anpassen (#67) | Bereiche je Tab ein-/ausblenden, Reihenfolge | Übersicht am Handy | P1 | S | Zeile 11 | User-Test | Done ⚙️ (#73) |
 | 31 | CI prüft Dashboard-Vorschau (#68) | Playwright in Actions: Skriptfehler, Überlauf, fehlende Script-Tags | weniger kaputte Veröffentlichungen | P1 | S | Zeile 11 | CI rot bei kaputtem Abschnitt | Done ⚙️ (#73) |
 | 32 | Schneller laden (#69) | get_dashboard kompakter, KV-Cache, Tabs laden faul | schnelleres Handy-Dashboard | P2 | M | – | Messung vorher/nachher | Done ⚙️ (#81: 157 → 79 KB, Handy-Start 1 statt 11 Aufrufe; KV-Cache bewusst weggelassen; User-Test #82) |
+| 33 | Wochenrückblick (#76) | Soll/Ist, Belastung, Erholung, Schlaf, Highlights, Text von Claude | dranbleiben, Woche einordnen | P1 | M | Zeile 15 | Unit-Tests, User-Test | Done ⚙️ (#80; im Dashboard v8; User-Test #85) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
