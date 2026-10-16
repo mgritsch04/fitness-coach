@@ -3,6 +3,7 @@
 import { addDays } from "../src/core/analysis";
 import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
+import { ftpHistory, ftpTestSuggestion, readFtpTests, saveFtpTest } from "../src/core/ftp-test";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
 import { readPowerCurves } from "../src/core/repository";
 import { runBatched, updateRecovery, upsertBody, upsertDaily, upsertSleep, upsertWorkout, upsertWorkoutStream } from "../src/core/repository";
@@ -70,5 +71,12 @@ process.stdout.write(JSON.stringify({
     ...bodyReport(await readBodyHistory(db, addDays("2026-03-31", -300)), addDays("2026-03-31", -179), "2026-03-31", { watts: 250, origin: "estimate" },
       { title: "Gewicht (Beispiel)", targetValue: 74, targetDate: "2026-06-30" }) },
   get_records: await recordsView(db, await ctx(14), 30),
+  get_ftp_tests: await (async () => {
+    const c = await ctx(7);
+    await saveFtpTest(db, { day: "2026-01-12", source: "mywhoosh", source_id: "t1", protocol: "ramp", basis_w: 310, ftp_w: 233, weight_kg: 77.4, applied: 0 });
+    await saveFtpTest(db, { day: "2026-02-23", source: "mywhoosh", source_id: "t2", protocol: "20min", basis_w: 255, ftp_w: 242, weight_kg: 76.8, applied: 1 });
+    const tests = ftpHistory(await readFtpTests(db));
+    return { today: c.today, current: { ftpW: c.settings.ftpW, origin: c.settings.origin.ftpW, estimate: c.ftpEstimate }, tests, suggestion: ftpTestSuggestion(4, tests.at(-1)!.day, c.today), notes: [] };
+  })(),
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
 }));
