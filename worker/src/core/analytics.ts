@@ -33,6 +33,7 @@ import { recoveryFactors, strainRecovery } from "./insights";
 import { earlyWarning } from "./warnings";
 import { sleepReport } from "./sleep";
 import { recordsReport } from "./records";
+import { lateTrainingDays, recoveryForecast, type ForecastInput } from "./forecast";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -246,4 +247,8 @@ export async function recordsView(db: D1Database, c: AnalysisContext, days: numb
 /** Ausdauer-Profil (#92): Critical Power/W′ aus der 90-Tage-Kurve und Effizienz-Trend lockerer Fahrten. */
 export function enduranceView(c: AnalysisContext) {
   return enduranceProfile(c.curveRecent, c.workouts, c.today, c.settings.ftpW);
+}
+
+export function recoveryForecastView(c: AnalysisContext, input: ForecastInput = {}) {
+  return recoveryForecast(c.series, lateTrainingDays(c.workouts, c.settings.timezone), c.today, input);
 }
