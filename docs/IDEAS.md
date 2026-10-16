@@ -59,6 +59,8 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 44 | HRV-Trend nach Plews (#125) | 7-Tage-Mittel und Schwankung (CV) der HRV gegen den eigenen Normalbereich, Einordnung | Ermüdung früh erkennen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#128; User-Test #130) |
 | 45 | Anstrengung je Workout im Dashboard (#134) | RPE 1–10 in der Workout-Liste und als Frage unter „Heute dran“ | bessere Belastungsschätzung beim Krafttraining | P2 | S | Zeile 16 | Unit-Test, Vorschau, User-Test | Done (#137, v15; User-Test #140) |
 | 46 | Beste Trainingszeit (#131) | Tageszeit des Trainings gegen Schlaf, Erholung und Leistung | Training günstig legen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#135; User-Test #138) |
+| 47 | Ermüdungsresistenz (#139) | Beste 5/20 min nach 500/1000/1500 kJ | Langfahrten realistisch planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#141, v16; User-Test #144) |
+| 48 | Scheibenrechner im Gym-Modus (#143) | Scheiben je Seite für Langhantel-Übungen, Stange 20/15/10 kg | weniger Kopfrechnen im Gym | P3 | S | Zeile 38 | Vorschau, User-Test | Done (#142, v16; User-Test #146) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
