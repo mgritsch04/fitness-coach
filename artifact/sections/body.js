@@ -46,13 +46,13 @@ FC.section({
     const signed = (v) => (v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : "±"}${de(Math.abs(v), 1)} kg`);
     $("bdRange").textContent = s.latest ? `zuletzt ${fmtDay(s.latest.day)}${s.latest.source === "manual" ? " (eigener Eintrag)" : ""}` : "";
     const stat = (label, value, sub) => el("div", {}, el("span", { class: "label", text: label }), el("b", { text: value }), sub ? el("span", { class: "muted", text: sub }) : null);
-    stats.replaceChildren(
+    stats.replaceChildren(...[
       stat("Aktuell", kg(s.latest?.weightKg), s.bmi != null ? `BMI ${de(s.bmi, 1)}` : null),
       stat("30 Tage", signed(s.change30dKg), s.change7dKg != null ? `7 Tage ${signed(s.change7dKg)}` : null),
       stat("Trend", s.trendKgPerWeek == null ? "–" : `${signed(s.trendKgPerWeek)}/Woche`, "Schätzung aus 4 Wochen"),
       stat("W/kg", r.wattsPerKg.value == null ? "–" : de(r.wattsPerKg.value, 2), r.wattsPerKg.ftpW ? `FTP ${de(r.wattsPerKg.ftpW)} W${r.wattsPerKg.ftpOrigin === "user" ? "" : " (geschätzt)"}` : "FTP unbekannt"),
       r.goal ? stat(r.goal.title, kg(r.goal.targetValue), r.goal.remainingKg == null ? null : `noch ${signed(r.goal.remainingKg)}${r.goal.neededKgPerWeek != null ? `, nötig ${signed(r.goal.neededKgPerWeek)}/Woche` : ""}${r.goal.onTrack === true ? " · auf Kurs" : r.goal.onTrack === false ? " · nicht auf Kurs" : ""}`) : null,
-    );
+    ].filter(Boolean));
     const box = $("cWeight");
     if (!r.points.length) { box.replaceChildren(el("div", { class: "empty", text: "Noch kein Gewicht. Trag oben einen Wert ein oder pflege es im WHOOP-Profil." })); return; }
     chart(box, { days: r.points, aria: "Gewichtsverlauf", ref: r.goal?.targetValue != null ? { value: r.goal.targetValue } : undefined, series: [

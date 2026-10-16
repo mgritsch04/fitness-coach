@@ -31,7 +31,7 @@ FC.section({
     const s = r.summary;
     $("slRange").textContent = `${s.nights} Nächte`;
     const stat = (label, value, sub) => el("div", {}, el("span", { class: "label", text: label }), el("b", { text: value }), sub ? el("span", { class: "muted", text: sub }) : null);
-    stats.replaceChildren(
+    stats.replaceChildren(...[
       stat("Ø Schlaf", s.avgAsleepH == null ? "–" : `${fmtH(s.avgAsleepH)} h`, `Bedarf ${fmtH(r.sleepNeedH)} h, erreicht in ${de(s.needMetPct)} % der Nächte`),
       stat("Einschlafen", s.avgBedtime ?? "–", s.bedtimeSdMin != null ? `± ${de(s.bedtimeSdMin)} min` : null),
       stat("Aufwachen", s.avgWake ?? "–", s.wakeSdMin != null ? `± ${de(s.wakeSdMin)} min` : null),
@@ -39,7 +39,7 @@ FC.section({
       stat("Tief / REM", s.avgDeepPct == null ? "–" : `${de(s.avgDeepPct)} / ${de(s.avgRemPct)} %`, "Anteil am Schlaf"),
       stat("Wochenende", s.weekendShiftMin == null ? "–" : Math.abs(s.weekendShiftMin) < 15 ? "gleich" : `${s.weekendShiftMin > 0 ? "+" : "−"}${fmtH(Math.abs(s.weekendShiftMin) / 60)} h`, "Verschiebung der Schlafmitte"),
       s.suggestedBedtime ? stat("Ins Bett gegen", s.suggestedBedtime, "für deinen Schlafbedarf (Schätzung)") : null,
-    );
+    ].filter(Boolean));
     $("slTips").replaceChildren(...r.tips.map((t) => el("li", { text: t })));
     chart($("cPhases"), { days: r.nights, yMin: 0, ref: { value: r.sleepNeedH }, aria: "Schlafphasen je Nacht", series: [
       { label: "Tief", kind: "stack", color: cssVar("--s1"), value: (n) => n.deepH, fmt: (v) => `${fmtH(v)} h` },
