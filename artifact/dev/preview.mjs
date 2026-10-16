@@ -13,7 +13,9 @@ const shim = `<script>
 window.__MOCK__ = ${mock};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const payloads = {
-  get_dashboard: () => window.__MOCK__.get_dashboard,
+  get_dashboard: (i) => { const d = window.__MOCK__.get_dashboard; if (!i?.compact) return d;
+    const col = (rows) => { const keys = [...new Set(rows.flatMap(Object.keys))]; return { keys, rows: rows.map((r) => keys.map((k) => r[k] ?? null)) }; };
+    return { ...d, compact: 1, days: col(d.days), workouts: col(d.workouts) }; },
   get_power_curve: () => window.__MOCK__.get_power_curve,
   get_fitness_profile: () => window.__MOCK__.get_fitness_profile,
   get_training_load: () => window.__MOCK__.get_training_load,
@@ -21,6 +23,7 @@ const payloads = {
   get_strain_recovery: () => window.__MOCK__.get_strain_recovery,
   get_recovery_factors: () => window.__MOCK__.get_recovery_factors,
   get_sleep_report: () => window.__MOCK__.get_sleep_report,
+  get_records: () => window.__MOCK__.get_records,
   get_period_summaries: (i) => window.__MOCK__.get_period_summaries[i.period ?? "month"],
   get_body_history: () => window.__MOCK__.get_body_history,
   log_weight: (i) => ({ saved: { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),

@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { validAccessToken, whoopGet, WhoopAuthError } from "./providers/whoop/client";
+import { compactDashboard } from "./core/compact";
 import { syncAll } from "./sync";
 import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
 import { wahooConnectLink, wahooCredentials } from "./wahoo";
@@ -10,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -174,10 +175,16 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         "Alles für das Dashboard in einem Aufruf: Tagesreihe (Erholung, HRV, Ruhepuls, Schlaf, Strain, Belastung, Fitness/Ermüdung/Form), " +
         "Trends gegen die persönliche Basis, Wochenübersicht, Workouts mit geschätzter Belastung (Duplikate aus mehreren Quellen zusammengeführt) " +
         "und die regelbasierte Tagesempfehlung des Coachs. Belastungswerte sind Schätzungen.",
-      inputSchema: { days: z.number().int().min(7).max(365).optional().describe("Zeitraum der Ansicht in Tagen, Standard 90") },
+      inputSchema: {
+        days: z.number().int().min(7).max(365).optional().describe("Zeitraum der Ansicht in Tagen, Standard 90"),
+        compact: z.boolean().optional().describe("true: days und workouts als {keys, rows} statt Objektliste (halbe Größe, für das Dashboard-Artefakt)"),
+      },
       annotations: { readOnlyHint: true },
     },
-    async ({ days: d }) => json(await buildDashboard(env.DB, { days: d })),
+    async ({ days: d, compact }) => {
+      const dash = await buildDashboard(env.DB, { days: d });
+      return json(compact ? compactDashboard(dash) : dash);
+    },
   );
 
   const settingsShape = {
@@ -376,6 +383,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(sleepReportView(await analysisContext(env.DB, { days: d ?? 30, maxDays: 365 }))),
+  );
+
+  server.registerTool(
+    "get_records",
+    {
+      description:
+        "Bestleistungen-Feed: neue Rekorde (Leistung 5 s bis 60 min, geschätztes Kraft-1RM, längste Fahrt nach Strecke und Zeit) mit Vorwert und Datum, " +
+        "plus Vergleich dieser Woche mit denselben Tagen der Vorwoche (Stunden, Belastung, Erholung, HRV, Schlaf). 1RM und Belastung sind Schätzungen.",
+      inputSchema: { days: z.number().int().min(7).max(365).optional().describe("Zeitraum des Feeds in Tagen, Standard 30") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await recordsView(env.DB, await analysisContext(env.DB, { days: 14 }), d ?? 30)),
   );
 
   registerStrengthTools(server, env);
