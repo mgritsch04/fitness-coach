@@ -173,3 +173,11 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `current`: Lage (`within`/`above`/`below`), Abstand zur Bandmitte, Veränderung in 14 Tagen, CV jetzt, eine Woche vorher und üblich.
 - `pattern`: `stable`, `high`, `unsettled` (CV ≥ 1,5 × üblich), `fatigue` (unter dem Band, CV steigt um ≥ 1 Punkt oder ≥ 1,3 × üblich), `saturation` (unter dem Band, CV sinkt oder ≤ 0,6 × üblich; Schätzung), `low`; dazu `label` und `advice`.
 - Dashboard: `sections/hrvtrend.js`, Reiter Verlauf. Trainingshinweis, keine Diagnose.
+
+## Beste Trainingszeit (`get_training_timing`, #131)
+
+`core/timing.ts`: Einheiten ab 15 min nach Tageszeit (lokal): morgens (bis 10 Uhr), mittags (10–14), nachmittags (14–18), abends (18–21), spät (ab 21).
+
+- `slots[]`: Anzahl Einheiten (nach Startzeit); Effizienz der Radeinheiten nach Startzeit, also (normierte) Leistung je Herzschlag gegenüber dem Mittel ähnlich harter Fahrten (locker bzw. ab IF 0,85). Dazu Schlafdauer (min), Schlafleistung und Erholung der folgenden Nacht bzw. des nächsten Morgens, zugeordnet nach der Endzeit des letzten Trainings am Tag und gegenüber dem Mittel aller Nächte. Verglichen erst ab 3 Fällen.
+- `hints[]`: effizientestes Fenster (ab +1 %), Abend- bzw. Spätfenster mit mindestens 20 min weniger Schlaf oder 5 Punkten weniger Erholung.
+- Dashboard: `sections/timing.js`, Reiter Training. Beobachtungen, keine Ursache-Wirkung.
