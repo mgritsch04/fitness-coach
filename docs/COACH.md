@@ -74,3 +74,7 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 ## Intensitäts-Check und WHOOP-Zonen
 - Pulsangaben im Plan beziehen sich auf die Schwelle (Grundlage 80–89 %). Dahinter steht die passende WHOOP-Zone (Anteil der maximalen Herzfrequenz), damit die Zahlen zum Pulszonen-Diagramm im Dashboard passen.
 - `training.intensity` (`core/training.ts`, `intensityCheck`): Ausdauer-Einheiten der letzten 28 Tage (ab 20 min, mit Puls) gegen den Grundlagenbereich. `below` gilt, wenn ≥ 60 % mehr als 10 Schläge darunter liegen, `above`, wenn ≥ 50 % darüber liegen. Erklärt, warum die gemessene Belastung unter dem Soll bleibt. Hinweis, wenn die Schwelle nur geschätzt ist.
+
+## Wochenrückblick (#76, `core/review.ts`)
+- `get_week_review` (Standard: letzte abgeschlossene Woche, höchstens 6 Wochen zurück): Stunden, Belastung, Fitnessänderung, Zeit je Sport, Pulszonen-Anteile, Erholung/HRV/Ruhepuls/Schlaf gegen die Vorwoche, Plan-Soll/Ist, Highlights, Tagebuch und höchstens 3 regelbasierte Punkte für die nächste Woche (`nextWeek`). Dazu `savedReview`, der gespeicherte Text von Claude.
+- Abschnitt `artifact/sections/review.js` (Tab „coach“, order 25): Kennzahlen mit Pfeilen zur Vorwoche. „Rückblick schreiben (Claude)“ schreibt den Text per `sample` und speichert ihn mit `save_coach_note` (kind `weekly_review`, day = Montag).
