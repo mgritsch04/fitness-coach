@@ -12,7 +12,6 @@ FC.section({
         <div class="coach-actions">
           <button type="button" class="primary" data-coach="explain" disabled>Empfehlung erklären</button>
           <button type="button" data-coach="plan" disabled>Wochenplan vorschlagen</button>
-          <button type="button" data-coach="review" disabled>Wochenrückblick</button>
           <button type="button" id="coachStop" hidden>Stopp</button>
         </div>
         <div id="coachOut" class="coach-out muted">Wähle oben, was der Coach tun soll, oder stell unten eine Frage zu deinen Daten.</div>
@@ -84,9 +83,8 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
         out.append(el("div", { class: "tablewrap" }, t), el("p", { class: "muted", text: "Vorschlag von Claude auf Basis deiner Daten; Belastung geschätzt. Trainingsempfehlung, keine Diagnose." }));
         FC.state.lastPlan = plan;
       } else {
-        const task = kind === "explain"
-          ? "Aufgabe: Erkläre die heutige regelbasierte Empfehlung in eigenen Worten: Was bedeutet sie konkret für das Training heute (Art, Dauer, Intensität, Pulsbereich wenn möglich; Rad oder Kraft), und welche 2–3 Daten sind ausschlaggebend? Wenn etwas auffällt (Schlafschuld, HRV-Trend, schneller Lastanstieg), gib einen Tipp."
-          : "Aufgabe: Schreibe einen Rückblick auf die letzte abgeschlossene und die laufende Woche: Umfang (Rad und Kraft), Belastung, Erholung, Schlaf, Auffälligkeiten im Vergleich zu den Wochen davor, und 2 konkrete Vorschläge für die nächste Woche. Höchstens 220 Wörter.";
+        // Der Wochenrückblick hat einen eigenen Abschnitt (review.js).
+        const task = "Aufgabe: Erkläre die heutige regelbasierte Empfehlung in eigenen Worten: Was bedeutet sie konkret für das Training heute (Art, Dauer, Intensität, Pulsbereich wenn möglich; Rad oder Kraft), und welche 2–3 Daten sind ausschlaggebend? Wenn etwas auffällt (Schlafschuld, HRV-Trend, schneller Lastanstieg), gib einen Tipp.";
         const { truncated } = await state.sample(`${this.rules}\n\n${task}\n\nDaten:\n${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 }, onText: ({ text }) => richText(out, text) });
         if (truncated) out.append(el("p", { class: "muted", text: "Antwort wurde gekürzt." }));
       }

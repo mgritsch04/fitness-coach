@@ -29,6 +29,7 @@ const payloads = {
   save_ftp_test: () => window.__MOCK__.get_ftp_tests,
   get_period_summaries: (i) => window.__MOCK__.get_period_summaries[i.period ?? "month"],
   get_body_history: () => window.__MOCK__.get_body_history,
+  get_bike_workout: () => window.__MOCK__.get_bike_workout,
   log_weight: (i) => ({ saved: { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
   export_csv: (i) => ({ fileName: "fitness-" + i.dataset + ".csv", rows: 2, csv: "day;value\\n2026-03-30;1\\n2026-03-31;2\\n" }),
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),

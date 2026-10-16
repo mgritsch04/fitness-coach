@@ -14,6 +14,7 @@ import { readJournal, saveJournal } from "../src/core/journal";
 import { weekReview } from "../src/core/review";
 import { weekView } from "../src/core/training";
 import { weekStart } from "../src/core/analysis";
+import { buildBikeWorkout, toZwo, zwoFileName } from "../src/core/bike-workout";
 import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 
 let seed = 42;
@@ -81,6 +82,12 @@ process.stdout.write(JSON.stringify({
   get_body_history: { today: "2026-03-31", range: { from: addDays("2026-03-31", -179), to: "2026-03-31", days: 180 },
     ...bodyReport(await readBodyHistory(db, addDays("2026-03-31", -300)), addDays("2026-03-31", -179), "2026-03-31", { watts: 250, origin: "estimate" },
       { title: "Gewicht (Beispiel)", targetValue: 74, targetDate: "2026-06-30" }) },
+  get_bike_workout: (() => {
+    const w = buildBikeWorkout("threshold", 75)!, ftp = 250, wt = (x?: number) => (x == null ? null : Math.round(x * ftp));
+    return { day: "2026-03-31", planned: { type: "threshold", title: "Schwelle (Beispiel)", durationMin: 75, intensity: "", stored: false }, ftpW: ftp, ftpEstimated: true,
+      workout: { ...w, steps: w.steps.map((s) => ({ ...s, watts: wt(s.power), wattsLow: wt(s.powerLow), wattsHigh: wt(s.powerHigh), onWatts: wt(s.onPower), offWatts: wt(s.offPower) })) },
+      fileName: zwoFileName(w, "2026-03-31"), zwo: toZwo(w), howTo: [] };
+  })(),
   get_records: await recordsView(db, await ctx(14), 30),
   get_ftp_tests: await (async () => {
     const c = await ctx(7);
