@@ -67,6 +67,8 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 52 | Wochenplan als Kalenderdatei (#157) | Restliche Woche als .ics über den Download-Dialog | Training im eigenen Kalender | P2 | S | Zeile 41 | Vorschau, User-Test | Done (#159, v19; User-Test #165) |
 | 53 | Intervall-Qualität (#155) | Leistungsabfall je Intervall-Serie und Verlauf je Intervallart | Intervalle richtig dosieren | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#158, v19; User-Test #160) |
 | 54 | Trittfrequenz-Profil (#161) | Kadenz-Verteilung, Median je Leistungszone, Verlauf in Zone 2 | Technik auf dem Rad | P3 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#162, v19; User-Test #163) |
+| 55 | Fahrertyp (#164) | Stärken und Schwächen der Leistungskurve relativ zur FTP | Training gezielt auf Schwächen | P3 | M | Zeile 34 | Unit-Tests, User-Test | Done ⚙️ (#167, v20; User-Test #170) |
+| 56 | Sprungleiste am Handy (#168) | Wischbare Abschnittsliste oben in langen Tabs | Training-Tab (über 20 000 px) schnell durchsuchen | P2 | S | Zeile 25 | Vorschau, User-Test | Done (#169, v20; User-Test #172) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
