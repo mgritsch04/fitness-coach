@@ -12,7 +12,7 @@ Grundregel: Secrets nie im Chat, Browser-Code oder Repository. **Cloudflare-API-
 - Scopes: `read:recovery`, `read:cycles`, `read:sleep`, `read:workout`, `read:body_measurement`, `read:profile`, dazu `offline` für Refresh-Tokens.
 - Endpunkte: Auth `https://api.prod.whoop.com/oauth/oauth2/auth`, Token `https://api.prod.whoop.com/oauth/oauth2/token` ([OAuth-Doku](https://developer.whoop.com/docs/developing/oauth)).
 - Entwicklungsmodus reicht für bis zu 10 WHOOP-Mitglieder → für den eigenen Account keine Freigabe nötig. Refresh-Tokens rotieren (immer den neuesten speichern).
-- Webhooks möglich (öffentliche HTTPS-URL nötig) – bis dahin periodischer Abgleich.
+- **Webhooks (Modell v2):** `https://fitness-coach.fitness-coach-worker.workers.dev/webhooks/whoop`. Signatur `X-WHOOP-Signature` = base64(HMAC-SHA256(`X-WHOOP-Signature-Timestamp` + Body, Client-Secret)), sonst 401. `*.updated` startet einen kleinen Abgleich, `workout.deleted`/`sleep.deleted` löschen die Zeile; der stündliche Abgleich bleibt als Sicherheitsnetz.
 
 ## Wahoo – Cloud API (OAuth 2.0)
 - **Nutzer:** im Wahoo Developer Portal (`developers.wahooligan.com`) mit Wahoo-Konto eine App registrieren → Client-ID und Client-Secret (Issue #3).
@@ -22,7 +22,7 @@ Grundregel: Secrets nie im Chat, Browser-Code oder Repository. **Cloudflare-API-
 - **Umsetzung (Worker):** Code in `worker/src/providers/wahoo/`. Verbinden über das Connector-Werkzeug `wahoo_connect`: Es erzeugt einen Einmal-Link (15 Minuten, einmal einlösbar, an den Besitzer gebunden), der Callback nimmt nur gültige Links an. Tokens in D1 (`wahoo_tokens`), Erneuerung erst kurz vor Ablauf (Wahoo bittet darum, sonst sammeln sich offene Tokens), rotierendes Refresh-Token wird sofort gespeichert. Abgleich in das gemeinsame Datenmodell (`workouts`, Quelle `wahoo`): direkt nach dem Verbinden (letzte 30 Tage), danach stündlich per Cron zusammen mit WHOOP und über `sync_now`; höchstens 5 Seiten pro Lauf wegen der Sandbox-Limits. Lesen über `get_workouts`, Stand über `wahoo_status`. Kalorien werden wie bei WHOOP als kJ gespeichert; Max-Puls fehlt in der Wahoo-Zusammenfassung, TSS hat im Modell noch kein Feld.
 - API-Basis `https://api.wahooligan.com`: Auth `/oauth/authorize`, Token `/oauth/token`, `GET /v1/user`, `GET /v1/workouts?page=&per_page=` (mit `workout_summary`, FIT-Datei unter `workout_summary.file.url`).
 - Neue Apps starten in einer Sandbox, laut Drittquellen mit Limits von 25 Anfragen je 5 Minuten, 100 je Stunde, 250 je Tag → Abgleich sparsam planen. Der Wechsel in Produktion läuft über ein Freigabeverfahren (Wahoo API Agreement). Ob die Sandbox für den eigenen Account dauerhaft reicht, ist **ungeprüft**.
-- Webhooks (`workout_summary`) später möglich, URL dann `…/webhooks/wahoo`.
+- **Webhook `workout_summary`:** URL `https://fitness-coach.fitness-coach-worker.workers.dev/webhooks/wahoo`, Token aus den App-Einstellungen als Worker-Secret `WAHOO_WEBHOOK_TOKEN`. Wahoo schickt den Token im Body (keine Signatur); ohne gesetzten Token antwortet der Endpunkt 503, bei falschem 401. Das gemeldete Workout wird direkt gespeichert (keine zusätzliche API-Anfrage). Fehlt in der Workout-Liste die Zusammenfassung, lädt der Abgleich sie einzeln nach (höchstens 10 pro Lauf).
 
 ## MyWhoosh – keine öffentliche API
 Keine offizielle Entwickler-API gefunden. Strava wird **nicht** genutzt (Entscheidung des Nutzers, 2026-10-16). Optionen:

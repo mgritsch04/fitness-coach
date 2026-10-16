@@ -9,6 +9,8 @@ export interface Env {
   /** Fehlen, bis die Wahoo-App angelegt und die Secrets im Cloudflare-Dashboard gesetzt sind. */
   WAHOO_CLIENT_ID?: string;
   WAHOO_CLIENT_SECRET?: string;
+  /** Token aus den Webhook-Einstellungen der Wahoo-App; ohne ihn lehnt /webhooks/wahoo ab. */
+  WAHOO_WEBHOOK_TOKEN?: string;
 }
 
 /** Was nach der Anmeldung verschlüsselt am Connector-Token hängt. */
