@@ -53,7 +53,8 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 38 | Gym-Modus am Handy (#107) | Einheit aus Vorlage starten, Sätze abhaken, Pausen-Timer, Bildschirm bleibt an, Einzelsätze speichern | Krafttraining live erfassen statt nachtragen | P1 | S | Zeile 17 | Vorschau, User-Test | Done ⚙️ (#105; im Dashboard v11; User-Test #116) |
 | 39 | Krafteinheiten im Wochenplan (#108) | Übungen, Sätze, Wiederholungen und Gewicht je Krafttag | wissen, was im Gym dran ist | P1 | S | Zeile 17 | Unit-Tests, User-Test | Done ⚙️ (Coach-Thread; User-Test #110) |
 | 40 | Coach-Chat: Fragen zum Antippen, Verlauf bleibt (#118) | 4 Fragen passend zum Tag, Chat übersteht Neuladen (3 Tage) | Coach am Handy schneller fragen | P2 | S | Zeile 36 | Vorschau, User-Test | Done ⚙️ (#117; im Dashboard v12; User-Test #121) |
-| 41 | „Heute dran“ (#122) | geplante Einheit auf „Heute“, Wochenstreifen, Direkt-Start Gym-Modus / MyWhoosh-Workout | am Handy sofort sehen, was dran ist | P1 | S | Zeile 21, 38 | Vorschau, User-Test | In Progress (Haupt-Thread) |
+| 41 | „Heute dran“ (#122) | geplante Einheit auf „Heute“, Wochenstreifen, Direkt-Start Gym-Modus / MyWhoosh-Workout | am Handy sofort sehen, was dran ist | P1 | S | Zeile 21, 38 | Vorschau, User-Test | Done ⚙️ (#124; im Dashboard v13; User-Test #126) |
+| 42 | Kraft und Rad im Wechselspiel (#113) | Wirkung von Beineinheiten auf Erholung/HRV und die nächste Radeinheit, bewährter Abstand | Kraft und Rad besser kombinieren | P2 | M | Zeile 17 | Unit-Tests, User-Test | Done ⚙️ (#120; im Dashboard v13; User-Test #123) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
