@@ -12,7 +12,7 @@ FC.section({
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-body">Gewicht</h2><span class="muted" id="bdRange"></span></div>
-      <div class="panel"><div class="bd-stats" id="bdStats"></div><div class="chart" id="cWeight"></div>
+      <div class="panel"><div class="bd-stats" id="bdStats"><span class="muted">Lädt …</span></div><div class="chart" id="cWeight"></div>
         <p class="chart-cap" id="bdCap">Punkte: einzelne Werte (WHOOP-Profil oder eigener Eintrag), Linie: 7-Tage-Mittel.</p>
         <form class="bd-log" id="bdForm" autocomplete="off">
           <label for="bdKg">Gewicht heute (kg)<input id="bdKg" type="number" min="30" max="250" step="0.1" inputmode="decimal" required></label>

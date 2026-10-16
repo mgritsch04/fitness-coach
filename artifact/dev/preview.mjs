@@ -24,6 +24,7 @@ const payloads = {
   get_recovery_factors: () => window.__MOCK__.get_recovery_factors,
   get_sleep_report: () => window.__MOCK__.get_sleep_report,
   get_records: () => window.__MOCK__.get_records,
+  get_endurance_profile: () => window.__MOCK__.get_endurance_profile,
   get_ftp_tests: () => window.__MOCK__.get_ftp_tests,
   analyze_ftp_test: () => ({ workout: { source: "mywhoosh", sourceId: "m1", day: window.__MOCK__.get_dashboard.today, sport: "cycling", durationS: 1500 }, result: { protocol: "ramp", detection: "auto", label: "Ramp-Test", basisW: 340, basisStartS: 1100, factor: 0.75, ftpW: 255, message: "Ramp-Test: 75 % von 340 W (beste Minute) = FTP etwa 255 W (Schätzung)." } }),
   save_ftp_test: () => window.__MOCK__.get_ftp_tests,

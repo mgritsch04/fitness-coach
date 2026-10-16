@@ -33,6 +33,7 @@ import { recoveryFactors, strainRecovery } from "./insights";
 import { earlyWarning } from "./warnings";
 import { sleepReport } from "./sleep";
 import { recordsReport } from "./records";
+import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -240,4 +241,9 @@ export async function recordsView(db: D1Database, c: AnalysisContext, days: numb
     readStrengthSessions(db, "0000-00-00"),
   ]);
   return recordsReport({ powerRows: c.powerRows, workouts: rides, strength, series: c.series }, c.today, days);
+}
+
+/** Ausdauer-Profil (#92): Critical Power/W′ aus der 90-Tage-Kurve und Effizienz-Trend lockerer Fahrten. */
+export function enduranceView(c: AnalysisContext) {
+  return enduranceProfile(c.curveRecent, c.workouts, c.today, c.settings.ftpW);
 }

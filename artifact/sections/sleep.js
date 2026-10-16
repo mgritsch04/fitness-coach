@@ -10,7 +10,7 @@ FC.section({
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-sleep">Schlaf im Detail</h2><span class="muted" id="slRange"></span></div>
-      <div class="panel"><div class="sl-stats" id="slStats"></div><ul class="sl-tips" id="slTips"></ul></div>
+      <div class="panel"><div class="sl-stats" id="slStats"><span class="muted">Lädt …</span></div><ul class="sl-tips" id="slTips"></ul></div>
       <div class="grid2">
         <div class="panel"><h3>Schlafphasen je Nacht</h3><div class="chart" id="cPhases"></div><p class="chart-cap">Gestrichelt: dein Schlafbedarf.</p></div>
         <div class="panel"><h3>Schlafschuld (7 Nächte)</h3><div class="chart" id="cDebt"></div><p class="chart-cap">Summe aus Schlafbedarf minus Schlaf der letzten 7 Nächte; unter 0 = mehr geschlafen als nötig.</p></div>

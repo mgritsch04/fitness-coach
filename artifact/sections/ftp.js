@@ -16,7 +16,7 @@ FC.section({
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-ftp">FTP-Tests</h2><span class="muted">Ramp- oder 20-min-Test aus der FIT-Datei</span></div>
       <div class="panel">
-        <div class="ft-top" id="ftTop"></div>
+        <div class="ft-top" id="ftTop"><span class="muted">Lädt …</span></div>
         <div class="ft-sug" id="ftSug"></div>
         <div class="ft-act"><button type="button" class="primary" id="ftAnalyze">Neueste Fahrt als Test auswerten</button>
           <select id="ftProto" aria-label="Protokoll"><option value="auto">automatisch erkennen</option><option value="ramp">Ramp-Test</option><option value="20min">20-min-Test</option></select></div>
