@@ -50,6 +50,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 35 | Erholungs-Prognose (#93) | Erholung morgen aus Belastung, Schlafplan und eigener Historie schätzen | Tag vorher planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | In Progress (Analyse-Thread) |
 | 36 | Coach-Fragen mit Werkzeugen (#100) | Claude holt sich zur Frage Schlaf, Kraft, Plan, Rückblick, Wetter usw. selbst | bessere Antworten im Chat | P1 | S | Zeile 9 | Vorschau, User-Test | Done ⚙️ (#102; im Dashboard v10; User-Test #104) |
 | 37 | FTP-Test im Wochenplan (#98) | Plan schlägt einen passenden Tag für den FTP-Test vor, mit Anleitung | FTP aktuell halten | P2 | S | Zeile 25 | Unit-Tests, User-Test | Done ⚙️ (#99; User-Test #103) |
+| 38 | Gym-Modus am Handy (#107) | Einheit aus Vorlage starten, Sätze abhaken, Pausen-Timer, Bildschirm bleibt an, Einzelsätze speichern | Krafttraining live erfassen statt nachtragen | P1 | S | Zeile 17 | Vorschau, User-Test | In Progress (Haupt-Thread) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
