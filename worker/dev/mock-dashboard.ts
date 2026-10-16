@@ -1,7 +1,8 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
 import { readPowerCurves } from "../src/core/repository";
@@ -46,6 +47,12 @@ for (let i = 0; i < 182; i++) {
   }
 }
 stmts.push(upsertBody(db, { source: "whoop", measuredAt: "2026-03-31", heightM: 1.8, weightKg: 75, maxHr: 188 }));
+// Gewichtsverlauf (#30): synthetische Werte, leicht fallend, jeder fünfte Tag als eigener Eintrag.
+for (let i = 0; i < 120; i += 2) {
+  const kg = Number((78 - i * 0.025 + (rnd() - 0.5) * 1.2).toFixed(1));
+  if (i % 10) stmts.push(upsertBody(db, { source: "whoop", measuredAt: addDays("2026-03-31", i - 120), heightM: 1.8, weightKg: kg, maxHr: 188 }));
+  else await saveManualWeight(db, addDays("2026-03-31", i - 120), kg);
+}
 await runBatched(db, stmts);
 await setSyncState(db, "whoop", true, null, new Date(now - 20 * 60_000).toISOString());
 const curves = await readPowerCurves(db, addDays("2026-03-31", -364));
@@ -62,5 +69,7 @@ process.stdout.write(JSON.stringify({
   get_strain_recovery: strainRecoveryView(await ctx(90)),
   get_recovery_factors: recoveryFactorsView(await ctx(90)),
   get_sleep_report: sleepReportView(await ctx(30)),
+  get_body_history: await (async () => { const c = await ctx(30); return { today: c.today, ...bodyReport(await readBodyHistory(db, "2025-01-01"), addDays(c.today, -89), c.today, { watts: c.settings.ftpW, origin: c.settings.origin.ftpW }) }; })(),
+  get_records: await recordsView(db, await ctx(14), 30),
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
 }));
