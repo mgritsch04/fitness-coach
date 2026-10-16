@@ -36,12 +36,15 @@ export interface TrainingPrefs {
   maxWeekdayMin: number | null;
   /** Hauptsportart für die Beschreibungen (cycling, running, …). */
   mainSport: string | null;
-  /** Krafteinheiten pro Woche (0–3). */
-  strengthPerWeek: number;
+  /** Krafteinheiten pro Woche (0–6); null = aus den letzten Wochen geschätzt. */
+  strengthPerWeek: number | null;
+  /** Dauer einer Krafteinheit (min); null = aus den letzten Wochen geschätzt. */
+  strengthMin: number | null;
 }
 
-// Standard für G: Rennrad (derzeit indoor mit MyWhoosh) plus zweimal Kraft pro Woche.
-export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: 2 };
+// Standard für G: Rennrad (derzeit indoor mit MyWhoosh) plus Kraft im Gym; Häufigkeit und Dauer
+// der Krafteinheiten werden aus den letzten Wochen übernommen, solange nichts eingetragen ist.
+export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null };
 
 export type Phase = "base" | "build" | "peak" | "taper" | "race" | "recovery" | "maintain";
 export type SessionType = "rest" | "recovery" | "endurance" | "long" | "tempo" | "threshold" | "vo2max" | "strength" | "opener" | "race";
@@ -205,12 +208,25 @@ function describe(type: SessionType, min: number, noun: string): { title: string
   }
 }
 
-/** Trainingsstunden der Woche: Vorgabe des Nutzers, sonst Schnitt der letzten Wochen (Schätzung). */
+const strengthMinutes = (w: WeekSummary) => Object.entries(w.bySport).filter(([k]) => isStrengthSport(k)).reduce((a, [, v]) => a + v.minutes, 0);
+const strengthCount = (w: WeekSummary) => Object.entries(w.bySport).filter(([k]) => isStrengthSport(k)).reduce((a, [, v]) => a + v.count, 0);
+
+/** Ausdauer-Stunden der Woche (ohne Kraft): Vorgabe des Nutzers, sonst Schnitt der letzten Wochen (Schätzung). */
 export function weeklyHoursFor(prefs: TrainingPrefs, weeks: WeekSummary[], week: string): { hours: number; estimated: boolean } {
   if (prefs.weeklyHours) return { hours: prefs.weeklyHours, estimated: false };
-  const recent = weeks.filter((w) => w.week < week).slice(-4).map((w) => w.trainingH).filter((h) => h > 0);
+  const recent = weeks.filter((w) => w.week < week).slice(-4).map((w) => w.trainingH - strengthMinutes(w) / 60).filter((h) => h > 0);
   const avg = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 4;
   return { hours: Math.min(12, Math.max(3, Math.round(avg * 2) / 2)), estimated: true };
+}
+
+/** Kraft-Gewohnheit: Vorgabe oder Schnitt der letzten 4 abgeschlossenen Wochen (Standard 2 × 45 min). */
+export function strengthHabit(prefs: TrainingPrefs, weeks: WeekSummary[], week: string): { perWeek: number; minutes: number; estimated: boolean } {
+  const recent = weeks.filter((w) => w.week < week).slice(-4);
+  const count = recent.reduce((a, w) => a + strengthCount(w), 0);
+  const mins = recent.reduce((a, w) => a + strengthMinutes(w), 0);
+  const perWeek = prefs.strengthPerWeek ?? (recent.length ? Math.min(6, Math.round(count / recent.length)) : 2);
+  const minutes = prefs.strengthMin ?? (count ? Math.min(90, Math.max(20, Math.round(mins / count / 5) * 5)) : 45);
+  return { perWeek: Math.max(0, Math.min(6, perWeek)), minutes, estimated: prefs.strengthPerWeek == null };
 }
 
 export function buildWeekPlan(inp: PlanInput): WeekPlan {
@@ -307,7 +323,8 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   });
 
   // Kraft: nicht in der Wettkampfwoche, im Tapering und in Erholungswochen höchstens eine leichte.
-  const strengthWanted = phase === "race" ? 0 : phase === "taper" || phase === "recovery" ? Math.min(1, inp.prefs.strengthPerWeek) : Math.min(3, inp.prefs.strengthPerWeek);
+  const habit = strengthHabit(inp.prefs, inp.weeks, week);
+  const strengthWanted = phase === "race" ? 0 : phase === "taper" ? Math.min(1, habit.perWeek) : phase === "recovery" ? Math.min(3, Math.ceil(habit.perWeek / 2)) : habit.perWeek;
   const days: PlannedSession[] = [];
   for (let d = 0; d < 7; d++) {
     const day = addDays(week, d);
@@ -326,7 +343,8 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
       strength: null,
     });
   }
-  const strengthDays = placeStrength(days, strengthWanted, rest, phase);
+  const strengthDays = placeStrength(days, strengthWanted, rest, phase, habit.minutes);
+  if (habit.estimated && strengthWanted) notes.push(`Kraft: ${habit.perWeek}× pro Woche à ~${habit.minutes} min wie in den letzten Wochen. Ändern über die Trainingsvorlieben.`);
   if (strengthDays < strengthWanted) notes.push(`Nur ${strengthDays} von ${strengthWanted} Krafteinheiten passten sinnvoll in die Woche.`);
   if (strengthDays) notes.push("Kraft nie direkt vor Intervallen oder der langen Fahrt: schwere Beine kosten sonst die Qualität der Radeinheit. Am selben Tag erst Rad, dann Kraft.");
 
@@ -349,7 +367,8 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
 }
 
 const STRENGTH_LOAD = 25;
-const STRENGTH_FOCUS = ["Beine + Rumpf (schwer, wenige Wiederholungen)", "Oberkörper + Rumpf", "Ganzkörper"];
+const STRENGTH_FOCUS = ["Beine + Rumpf (schwer, wenige Wiederholungen)", "Oberkörper + Rumpf", "Ganzkörper (Beine moderat)", "Oberkörper (Zug)", "Rumpf + Mobility", "Oberkörper (Druck)"];
+const LIGHT_FOCUS = "Ganzkörper leicht (Technik, ~60 % der üblichen Gewichte)";
 
 /**
  * Verteilt Krafteinheiten. Regeln (Faustregeln für Rad + Kraft): nie am Tag vor Intervallen,
@@ -357,7 +376,7 @@ const STRENGTH_FOCUS = ["Beine + Rumpf (schwer, wenige Wiederholungen)", "Oberk�
  * oder an freien, nicht festen Ruhetagen; sonst nach einer lockeren Fahrt. Beintraining
  * möglichst früh in der Woche, weit weg vom Langtag.
  */
-export function placeStrength(days: PlannedSession[], wanted: number, fixedRest: Set<number>, phase: Phase): number {
+export function placeStrength(days: PlannedSession[], wanted: number, fixedRest: Set<number>, phase: Phase, minutes = 45): number {
   if (wanted <= 0) return 0;
   const light = phase === "taper" || phase === "recovery";
   const beforeHeavy = (i: number) => {
@@ -365,8 +384,11 @@ export function placeStrength(days: PlannedSession[], wanted: number, fixedRest:
     return next != null && (isHard(next.type) || next.type === "long" || next.type === "race");
   };
   const afterLong = (i: number) => i > 0 && (days[i - 1].type === "long" || days[i - 1].type === "race");
-  const score = (s: PlannedSession, i: number): number | null => {
-    if (s.strength || fixedRest.has(i) || beforeHeavy(i) || s.type === "long" || s.type === "race" || s.type === "opener") return null;
+  const score = (s: PlannedSession, i: number, legs: boolean): number | null => {
+    if (s.strength || fixedRest.has(i) || s.type === "race" || s.type === "opener") return null;
+    // Beine/Ganzkörper nie vor harten Tagen und nicht am Langtag; Oberkörper ist dort unkritisch.
+    if (legs && (beforeHeavy(i) || s.type === "long")) return null;
+    if (s.type === "long") return 0.5;
     if (s.type === "threshold" || s.type === "vo2max" || s.type === "tempo") return light ? null : 3;
     if (s.type === "rest") return afterLong(i) ? 1 : 2;
     if (s.type === "endurance") return 2.5;
@@ -377,19 +399,22 @@ export function placeStrength(days: PlannedSession[], wanted: number, fixedRest:
   const used: number[] = [];
   while (placed < wanted) {
     let best = -1, bestScore = -Infinity;
+    const focusNow = light ? LIGHT_FOCUS : STRENGTH_FOCUS[placed % STRENGTH_FOCUS.length];
+    const legs = !/^Oberkörper/.test(focusNow);
+    // Bis 3 Einheiten mindestens ein Tag dazwischen, bei mehr nur ein Tag je Einheit.
+    const gap = wanted <= 3 ? 2 : 1;
     days.forEach((s, i) => {
-      const sc = score(s, i);
+      const sc = score(s, i, legs);
       if (sc == null) return;
-      // Abstand zu anderen Krafttagen (mindestens ein Tag dazwischen).
-      if (used.some((u) => Math.abs(u - i) < 2)) return;
+      if (used.some((u) => Math.abs(u - i) < gap)) return;
       const spread = used.length ? Math.min(...used.map((u) => Math.abs(u - i))) * 0.2 : 0;
       const early = (6 - i) * 0.05;
       if (sc + spread + early > bestScore) (bestScore = sc + spread + early), (best = i);
     });
     if (best < 0) break;
     const s = days[best];
-    const durationMin = light ? 40 : 60;
-    const focus = light ? "Ganzkörper leicht (Technik, ~60 % der üblichen Gewichte)" : STRENGTH_FOCUS[Math.min(placed, STRENGTH_FOCUS.length - 1)];
+    const durationMin = light ? Math.min(40, minutes) : minutes;
+    const focus = focusNow;
     s.strength = { durationMin, focus };
     s.targetLoad += light ? 15 : STRENGTH_LOAD;
     if (s.type === "rest") {
@@ -461,7 +486,8 @@ export function comparePlan(plan: WeekPlan, actual: ActualDay[], today: string):
     if (s.type === "strength") status = a?.strength ? "done" : s.day > today ? "upcoming" : trained ? "partial" : s.day === today ? "today" : "missed";
     else if (s.type === "rest") status = trained ? "extra" : s.day > today ? "upcoming" : "rest";
     else if (s.day > today) status = "upcoming";
-    else if (Math.max(ratio, ratioMin) >= 0.7) status = "done";
+    // Harte Einheiten zählen nur mit genug Belastung als erledigt (lange locker fahren ersetzt keine Intervalle).
+    else if (isHard(s.type) && actualLoad > 0 ? ratio >= 0.6 && ratioMin >= 0.5 : Math.max(ratio, ratioMin) >= 0.7) status = "done";
     else if (trained) status = "partial";
     else status = s.day === today ? "today" : "missed";
 

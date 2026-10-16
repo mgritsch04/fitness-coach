@@ -8,6 +8,8 @@ import { readPowerCurves } from "../src/core/repository";
 import { runBatched, updateRecovery, upsertBody, upsertDaily, upsertSleep, upsertWorkout, upsertWorkoutStream } from "../src/core/repository";
 import { setSyncState } from "../src/core/repository";
 import { fakeD1 } from "../test/fake-d1";
+import { saveGoal } from "../src/core/goals";
+import { saveJournal } from "../src/core/journal";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -47,6 +49,9 @@ stmts.push(upsertBody(db, { source: "whoop", measuredAt: "2026-03-31", heightM: 
 await runBatched(db, stmts);
 await setSyncState(db, "whoop", true, null, new Date(now - 20 * 60_000).toISOString());
 const curves = await readPowerCurves(db, addDays("2026-03-31", -364));
+// Coach: Beispielziel und Check-in für die Abschnitte Wochenplan und Tagebuch.
+await saveGoal(db, { kind: "event", title: "Radmarathon (Beispiel)", targetDate: "2026-05-24", priority: "A" });
+await saveJournal(db, { day: "2026-03-31", feeling: 4, energy: 3, soreness: 3, stress: 2, motivation: 4, tags: ["reise"] });
 const ctx = (days: number) => analysisContext(db, { days, now });
 process.stdout.write(JSON.stringify({
   get_dashboard: await buildDashboard(db, { days: 180, now }),

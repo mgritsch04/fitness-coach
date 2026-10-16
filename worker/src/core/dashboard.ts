@@ -17,6 +17,7 @@ import {
 import { coachAdvice } from "./coach";
 import { trainingOverview } from "./training";
 import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
+import { applyWarning } from "./warning-cap";
 import { earlyWarning } from "./warnings";
 import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
@@ -81,7 +82,9 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   // Tagebuch (journal.ts): Check-in von heute fließt in die Tagesempfehlung ein.
   const [journal, rpeRows] = await Promise.all([readJournal(db, statsFrom, today), readRpe(db, viewFrom)]);
   const journalToday = journal.find((j) => j.day === today) ?? null;
-  const coach = applyJournal(baseCoach, journalToday);
+  // Frühwarnung (warnings.ts): mehrere Körpersignale außerhalb der Basis dämpfen die Empfehlung.
+  const warning = earlyWarning(series, today);
+  const coach = applyJournal(applyWarning(baseCoach, warning), journalToday);
   const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
@@ -94,7 +97,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     ftpEstimate,
     body: body ? { weightKg: body.weight_kg, heightM: body.height_m } : null,
     coach,
-    earlyWarning: earlyWarning(series, today),
+    earlyWarning: warning,
     trends,
     days: view,
     weeks,
