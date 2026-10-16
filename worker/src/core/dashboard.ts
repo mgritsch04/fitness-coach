@@ -17,6 +17,7 @@ import {
 import { coachAdvice } from "./coach";
 import { trainingOverview } from "./training";
 import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
+import { earlyWarning } from "./warnings";
 import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -93,6 +94,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     ftpEstimate,
     body: body ? { weightKg: body.weight_kg, heightM: body.height_m } : null,
     coach,
+    earlyWarning: earlyWarning(series, today),
     trends,
     days: view,
     weeks,
