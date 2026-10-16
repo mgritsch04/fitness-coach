@@ -12,6 +12,7 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 | `get_period_summaries` | `period` = `week`/`month`/`year` (Std. `month`), `days` (Std. 180) | Zusammenfassungen je Zeitraum |
 | `get_strain_recovery` | `days` (7–365, Std. 90) | Strain/Belastung gegen Erholung am Folgetag |
 | `get_recovery_factors` | `days` (7–365, Std. 90) | Was hängt mit Erholung und HRV zusammen (#21) |
+| `get_sleep_report` | `days` (7–365, Std. 30) | Schlaf-Detail je Nacht (#20) |
 | `get_early_warning` | – | Frühwarnung Überlastung/Infekt (#24), auch in `get_dashboard.earlyWarning` |
 
 `get_dashboard` enthält zusätzlich `ftpEstimate` (siehe unten), `hrZones` (wie `hrZoneTime` unten, für gestapelte Wochenbalken) und je Workout `hrZoneMin` (Minuten je Zone 0–5 oder `null`); `settings.origin.ftpW` ist `"data"`, wenn die FTP geschätzt ist.
@@ -67,11 +68,18 @@ Je Tag: Erholung bzw. HRV am Morgen gegen Schlaf der Nacht davor und das Trainin
 - `days`, `enoughData` (ab 21 Tagen mit Erholung).
 
 ## get_early_warning / get_dashboard.earlyWarning (#24)
-Messwerte von heute (oder gestern, falls heute noch keine da sind) gegen die persönliche Basis (Tage −34 … −7, mind. 7 Werte).
+Messwerte von heute (oder gestern, falls heute noch keine da sind; fehlt heute nur ein Teil, z. B. Ruhepuls/HRV vor der WHOOP-Auswertung, kommt dieser Wert von gestern und das Signal trägt `fromDay`) gegen die persönliche Basis (Tage −34 … −7, mind. 7 Werte).
 - `{ day, level, flaggedCount, consecutiveDays, signals[], headline, advice, disclaimer }`.
 - `signals[]`: `{ key: "rhr"|"hrv"|"respRate"|"skinTemp"|"spo2", label, unit, value, baseline, delta, z, flagged, text }`. Auffällig, wenn in ungünstiger Richtung beide Schwellen überschritten sind: Ruhepuls ≥ +4 bpm und z ≥ 1,5; HRV z ≤ −1,5; Atemfrequenz ≥ +0,8/min und z ≥ 2; Hauttemperatur ≥ +0,4 °C und z ≥ 2; SpO2 ≤ −1,5 Punkte und z ≤ −2 (Faustregeln, Schätzung).
 - `level`: `none` (0 Signale) · `watch` (1) · `caution` (2: heute schonen) · `alert` (≥ 3, oder 2 an mindestens 2 Tagen in Folge: Ruhetag).
 - Artefakt-Abschnitt: `artifact/sections/warning.js` (Reiter heute, ganz oben, nur sichtbar ab `watch`).
+
+## get_sleep_report (#20)
+- `nights[]` je Aufwachtag: `{ day, bedtime "HH:MM", wake, inBedH, asleepH, awakeH, lightH, deepH, remH, deepPct, remPct, efficiencyPct, performancePct, consistencyPct, respiratoryRate, napH, debt7dH }`.
+- `summary`: `{ nights, avgAsleepH, avgInBedH, avgDeepPct, avgRemPct, avgEfficiencyPct, needMetPct, avgBedtime, avgWake, bedtimeSdMin, wakeSdMin, weekendShiftMin, debt7dH, suggestedBedtime }`.
+  - `weekendShiftMin`: Schlafmitte Fr/Sa-Nacht minus Wochentage („sozialer Jetlag“). `suggestedBedtime` = übliche Aufwachzeit − Schlafbedarf − übliche Wachzeit im Bett (Schätzung).
+- `sleepNeedH`, `tips[]` (deutsche Sätze zu Schlafschuld, Regelmäßigkeit, Wochenende, Schlafenszeit).
+- Artefakt-Abschnitt: `artifact/sections/sleep.js` (Reiter verlauf, order 32), lädt mit dem Zeitraum-Umschalter neu.
 
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.
