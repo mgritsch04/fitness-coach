@@ -58,7 +58,7 @@ const payloads = {
   save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
   save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
-  save_workout_rpe: (i) => ({ saved: i }),
+  save_workout_rpe: (i) => { window.__rpeSaved = i; return { saved: i }; },
   get_week_review: (i) => window.__MOCK__.get_week_review[i.week ?? "previous"],
   save_coach_note: (i) => ({ id: 1, ...i }),
   import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.get_dashboard.today, startTime: window.__MOCK__.get_dashboard.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
@@ -101,6 +101,9 @@ for (const [name, vp, scheme, tab] of shots) {
     const n = await p.$$eval("#agBody .ag-day", (d) => d.length);
     if (n !== 7) errors.push(`${name}: Heute dran zeigt ${n} statt 7 Tage`);
     await p.screenshot({ path: join(out, "phone-heute.png"), fullPage: false });
+    const rpeBtn = await p.$("#agBody .ag-rpe .rpe-pick button:nth-child(7)");
+    if (!rpeBtn) errors.push(`${name}: Heute dran fragt nicht nach der Anstrengung`);
+    else { await rpeBtn.click(); await p.waitForTimeout(300); const r = await p.evaluate(() => window.__rpeSaved); if (!(r?.rpe === 7 && r.source && r.sourceId)) errors.push(`${name}: Anstrengung falsch gespeichert ${JSON.stringify(r)}`); }
     const gymBtn = await p.$("#agBody .ag-act .primary");
     if (gymBtn && (await gymBtn.textContent()).includes("Gym")) {
       await gymBtn.click(); await p.waitForTimeout(400);

@@ -21,6 +21,8 @@ FC.section({
     .ag-head h3 { margin: 0; }
     .ag-meta { color: var(--ink-2); font-size: .9rem; }
     .ag-det p { margin: 6px 0; }
+    .ag-rpe { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+    .ag-rpe p { margin: 0 0 6px; }
     .ag-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }`,
   mount(root) {
     root.innerHTML = `
@@ -83,7 +85,10 @@ FC.section({
     const all = el("button", { type: "button", text: "Ganzer Wochenplan" });
     all.onclick = () => this.go("coach", "plan");
     act.append(all);
-    $("agBody").replaceChildren(week, det, act);
+    // Heutige Workouts ohne Anstrengung: kurz nachfragen (#134), verbessert die Belastungsschätzung beim Krafttraining.
+    const open = isToday && FC.state.rpePicker ? d.workouts.filter((w) => w.day === d.today && !w.rpe && w.durationMin >= 10).slice(0, 2) : [];
+    const ask = open.map((w) => el("div", { class: "ag-rpe" }, el("p", { text: `Wie anstrengend war dein ${FC.sport(w.sport)} (${de(w.durationMin)} min)? 1 sehr leicht, 10 maximal.` }), FC.state.rpePicker(w)));
+    $("agBody").replaceChildren(week, det, ...ask, act);
   },
   /** Zum Abschnitt springen (am Handy erst den Tab wechseln). */
   go(tab, id) {
