@@ -4,7 +4,9 @@ import { validAccessToken, whoopGet, WhoopAuthError } from "./providers/whoop/cl
 import { syncAll } from "./sync";
 import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
 import { wahooConnectLink, wahooCredentials } from "./wahoo";
-import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./core/repository";
+import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./core/repository";
+import { combineCurves } from "./core/power";
+import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
 import type { AuthProps, Env } from "./env";
@@ -83,6 +85,44 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await readWorkouts(env.DB, fromDay(d))),
+  );
+
+  server.registerTool(
+    "import_fit",
+    {
+      description:
+        "Importiert eine FIT-Datei (z. B. MyWhoosh-Export aus dem Webportal) als Workout mit Quelle mywhoosh: Dauer, Distanz, " +
+        "Leistung (Ø, NP), Puls, Trittfrequenz, TSS sowie Sekundenwerte und Bestleistungskurve. Erneuter Upload derselben Fahrt " +
+        "aktualisiert sie. Dieselbe Fahrt aus WHOOP/Wahoo wird beim Auslesen zusammengeführt (sameRideIn nennt diese Quellen).",
+      inputSchema: {
+        fileBase64: z.string().min(16).max(12_000_000).describe("Inhalt der .fit-Datei als Base64 (Data-URL erlaubt)"),
+        fileName: z.string().max(200).optional().describe("Dateiname, nur für die Rückmeldung"),
+      },
+      annotations: { readOnlyHint: false, idempotentHint: true },
+    },
+    async ({ fileBase64, fileName }) => {
+      try {
+        return json({ fileName: fileName ?? null, ...(await importFit(env.DB, fileBase64)) });
+      } catch (err) {
+        if (err instanceof FitImportError) return { ...json({ error: "invalid_fit", fileName: fileName ?? null, message: err.message }), isError: true };
+        throw err;
+      }
+    },
+  );
+
+  server.registerTool(
+    "get_power_curve",
+    {
+      description:
+        "Leistungskurve (beste Durchschnittsleistung in Watt je Dauer in Sekunden, 1 s bis 2 h) über den Zeitraum, dazu die Kurve je Workout. " +
+        "Bisher nur aus importierten FIT-Dateien mit Sekundenwerten.",
+      inputSchema: { days: z.number().int().min(1).max(3650).optional().describe("Zeitraum in Tagen bis heute, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => {
+      const workouts = await readPowerCurves(env.DB, fromDay(d ?? 90));
+      return json({ best: combineCurves(workouts.map((w) => w.power_curve)), workouts });
+    },
   );
 
   server.registerTool(
