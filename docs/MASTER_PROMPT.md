@@ -15,8 +15,10 @@ Ein persönlicher Fitness- und Gesundheits-Tracker mit Trainingscoach, der alle 
 4. **Trainingscoach:** Tagesempfehlung aus Recovery + Trainingslast, Wochenplanung, Rückblick; Erklärungen statt Blackbox.
 
 ## Offene Entscheidungen (Standard, bis der Nutzer anders entscheidet)
-- **Technik:** TypeScript; kleiner Server (Node) für OAuth-Callbacks, Token-Refresh und Webhooks + Web-Dashboard; SQLite als Speicher. Grund: Client-Secrets und Refresh-Tokens dürfen nicht in den Browser.
-- **Wo läuft es:** zuerst lokal auf dem PC des Nutzers (Redirect-URLs auf `http://localhost:8787/...`); Hosting später als eigene Entscheidung (Webhooks brauchen eine öffentliche HTTPS-Adresse).
+- **Technik:** TypeScript auf **Cloudflare Workers** (OAuth-Callbacks, Token-Refresh, Webhooks, geplanter Abgleich per Cron) + Web-Dashboard, **D1** (SQLite) als Speicher, Secrets als Worker-Secrets. Grund: läuft auch ohne eingeschalteten PC, vom Handy erreichbar, feste HTTPS-Adresse; Client-Secrets und Refresh-Tokens bleiben serverseitig.
+- **Zugriffsschutz:** Cloudflare Access (nur der Nutzer), da Gesundheitsdaten.
+- **Entwicklung:** lokal mit `wrangler dev` (Redirect-URLs zusätzlich `http://localhost:8787/...`).
+- Stand der Entscheidung: von Claude empfohlen am 2026-10-16, Bestätigung durch den Nutzer offen.
 - **MyWhoosh:** über Strava (automatischer Upload aus MyWhoosh) statt inoffizieller API.
 
 ## Grenzen

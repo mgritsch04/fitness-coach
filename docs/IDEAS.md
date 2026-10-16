@@ -12,7 +12,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 
 | # | Titel (Issue) | Beschreibung | Nutzen | Prio | Größe | Abhängigkeiten | Abnahme | Status |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Grundgerüst: Server + Dashboard + CI | TypeScript-Monorepo (Server für OAuth/Sync, Web-Dashboard), SQLite, Lint/Test/Build, CI-Workflow | Basis für alles | P1 | M | – | CI grün, `npm run dev` startet Server + leeres Dashboard | Ready |
+| 1 | Grundgerüst: Server + Dashboard + CI | TypeScript auf Cloudflare Workers + D1, Web-Dashboard, Cloudflare Access, Lint/Test/Build, CI-Workflow; Cloudflare-Konto von dir (user-task) | Basis für alles | P1 | M | – | CI grün, `wrangler dev` lokal und Deployment erreichbar (nur mit Login) | Ready |
 | 2 | Gemeinsames Datenmodell | Workout, Schlaf, Recovery/Tag, Körperwerte; Quelle + Roh-ID je Datensatz; Duplikat-Abgleich (Startzeit ± Toleranz, Dauer) | eine Sicht auf alle Quellen | P1 | M | Zeile 1 | Unit-Tests mit synthetischen Daten | Ready |
 | 3 | WHOOP anbinden | OAuth (inkl. `offline`), Token-Refresh mit Rotation, Abgleich Recovery/Schlaf/Cycles/Workouts | Recovery & Schlaf | P1 | M | Zeile 1–2; Entwickler-App von dir (user-task) | Login → Daten der letzten 30 Tage sichtbar | Blocked |
 | 4 | Wahoo anbinden | OAuth, Workouts + FIT-Dateien, später Webhook `workout_summary` | Radtraining mit Leistung | P1 | M | Zeile 1–2; Entwickler-App von dir (user-task) | Login → Workouts mit Leistung/Puls sichtbar | Blocked |
