@@ -9,7 +9,10 @@ import { runBatched, updateRecovery, upsertBody, upsertDaily, upsertSleep, upser
 import { setSyncState } from "../src/core/repository";
 import { fakeD1 } from "../test/fake-d1";
 import { saveGoal } from "../src/core/goals";
-import { saveJournal } from "../src/core/journal";
+import { readJournal, saveJournal } from "../src/core/journal";
+import { weekReview } from "../src/core/review";
+import { weekView } from "../src/core/training";
+import { weekStart } from "../src/core/analysis";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -53,8 +56,16 @@ const curves = await readPowerCurves(db, addDays("2026-03-31", -364));
 await saveGoal(db, { kind: "event", title: "Radmarathon (Beispiel)", targetDate: "2026-05-24", priority: "A" });
 await saveJournal(db, { day: "2026-03-31", feeling: 4, energy: 3, soreness: 3, stress: 2, motivation: 4, tags: ["reise"] });
 const ctx = (days: number) => analysisContext(db, { days, now });
+const dash = await buildDashboard(db, { days: 180, now });
+const review = async (ws: string) => ({
+  ...weekReview({ week: ws, today: dash.today, days: dash.days, weeks: dash.weeks, workouts: dash.workouts, comparison: (await weekView(db, dash, ws)).comparison,
+    journal: await readJournal(db, addDays(ws, -7), addDays(ws, 6)), strengthSessions: dash.strength.sessions }),
+  planSource: "Vorschlag",
+  savedReview: null,
+});
 process.stdout.write(JSON.stringify({
-  get_dashboard: await buildDashboard(db, { days: 180, now }),
+  get_dashboard: dash,
+  get_week_review: { previous: await review(addDays(weekStart(dash.today), -7)), current: await review(weekStart(dash.today)) },
   get_power_curve: { best: combineCurves(curves.map((w) => w.power_curve)), workouts: curves },
   get_fitness_profile: fitnessProfileView(await ctx(28)),
   get_training_load: trainingLoadView(await ctx(365)),
