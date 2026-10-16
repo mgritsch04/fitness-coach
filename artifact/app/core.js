@@ -207,10 +207,25 @@
   function renderAll() {
     const d = state.data; if (!d) return;
     for (const s of live()) { try { s.render?.(d); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
+    jump();
   }
   function rerender() {
     const d = state.data; if (!d) return;
     for (const s of live()) { try { s.rerender ? s.rerender(d) : s.render?.(d); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
+    jump();
+  }
+  /** Handy: Sprungleiste zu den sichtbaren Abschnitten des offenen Tabs (#168), ab 4 Abschnitten. */
+  function jump() {
+    const nav = $("jump"); if (!nav) return;
+    const list = phone?.matches ? live().filter((s) => (s.tab ?? "mehr") === tab && !$(`sec-${s.id}`)?.hidden && $(`h-${s.id}`)) : [];
+    nav.hidden = list.length < 4;
+    if (nav.hidden) return nav.replaceChildren();
+    nav.replaceChildren(...list.map((s) => {
+      const b = el("button", { type: "button", text: $(`h-${s.id}`).textContent });
+      b.onclick = () => $(`sec-${s.id}`).scrollIntoView({ behavior: "smooth", block: "start" });
+      return b;
+    }));
+    nav.scrollLeft = 0;
   }
   const listeners = new Set();
   function setRange(days) { state.range = days; try { localStorage.setItem("fc-range", String(days)); } catch {} rerender(); for (const f of listeners) f(days); }
@@ -303,6 +318,7 @@
       same.forEach((x, k) => (layout.order[x.id] = slots[k]));
       saveLayout(); sortSections();
       const root = $("sections"); for (const x of sections) root.append($(`sec-${x.id}`));
+      jump();
     },
     reset() { layout.hidden.clear(); layout.order = {}; saveLayout(); },
   };
@@ -315,6 +331,7 @@
     if (scroll) window.scrollTo({ top: 0 });
     readyWanted();
     rerender();
+    jump();
   }
 
   async function boot() {
