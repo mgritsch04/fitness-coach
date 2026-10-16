@@ -70,7 +70,7 @@ FC.section({
       return {
         ...(prevExtras ? prevExtras() : {}),
         ...(t ? {
-          wochenplan: { phase: t.thisWeek.phaseLabel, grund: t.thisWeek.plan.phaseReason, stand: t.thisWeek.comparison.summary, heute: t.today.text,
+          wochenplan: { phase: t.thisWeek.phaseLabel, grund: t.thisWeek.plan.phaseReason, stand: t.thisWeek.comparison.summary, heute: t.today.text, intensitaet: t.intensity?.text ?? null,
             tage: t.thisWeek.comparison.days.map((x) => ({ tag: x.day, einheit: x.title, typ: x.type, min: x.durationMin, belastung: x.targetLoad, kraft: x.strength?.focus ?? null, status: x.status })) },
           ziele: t.goals.map((g) => ({ ziel: g.goal.title, datum: g.goal.targetDate, prio: g.goal.priority, stand: g.text })),
           vorlieben: t.prefs,
@@ -88,6 +88,7 @@ FC.section({
     $("planPhase").textContent = `${w.phaseLabel}${w.stored ? (w.plan.source === "coach" ? " · von Claude angepasst" : " · gespeichert") : " · Vorschlag"}`;
     $("planToday").textContent = t.today.text;
     $("planSummary").textContent = `${cmp.summary} Geplant: ${de(w.plan.targetHours, 1)} h, ~${de(w.plan.days.reduce((a, x) => a + x.targetLoad, 0))} Belastungspunkte (geschätzt).`;
+    if (t.intensity && t.intensity.verdict !== "ok") $("planSummary").textContent += ` ${t.intensity.text}`;
     const MARK = { done: "✓", missed: "✗", partial: "◐", extra: "+", today: "•", upcoming: "", rest: "" };
     const grid = $("wplan"); grid.replaceChildren();
     for (const x of cmp.days) {

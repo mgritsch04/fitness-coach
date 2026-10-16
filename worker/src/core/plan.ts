@@ -176,9 +176,22 @@ const sportWord = (s: string | null) => {
   return { noun: "Fahrt", verb: "fahren", power: true };
 };
 
+/** WHOOP-Zone (0–5, Anteile der maximalen Herzfrequenz) eines Pulswerts – dieselben Zonen wie im Dashboard. */
+export const whoopZone = (bpm: number, maxHr: number) => Math.max(0, Math.min(5, Math.floor((bpm / maxHr) * 10 + 1e-9) - 4));
+
+/** Plan-Zonen beziehen sich auf die Schwelle; dazu die passende WHOOP-Zone, damit die Zahlen zum Dashboard passen. */
+export function whoopZoneText(lo: number, hi: number, maxHr: number): string {
+  const a = whoopZone(lo, maxHr), b = whoopZone(Math.max(lo, hi - 1), maxHr);
+  return a === b ? `WHOOP-Zone ${a}` : `WHOOP-Zone ${a}–${b}`;
+}
+
 function intensityText(type: SessionType, inp: Pick<PlanInput, "ftpW" | "thresholdHr" | "maxHr">, power: boolean): string {
   const w = (lo: number, hi: number) => (power && inp.ftpW ? ` (${Math.round(inp.ftpW * lo)}–${Math.round(inp.ftpW * hi)} W)` : "");
-  const hr = (lo: number, hi: number) => (inp.thresholdHr ? ` (Puls ${Math.round(inp.thresholdHr * lo)}–${Math.round(inp.thresholdHr * hi)})` : "");
+  const hr = (lo: number, hi: number) => {
+    if (!inp.thresholdHr) return "";
+    const a = Math.round(inp.thresholdHr * lo), b = Math.round(inp.thresholdHr * hi);
+    return ` (Puls ${a}–${b}${inp.maxHr ? `, ${whoopZoneText(a, b, inp.maxHr)}` : ""})`;
+  };
   switch (type) {
     case "recovery": return `Zone 1, sehr locker${w(0.4, 0.55)}${hr(0.68, 0.8)}`;
     case "endurance": return `Zone 2, Grundlage${w(0.56, 0.75)}${hr(0.8, 0.89)}`;

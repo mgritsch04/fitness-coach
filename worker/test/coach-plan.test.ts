@@ -249,3 +249,16 @@ describe("Soll/Ist bei harten Einheiten", () => {
     expect(hard.days[0].status).toBe("done");
   });
 });
+
+describe("WHOOP-Zonen im Plan", () => {
+  it("rechnet Puls in WHOOP-Zonen (Anteil HFmax) um", async () => {
+    const { whoopZone, whoopZoneText } = await import("../src/core/plan");
+    expect(whoopZone(117, 195)).toBe(2);
+    expect(whoopZone(136, 195)).toBe(2);
+    expect(whoopZone(137, 195)).toBe(3);
+    expect(whoopZone(90, 195)).toBe(0);
+    expect(whoopZone(200, 195)).toBe(5);
+    expect(whoopZoneText(138, 154, 195)).toBe("WHOOP-Zone 3");
+    expect(whoopZoneText(150, 165, 195)).toBe("WHOOP-Zone 3–4");
+  });
+});

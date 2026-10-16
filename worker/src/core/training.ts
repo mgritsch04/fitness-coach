@@ -24,8 +24,8 @@ export interface TrainingInputs {
   today: string;
   days: DayPoint[];
   weeks: WeekSummary[];
-  workouts: { day: string; sport: string | null; durationMin: number; load: number | null }[];
-  settings: Pick<EffectiveSettings, "ftpW" | "thresholdHr" | "maxHr">;
+  workouts: { day: string; sport: string | null; durationMin: number; load: number | null; avgHr?: number | null }[];
+  settings: Pick<EffectiveSettings, "ftpW" | "thresholdHr" | "maxHr"> & Partial<Pick<EffectiveSettings, "origin">>;
   coach: CoachAdvice;
 }
 
@@ -163,6 +163,8 @@ export interface TrainingOverview {
   /** Formprognose bis zum nächsten Terminziel (null ohne Termin). */
   projection: EventProjection | null;
   notes: CoachNote[];
+  /** Liegen die Ausdauer-Einheiten im geplanten Pulsbereich? (null ohne Pulsdaten) */
+  intensity: IntensityCheck | null;
   disclaimer: string;
 }
 
@@ -182,6 +184,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     today: todayCheck(planned, inp.coach, thisWeek.plan),
     projection,
     notes,
+    intensity: intensityCheck(inp),
     disclaimer: "Trainingsplan und Belastungen sind Schätzungen nach Faustregeln, keine medizinische Beratung. Bei Schmerzen oder Krankheit pausieren.",
   };
 }
@@ -204,4 +207,51 @@ export function eventProjection(inp: TrainingInputs, goals: Goal[], prefs: Train
     maxHr: inp.settings.maxHr,
     goalId,
   });
+}
+
+export interface IntensityCheck {
+  /** Ausdauer-Einheiten (Rad/Spinning ab 20 min) der letzten 28 Tage mit Puls. */
+  rides: number;
+  avgHr: number;
+  /** Geplanter Grundlagenbereich (80–89 % der Schwelle). */
+  zone2: { min: number; max: number };
+  below: number;
+  inRange: number;
+  above: number;
+  verdict: "below" | "ok" | "above";
+  text: string;
+}
+
+const ENDURANCE_SPORTS = ["cycl", "spin", "bike", "rad", "ride", "run", "lauf"];
+
+/**
+ * Vergleicht den Durchschnittspuls der Ausdauer-Einheiten mit dem Grundlagenbereich des Plans.
+ * Erklärt z. B., warum die gemessene Belastung unter dem Soll bleibt. Schätzung (Schwelle ggf. Standardwert).
+ */
+export function intensityCheck(inp: TrainingInputs): IntensityCheck | null {
+  const thr = inp.settings.thresholdHr;
+  if (!thr) return null;
+  const from = addDays(inp.today, -27);
+  const rides = inp.workouts.filter(
+    (w) => w.day >= from && w.day <= inp.today && w.durationMin >= 20 && w.avgHr != null && !!w.sport && ENDURANCE_SPORTS.some((k) => w.sport!.toLowerCase().includes(k)),
+  );
+  if (rides.length < 3) return null;
+  const zone2 = { min: Math.round(thr * 0.8), max: Math.round(thr * 0.89) };
+  // Grundlage ist oft etwas unter Zone 2 (Zone 1 als lockere Einheit) – erst ~10 Schläge darunter zählt als „deutlich darunter“.
+  const below = rides.filter((w) => w.avgHr! < zone2.min - 10).length;
+  const above = rides.filter((w) => w.avgHr! > zone2.max).length;
+  const inRange = rides.length - below - above;
+  const min = rides.reduce((a, w) => a + w.durationMin, 0);
+  const avgHr = Math.round(rides.reduce((a, w) => a + w.avgHr! * w.durationMin, 0) / min);
+  const est = inp.settings.origin?.thresholdHr === "default" ? " Die Schwelle ist geschätzt; trag deine echte Schwelle ein (z. B. aus einem 30-min-Test), dann passt der Bereich genauer." : "";
+  let verdict: IntensityCheck["verdict"] = "ok";
+  let text = `Deine Ausdauer-Einheiten liegen meist im geplanten Bereich (Schnitt ${avgHr} S/min).`;
+  if (below / rides.length >= 0.6) {
+    verdict = "below";
+    text = `Deine Ausdauer-Einheiten der letzten 4 Wochen liegen im Schnitt bei ${avgHr} S/min, der Plan rechnet Grundlage mit ${zone2.min}–${zone2.max}. Darum bleibt die gemessene Belastung unter dem Soll. Für mehr Fitnesszuwachs die Grundlagen-Einheiten etwas zügiger fahren; sehr locker ist nur an Erholungstagen gedacht.${est}`;
+  } else if (above / rides.length >= 0.5) {
+    verdict = "above";
+    text = `Deine Ausdauer-Einheiten liegen oft über dem Grundlagenbereich (Schnitt ${avgHr} S/min, Plan ${zone2.min}–${zone2.max}). Grundlage ruhiger fahren, damit harte Tage wirklich hart sein können.${est}`;
+  }
+  return { rides: rides.length, avgHr, zone2, below, inRange, above, verdict, text };
 }
