@@ -11,6 +11,7 @@ import {
   weeklySummaries,
   workoutLoad,
   type DailyRow,
+  type DayPoint,
   type SleepRow,
   type WorkoutRow,
 } from "./analysis";
@@ -18,6 +19,8 @@ import { coachAdvice } from "./coach";
 import { trainingOverview } from "./training";
 import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
 import { applyWarning } from "./warning-cap";
+import { applyHrvTrend } from "./hrv-cap";
+import { hrvTrend } from "./hrv-trend";
 import { earlyWarning } from "./warnings";
 import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
@@ -36,10 +39,12 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const viewFrom = addDays(today, -(days - 1));
   const loadFrom = addDays(viewFrom, -LOAD_WARMUP_DAYS);
   const statsFrom = addDays(viewFrom, -BASELINE_DAYS);
+  // HRV-Trend (hrv-trend.ts) braucht 60 Tage Basis + 7 Tage Mittel, unabhängig von der Ansicht.
+  const hrvFrom = [statsFrom, addDays(today, -70)].sort()[0];
 
   const ftpFrom = addDays(today, -89);
-  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync, powerRows, strengthSessions] = await Promise.all([
-    readDaily(db, statsFrom) as Promise<unknown> as Promise<DailyRow[]>,
+  const [dailyAll, sleeps, rawWorkouts, body, whoopSync, wahooSync, powerRows, strengthSessions] = await Promise.all([
+    readDaily(db, hrvFrom) as Promise<unknown> as Promise<DailyRow[]>,
     readSleeps(db, statsFrom) as Promise<unknown> as Promise<SleepRow[]>,
     readWorkouts(db, loadFrom) as Promise<unknown> as Promise<WorkoutRow[]>,
     readLatestBody(db) as Promise<{ max_hr: number | null; weight_kg: number | null; height_m: number | null } | null>,
@@ -49,6 +54,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     readStrengthSessions(db, loadFrom),
   ]);
 
+  const daily = dailyAll.filter((d) => d.day >= statsFrom);
   // FTP-Schätzung (performance.ts) gilt nur, solange keine eigene FTP gesetzt ist.
   const ftpEstimate = estimateFtp(powerCurve(powerRows, ftpFrom), rawWorkouts, ftpFrom);
   const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null, ftpEstimate?.watts ?? null);
@@ -84,7 +90,12 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const journalToday = journal.find((j) => j.day === today) ?? null;
   // Frühwarnung (warnings.ts): mehrere Körpersignale außerhalb der Basis dämpfen die Empfehlung.
   const warning = earlyWarning(series, today);
-  const coach = applyJournal(applyWarning(baseCoach, warning), journalToday);
+  // Je Tag ein HRV-Wert (mehrere Quellen: der vorhandene gewinnt).
+  const hrvByDay = new Map<string, number>();
+  for (const d of dailyAll) if (d.hrv_ms != null && !hrvByDay.has(d.day)) hrvByDay.set(d.day, d.hrv_ms);
+  const hrv = hrvTrend([...hrvByDay].map(([day, v]) => ({ day, hrv: v }) as DayPoint), today, 14);
+  const hrvSignal = hrv.available ? { pattern: hrv.pattern, label: hrv.label, advice: hrv.advice } : null;
+  const coach = applyJournal(applyHrvTrend(applyWarning(baseCoach, warning), hrvSignal), journalToday);
   const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
@@ -98,6 +109,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     body: body ? { weightKg: body.weight_kg, heightM: body.height_m } : null,
     coach,
     earlyWarning: warning,
+    hrvTrend: hrvSignal,
     trends,
     days: view,
     weeks,
