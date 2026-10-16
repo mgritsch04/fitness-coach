@@ -7,7 +7,10 @@ _Zuletzt aktualisiert: 2026-10-16 · Workflow: [`DEVELOPMENT_WORKFLOW.md`](DEVEL
 - **Deine Aufgaben:** #1 Cloudflare-Token (priority: high), #2 WHOOP-App, #3 Wahoo-App (Label `user-task`).
 - **Architektur:** Cloudflare-Worker als Kern + Claude-Artefakt als Oberfläche, Coach über Claude ohne API-Schlüssel (siehe MASTER_PROMPT.md).
 - **Cloudflare-Skills** sind als Projekt-Plugin aktiv (`.claude/settings.json`); der Cloudflare-MCP braucht Browser-Login und wird in Cloud-Sitzungen nicht genutzt, Deploy per Wrangler mit `CLOUDFLARE_API_TOKEN`.
-- **Nächster Schritt:** Machbarkeitstest (IDEAS Zeile 0), sobald #1 erledigt ist.
+- **Worker live:** https://fitness-coach.fitness-coach-worker.workers.dev (`/privacy`, `/mcp` mit `ping`). Deploy: `cd worker && npm ci && CLOUDFLARE_API_TOKEN=via-proxy npx wrangler deploy` (Token als Network secret, Header `Authorization`, Prefix `Bearer`).
+- **Machbarkeitstest bestanden (2026-10-16):** Ein Claude-Artefakt ruft den Worker über den Custom Connector „Fitness Coach“ auf (Test-Artefakt: https://claude.ai/artifact/AgMooNUSyF6JdY3xKQAaF2).
+- **WHOOP-App (#2):** Redirect `https://fitness-coach.fitness-coach-worker.workers.dev/auth/whoop/callback`, Datenschutz `…/privacy`.
+- **Nächster Schritt:** Grundgerüst (IDEAS Zeile 1), zuerst OAuth-Login für den Connector – vorher keine echten Daten im Worker.
 
 ## Legende
 `DONE` fertig mit Beleg · `PARTIAL` teilweise · `IN PROGRESS` in Arbeit · `PLANNED` geplant · `BLOCKED` blockiert · `NEEDS USER TEST` braucht deinen Praxistest
@@ -17,3 +20,4 @@ Prüfstufen: **Impl.** Code vorhanden · **Auto** automatischer Test/Build grün
 | Aufgabe | Implementiert | Automatisiert getestet | Abnahme |
 |---|---|---|---|
 | Workflow, Labels, Vorlagen, Backlog | ✅ `docs/`, `.github/ISSUE_TEMPLATE/` | – | – |
+| Machbarkeit Artefakt → Connector | ✅ `worker/` (#4) | – | ✅ von dir bestätigt (2026-10-16) |
