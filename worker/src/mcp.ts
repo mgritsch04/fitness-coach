@@ -10,7 +10,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -339,6 +339,19 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(strainRecoveryView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 365 }))),
+  );
+
+  server.registerTool(
+    "get_recovery_factors",
+    {
+      description:
+        "Einflussfaktoren auf Erholung und HRV: Schlafdauer, Tiefschlaf, Einschlafzeit, Strain und Belastung am Vortag, spätes Training, " +
+        "Ruhetag, Wochentag – je Faktor Stichprobe, Stärke, Vergleichsgruppen und ein Satz; highlights = die deutlichsten Erkenntnisse. " +
+        "Beobachtungen, keine Ursache-Wirkung.",
+      inputSchema: viewDays(90),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(recoveryFactorsView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 365 }))),
   );
 
   registerStrengthTools(server, env);

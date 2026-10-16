@@ -29,7 +29,7 @@ import {
   type Period,
   flattenCurves,
 } from "./performance";
-import { strainRecovery } from "./insights";
+import { recoveryFactors, strainRecovery } from "./insights";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -128,6 +128,8 @@ export function fitnessProfileView(c: AnalysisContext) {
     hrZoneTime: hrZoneReport(c.workouts, c.viewFrom, c.today),
     powerCurve: {
       last30d: powerCurveFrom(c, 30),
+      // last42d nutzt artifact/sections/fit.js (Fitness-Zeitraum der CTL).
+      last42d: powerCurveFrom(c, 42),
       last90d: c.curveRecent,
       last365d: powerCurveFrom(c, 365),
       allTime: powerCurve(c.powerRows),
@@ -195,6 +197,19 @@ export function strainRecoveryView(c: AnalysisContext) {
       "Strain ist der WHOOP-Tageswert (0–21), Belastung die geschätzte Trainingslast; verglichen mit der Erholung am Folgetag.",
       "Zusammenhänge sind Beobachtungen aus deinen Daten, keine Ursache-Wirkung.",
       ESTIMATE_NOTE,
+    ],
+  };
+}
+
+export function recoveryFactorsView(c: AnalysisContext) {
+  return {
+    today: c.today,
+    range: range(c),
+    ...recoveryFactors(c.series, c.sleeps, c.workouts, c.settings.timezone, c.viewFrom, c.today),
+    notes: [
+      "Je Tag wird die Erholung bzw. HRV am Morgen mit Schlaf der Nacht davor und Training am Vortag verglichen.",
+      "Stärke: Korrelation (|r| ab 0,1 schwach, 0,3 deutlich, 0,5 stark) bzw. Gruppenunterschied (Cohens d ab 0,2/0,5/0,8). Ausgewertet ab 21 Tagen.",
+      "Zusammenhänge sind Beobachtungen aus deinen Daten, keine Ursache-Wirkung und keine Diagnose.",
     ],
   };
 }
