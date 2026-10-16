@@ -207,3 +207,13 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `classes[]`: je Intervallart Anzahl, letzte und beste Einheit, Veränderung seit der ersten Einheit im Zeitraum, mittlerer Abfall.
 - `hints[]`: zu hart angegangen (2 der letzten 3 stark nachgelassen), Steigerung möglich (letzte gleichmäßig), Pulsanstieg ab 10 Schlägen, Veränderung je Art ab 3 %.
 - Dashboard: `sections/intervals.js`, Reiter Training. Trainingshinweise, keine Diagnose.
+
+## Trittfrequenz-Profil (`get_cadence_profile`, #161)
+
+`core/cadence.ts` nutzt Fahrten mit Leistung und Trittfrequenz je Sekunde (gelesen wie die Intervall-Qualität). Gezählt werden nur Sekunden mit Tritt und Leistung.
+
+- `bands[]`: Zeit und Anteil je Kadenzbereich (unter 70, 70–80, 80–90, 90–100, über 100 U/min).
+- `zones[]` (nur mit FTP): Zeit und Median-Kadenz je Coggan-Zone (Z1 bis Z5+), ab 5 min.
+- `weeks[]`: Median-Kadenz in Zone 2 je Woche, ab 5 min.
+- `hints[]`: Schwelle unter 80 U/min, Grundlage unter 75 U/min, deutlich höhere Kadenz bei harten Belastungen, Veränderung in Zone 2 ab 3 U/min (erste gegen letzte zwei Wochen).
+- Dashboard: `sections/cadence.js`, Reiter Training. Trainingshinweise, keine Diagnose.
