@@ -35,7 +35,7 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 - `hrZoneTime` (#19): Zeit je Pulszone nach WHOOP-Schema (Zone 0–5 = < 50 %, 50–60, 60–70, 70–80, 80–90, ≥ 90 % HFmax), gemessen von WHOOP je Workout:
   `{ scheme: [{ zone, name }], total, weeks: [{ week, ...HrZoneTime }], verdict }`, `HrZoneTime = { minutes: number[6], totalMin, workouts, easyPct, moderatePct, hardPct }`.
   Locker = Zone 1–3, mittel = 4, hart = 5, Anteile an der Zeit ab Zone 1 (Zone 0, z. B. Pausen im Krafttraining, zählt nicht; Ziel grob 80 % locker). `verdict` ist ein kurzer deutscher Hinweis ab 3 h Trainingszeit ab Zone 1, sonst `null`.
-- `powerCurve`: `{ last30d, last90d, last365d, allTime }`, je `[{ durationS, watts, day, source }]` für die Dauern aus `core/power.ts` (1 s … 2 h). Leer, solange keine FIT-Datei mit Leistung importiert ist.
+- `powerCurve`: `{ last30d, last42d, last90d, last365d, allTime }`, je `[{ durationS, watts, day, source }]` für die Dauern aus `core/power.ts` (1 s … 2 h). Leer, solange keine FIT-Datei mit Leistung importiert ist.
 
 ## get_health_trends
 - `metrics.<key>` für `hrv`, `rhr`, `recovery`, `sleepH`, `respRate`, `skinTemp`, `spo2`: `{ last, lastDay, avg7, baseline, status: "below"|"normal"|"above"|"unknown", band[] }`.

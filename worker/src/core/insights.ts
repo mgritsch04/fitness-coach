@@ -249,7 +249,10 @@ function weekdayFactor(target: FactorTarget, obs: { day: string; y: number }[]):
     effect,
     strength,
     groups,
-    text: strength === "none" ? null : `${t.name} am ${worst.label} im Mittel am niedrigsten (${worst.avg}), am ${best.label} am höchsten (${best.avg}).`,
+    text:
+      strength === "none"
+        ? null
+        : `${t.name} am ${worst.label} im Mittel am niedrigsten (${Math.round(worst.avg)} ${t.unit}), am ${best.label} am höchsten (${Math.round(best.avg)} ${t.unit}).`,
   };
 }
 

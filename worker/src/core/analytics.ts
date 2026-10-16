@@ -122,6 +122,8 @@ export function fitnessProfileView(c: AnalysisContext) {
     hrZoneTime: hrZoneReport(c.workouts, c.viewFrom, c.today),
     powerCurve: {
       last30d: powerCurveFrom(c, 30),
+      // last42d nutzt artifact/sections/fit.js (Fitness-Zeitraum der CTL).
+      last42d: powerCurveFrom(c, 42),
       last90d: c.curveRecent,
       last365d: powerCurveFrom(c, 365),
       allTime: powerCurve(c.powerRows),
