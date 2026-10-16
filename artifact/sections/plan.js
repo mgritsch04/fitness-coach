@@ -70,7 +70,7 @@ FC.section({
       return {
         ...(prevExtras ? prevExtras() : {}),
         ...(t ? {
-          wochenplan: { phase: t.thisWeek.phaseLabel, grund: t.thisWeek.plan.phaseReason, stand: t.thisWeek.comparison.summary, heute: t.today.text, intensitaet: t.intensity?.text ?? null, ftpTest: t.ftpTest?.text ?? null,
+          wochenplan: { phase: t.thisWeek.phaseLabel, grund: t.thisWeek.plan.phaseReason, stand: t.thisWeek.comparison.summary, heute: t.today.text, intensitaet: t.intensity?.text ?? null, ftpTest: t.ftpTest?.text ?? null, kraftVorschlag: (t.strengthWorkouts?.days ?? []).slice(0, 2).map((k) => ({ tag: k.day, fokus: k.focus, uebungen: k.text })),
             tage: t.thisWeek.comparison.days.map((x) => ({ tag: x.day, einheit: x.title, typ: x.type, min: x.durationMin, belastung: x.targetLoad, kraft: x.strength?.focus ?? null, status: x.status })) },
           ziele: t.goals.map((g) => ({ ziel: g.goal.title, datum: g.goal.targetDate, prio: g.goal.priority, stand: g.text })),
           vorlieben: t.prefs,
@@ -95,6 +95,7 @@ FC.section({
     const MARK = { done: "✓", missed: "✗", partial: "◐", extra: "+", today: "•", upcoming: "", rest: "" };
     const grid = $("wplan"); grid.replaceChildren();
     const fuel = new Map((t.fueling?.days ?? []).map((f) => [f.day, f]));
+    const kraft = new Map((t.strengthWorkouts?.days ?? []).map((k) => [k.day, k]));
     for (const x of cmp.days) {
       const box = el("button", { type: "button", class: `pd${x.type === "rest" ? " rest" : ""}${x.day === d.today ? " today" : ""}`, "aria-label": `${fmtDayLong(x.day)}: ${x.title}` });
       box.style.textAlign = "left"; box.style.font = "inherit"; box.style.color = "inherit"; box.style.background = "transparent"; box.style.cursor = "pointer";
@@ -111,6 +112,11 @@ FC.section({
           x.intensity ? el("p", { text: x.intensity }) : null,
           el("p", { text: x.description }),
           ...(x.day === ftpDay ? [el("p", {}, el("strong", { text: "Vorschlag: FTP-Test statt dieser Einheit. " }), t.ftpTest.reason), el("ul", {}, ...t.ftpTest.howTo.map((h) => el("li", { text: h })))] : []),
+          ...(kraft.get(x.day) ? [
+            el("p", {}, el("strong", { text: `Kraft, ${kraft.get(x.day).durationMin} min: ${kraft.get(x.day).focus}` })),
+            el("ul", {}, ...kraft.get(x.day).exercises.map((e) => el("li", { text: `${e.name}: ${e.sets} × ${e.reps}${e.unit === "s" ? " s" : ""}${e.weightKg != null ? ` mit ${de(e.weightKg, e.weightKg % 1 ? 1 : 0)} kg${e.basis === "increase" ? " (etwas mehr als zuletzt)" : e.basis === "light" ? " (leicht)" : ""}` : e.unit === "s" ? "" : ", Gewicht mit 2 Wdh. Reserve"}` }))),
+            el("p", { class: "fine", text: t.strengthWorkouts.note }),
+          ] : []),
           ...(fuel.get(x.day) ? [el("p", {}, el("strong", { text: "Verpflegung: " }), [fuel.get(x.day).before, fuel.get(x.day).during, fuel.get(x.day).after].filter(Boolean).join(" ")), el("p", { class: "fine", text: t.fueling.note })] : []),
           x.actualMin || x.actualLoad ? el("p", { class: "muted", text: `Tatsächlich: ${x.actualMin} min, Belastung ~${de(x.actualLoad)}${x.actualSports.length ? ` (${x.actualSports.map(FC.sport).join(", ")})` : ""}.` }) : null,
         ].filter(Boolean));
