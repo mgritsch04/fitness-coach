@@ -63,10 +63,10 @@ Damit 3–4 Threads gleichzeitig ohne Konflikte arbeiten, gehört jedem Thema ei
 | 17 Frühwarnung | Erweiterung in `core/coach.ts` | allen außer anderen Coach-Regel-Änderungen |
 | 24 Krafttraining | `core/strength.ts` (neu), Migration, Werkzeuge | 12–14, 17, 22 (mit 16: RPE-Feld abstimmen) |
 | 22 Webhooks | `src/webhooks.ts` (neu), `providers/whoop/` | allen außer 12 (beide in `providers/whoop/`, nur additiv) |
-
-**Oberfläche:** Bis Zeile 11 fertig ist, ändert nur der Haupt-Thread `artifact/`. Danach bringt jedes Thema seinen Abschnitt als eigene Datei `artifact/sections/<thema>.js` mit; der Haupt-Thread trägt ihn ein, pflegt die Werkzeugliste im Artefakt-Manifest und veröffentlicht.
 | 26 Workout-Export | `core/workouts.ts` (neu), Werkzeug `build_workout` | allen |
 | 27 FTP-Test | `core/ftptest.ts` (neu) | allen außer 26 (beide nutzen FTP-Zonen, nur lesend) |
 | 28 Rekorde | `core/records.ts` (neu), `sections/records.js` | allen |
 | 29 Wetter | `core/weather.ts` (neu), KV, Einstellung Ort | allen außer Coach-Regel-Änderungen |
 | 32 Ladezeit | `core/dashboard.ts`, `app/core.js` | nicht parallel zu anderen Änderungen an `dashboard.ts` |
+
+**Oberfläche:** Bis Zeile 11 fertig ist, ändert nur der Haupt-Thread `artifact/`. Danach bringt jedes Thema seinen Abschnitt als eigene Datei `artifact/sections/<thema>.js` mit; der Haupt-Thread trägt ihn ein, pflegt die Werkzeugliste im Artefakt-Manifest und veröffentlicht.
