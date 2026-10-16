@@ -5,6 +5,8 @@ import { handleAuthorize, handleWhoopCallback } from "./auth";
 import { html, markdownToHtml } from "./html";
 import { createServer } from "./mcp";
 import type { AuthProps, Env } from "./env";
+import { syncWhoop } from "./providers/whoop/sync";
+import { d1WhoopTokenStore } from "./store";
 
 const WORKER_URL = "https://fitness-coach.fitness-coach-worker.workers.dev";
 
@@ -28,7 +30,7 @@ const site: ExportedHandler<Env> = {
   },
 };
 
-export default new OAuthProvider<Env>({
+const provider = new OAuthProvider<Env>({
   apiRoute: "/mcp",
   apiHandler: mcpApi as never,
   defaultHandler: site as never,
@@ -40,3 +42,14 @@ export default new OAuthProvider<Env>({
   requiredScopes: ["fitness:read"],
   resourceMetadata: { resource: `${WORKER_URL}/mcp`, resource_name: "Fitness Coach" },
 });
+
+export default {
+  fetch: (request, env, ctx) => provider.fetch(request, env, ctx),
+  // Stündlicher Abgleich für den Besitzer (es gibt nur einen).
+  async scheduled(_event, env) {
+    const owner = await env.DB.prepare("SELECT whoop_user_id FROM app_owner WHERE id = 1").first<{ whoop_user_id: string }>();
+    if (!owner) return;
+    const creds = { clientId: env.WHOOP_CLIENT_ID, clientSecret: env.WHOOP_CLIENT_SECRET };
+    await syncWhoop(env.DB, creds, d1WhoopTokenStore(env.DB), owner.whoop_user_id);
+  },
+} satisfies ExportedHandler<Env>;
