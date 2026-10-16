@@ -1,6 +1,6 @@
 # Projektstatus – Fitness Coach
 
-_Zuletzt aktualisiert: 2026-10-16 (abends) · Workflow: [`DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md)_
+_Zuletzt aktualisiert: 2026-10-17 (nachts) · Workflow: [`DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md)_
 
 ## Aktuell
 - **Phase:** 1 – Daten, Auswertung, Dashboard. WHOOP-Daten liegen in D1 und werden stündlich abgeglichen; Wahoo ist fertig gebaut und wartet auf die Freigabe der Wahoo-App (#3).
@@ -8,9 +8,9 @@ _Zuletzt aktualisiert: 2026-10-16 (abends) · Workflow: [`DEVELOPMENT_WORKFLOW.m
 - **MyWhoosh:** FIT-Datei im Dashboard hochladen (Training › Rolle und Leistung), danach Leistungskurve, FTP-Schätzung und Zeit je Zone.
 - **Auswertung im Worker (#12):** `get_dashboard` liefert Tagesreihe, Trends gegen die persönliche Basis, Trainingslast (CTL/ATL/TSB, Belastung aus Leistung oder Puls geschätzt), Wochen, Workouts (Duplikate zusammengeführt) und eine regelbasierte Tagesempfehlung. Einstellungen über `update_settings`.
 - **Worker live:** https://fitness-coach.fitness-coach-worker.workers.dev. Deploy: `cd worker && npm ci && CLOUDFLARE_API_TOKEN=via-proxy npx wrangler deploy`; Migrationen `npx wrangler d1 migrations apply fitness-coach --remote`.
-- **Connector „Fitness Coach“:** Anmeldung über WHOOP (nur dein Konto). Werkzeuge: `get_dashboard`, `get_daily`, `get_sleep`, `get_workouts`, `get_body`, `get_settings`, `update_settings`, `sync_now`, `whoop_status`, `whoop_recovery`, `wahoo_connect`, `wahoo_status`, `ping`, `import_fit`, `get_power_curve`, `get_training_load`, `get_fitness_profile`, `get_health_trends`, `get_period_summaries`, `get_strain_recovery` (siehe `docs/ANALYTICS.md`).
+- **Connector „Fitness Coach“:** Anmeldung über WHOOP (nur dein Konto). Werkzeuge: `get_dashboard`, `get_daily`, `get_sleep`, `get_workouts`, `get_body`, `get_settings`, `update_settings`, `sync_now`, `whoop_status`, `whoop_recovery`, `wahoo_connect`, `wahoo_status`, `ping`, `import_fit`, `get_power_curve`, `get_training_load`, `get_fitness_profile`, `get_health_trends`, `get_period_summaries`, `get_strain_recovery`, `get_recovery_factors`, `get_sleep_report`, Frühwarnung, Kraft (`get_strength` u. a.), Coach (`save_plan`, `set_goals`, `save_journal`), Körperwerte (`get_body_history`, `log_weight`, `export_csv`) (siehe `docs/ANALYTICS.md`).
 - **Deine Aufgaben:** #3 Wahoo-App (wartet auf Wahoo).
-- **Nächster Schritt:** User-Tests #17, #35, #39, #40, #44, #45, #50, #51, #52; Wochenplan/Ziele und Tagebuch im Dashboard, Frühwarnung (#24), Formprognose (#26), Körperwerte und Export (#30).
+- **Nächster Schritt:** User-Tests #17, #35, #39, #40, #44, #45, #47, #50–#53, #57, #60, #62, #75, #77; Workout-Detail (#27), Bestleistungen (#65), Wochenrückblick (#76), schneller laden (#69).
 
 ## Legende
 `DONE` fertig mit Beleg · `PARTIAL` teilweise · `IN PROGRESS` in Arbeit · `PLANNED` geplant · `BLOCKED` blockiert · `NEEDS USER TEST` braucht deinen Praxistest
