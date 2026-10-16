@@ -1,0 +1,93 @@
+// „Heute dran“ (#122): geplante Einheit von heute mit Wochenstreifen und Direkt-Start in Gym-Modus oder MyWhoosh-Workout.
+// Nur Daten aus get_dashboard (training.thisWeek, today, strengthWorkouts, fueling, ftpTest).
+FC.section({
+  id: "agenda",
+  tab: "heute",
+  order: 10.5,
+  RIDES: ["recovery", "endurance", "long", "tempo", "threshold", "vo2max", "opener", "race"],
+  MARK: { done: "✓", missed: "✗", partial: "◐", extra: "+" },
+  css: `
+    .ag-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 10px 0 12px; }
+    .ag-day { display: grid; justify-items: center; gap: 2px; padding: 6px 0; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; font: inherit; cursor: pointer; min-width: 0; }
+    .ag-day .w { font-size: .75rem; color: var(--ink-3); }
+    .ag-day .k { font-size: .72rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .ag-day .p { font-size: .65rem; color: var(--ink-3); min-height: 1em; line-height: 1; }
+    .ag-day .s { font-weight: 700; font-size: .85rem; min-height: 1.1em; }
+    .ag-day .s.done { color: var(--good); } .ag-day .s.missed { color: var(--bad); } .ag-day .s.partial { color: var(--warn); } .ag-day .s.extra { color: var(--accent); }
+    .ag-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .ag-day[aria-pressed="true"] { background: var(--accent-wash); }
+    .ag-day.rest .k { color: var(--ink-3); font-weight: 400; }
+    .ag-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+    .ag-head h3 { margin: 0; }
+    .ag-meta { color: var(--ink-2); font-size: .9rem; }
+    .ag-det p { margin: 6px 0; }
+    .ag-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }`,
+  mount(root) {
+    root.innerHTML = `
+      <div class="sec-head"><h2 id="h-agenda">Heute dran</h2><span class="muted" id="agPhase"></span></div>
+      <div class="panel"><div id="agBody"><div class="empty">Lädt …</div></div></div>`;
+  },
+  render() {
+    const t = FC.state.data?.training;
+    if (!t?.thisWeek) { FC.$("agBody").replaceChildren(FC.el("div", { class: "empty", text: "Noch kein Wochenplan. Im Tab „Coach“ kannst du Ziele und Vorlieben eintragen." })); return; }
+    FC.$("agPhase").textContent = t.thisWeek.phaseLabel ?? "";
+    if (!this.sel || !t.thisWeek.comparison.days.some((x) => x.day === this.sel)) this.sel = FC.state.data.today;
+    this.draw();
+  },
+  rerender() { if (FC.state.data?.training?.thisWeek) this.draw(); },
+  short(x) {
+    if (x.type === "rest") return "Ruhe";
+    const ride = this.RIDES.includes(x.type);
+    return ride ? "Rad" : x.type === "strength" ? "Kraft" : x.title.split(/[ -]/)[0];
+  },
+  draw() {
+    const { $, el, de, fmtWeekday, fmtDayLong } = FC, d = FC.state.data, t = d.training, days = t.thisWeek.comparison.days;
+    const week = el("div", { class: "ag-week", role: "group", "aria-label": "Diese Woche" }, ...days.map((x) => {
+      const b = el("button", { type: "button", class: `ag-day${x.day === d.today ? " today" : ""}${x.type === "rest" ? " rest" : ""}`, "aria-pressed": String(x.day === this.sel),
+        "aria-label": `${fmtDayLong(x.day)}: ${x.title}${x.status && this.MARK[x.status] ? `, ${{ done: "erledigt", missed: "ausgefallen", partial: "teilweise", extra: "extra" }[x.status]}` : ""}` },
+        el("span", { class: "w", text: fmtWeekday(x.day) }), el("span", { class: "k", text: this.short(x) }), el("span", { class: "p", text: x.strength && x.type !== "strength" ? "+ Kraft" : "" }), el("span", { class: `s ${x.status ?? ""}`, text: this.MARK[x.status] ?? "" }));
+      b.onclick = () => { this.sel = x.day; this.draw(); };
+      return b;
+    }));
+    const x = days.find((y) => y.day === this.sel) ?? days[0];
+    const isToday = x.day === d.today;
+    const kraft = (t.strengthWorkouts?.days ?? []).find((k) => k.day === x.day);
+    const fuel = (t.fueling?.days ?? []).find((f) => f.day === x.day);
+    const ftp = t.ftpTest?.day === x.day ? t.ftpTest : null;
+    const det = el("div", { class: "ag-det" },
+      el("div", { class: "ag-head" }, el("h3", { text: `${isToday ? "Heute" : fmtDayLong(x.day)}: ${x.title}` }),
+        el("span", { class: "ag-meta", text: x.type === "rest" ? "" : `${x.durationMin ? `${x.durationMin} min · ` : ""}~${de(x.targetLoad)} Belastung` })),
+      isToday && t.today?.text ? el("p", {}, el("strong", { text: t.today.text })) : null,
+      x.intensity && x.type !== "rest" ? el("p", { class: "ag-meta", text: x.intensity }) : null,
+      el("p", { text: x.description }),
+      kraft ? el("p", { text: `Kraft, ${kraft.durationMin} min: ${kraft.exercises.map((e) => `${e.name} ${e.sets}×${e.reps}${e.unit === "s" ? " s" : ""}${e.weightKg != null ? ` ${de(e.weightKg, e.weightKg % 1 ? 1 : 0)} kg` : ""}`).join(", ")}` }) : null,
+      ftp ? el("p", {}, el("strong", { text: "Oder FTP-Test: " }), ftp.reason ?? "") : null,
+      fuel && fuel.short !== "nur Wasser" ? el("p", { class: "ag-meta", text: `Verpflegung: ${fuel.short}` }) : null,
+      x.actualMin || x.actualLoad ? el("p", { class: "muted", text: `Erledigt: ${de(x.actualMin)} min, Belastung ~${de(x.actualLoad)}${x.actualSports?.length ? ` (${x.actualSports.map(FC.sport).join(", ")})` : ""}.` }) : null);
+    const act = el("div", { class: "ag-act" });
+    if (kraft && x.day >= d.today) {
+      const b = el("button", { type: "button", class: "primary", text: FC.state.gym?.st ? "Zum Gym-Modus" : "Im Gym-Modus starten" });
+      b.onclick = () => { this.go("training", "gym"); FC.state.gym?.startPlan(x.day); };
+      act.append(b);
+    }
+    if (this.RIDES.includes(x.type) && x.day >= d.today) {
+      const b = el("button", { type: "button", class: kraft ? "" : "primary", text: "Workout für MyWhoosh" });
+      b.onclick = () => {
+        this.go("training", "bikewo");
+        // Am Handy füllt der Abschnitt seine Tage erst beim ersten Öffnen; dann kurz warten.
+        const pick = (n) => { const sel = $("bwDay"); if (sel && [...sel.options].some((o) => o.value === x.day)) { if (sel.value !== x.day) { sel.value = x.day; $("bwType").value = ""; sel.dispatchEvent(new Event("change")); } } else if (n) setTimeout(() => pick(n - 1), 250); };
+        pick(8);
+      };
+      act.append(b);
+    }
+    const all = el("button", { type: "button", text: "Ganzer Wochenplan" });
+    all.onclick = () => this.go("coach", "plan");
+    act.append(all);
+    $("agBody").replaceChildren(week, det, act);
+  },
+  /** Zum Abschnitt springen (am Handy erst den Tab wechseln). */
+  go(tab, id) {
+    FC.showTab(tab);
+    requestAnimationFrame(() => FC.$(`sec-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  },
+});

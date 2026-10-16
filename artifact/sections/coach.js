@@ -16,25 +16,61 @@ FC.section({
         </div>
         <div id="coachOut" class="coach-out muted">Wähle oben, was der Coach tun soll, oder stell unten eine Frage zu deinen Daten.</div>
         <div class="chat" id="chat"></div>
+        <div class="ask-chips" id="askChips" aria-label="Fragen-Vorschläge"></div>
         <form class="ask" id="askForm" autocomplete="off">
           <input id="askInput" type="text" placeholder="z. B. Warum ist meine HRV diese Woche niedriger?" aria-label="Frage an den Coach">
           <button type="submit" id="askBtn" disabled>Fragen</button>
         </form>
+        <button type="button" class="linkish" id="chatClear" hidden>Neuer Chat</button>
       </div>`;
     const { $, el } = FC;
     this.root = root;
-    this.chat = [];
+    this.chat = this.loadChat();
+    for (let i = 0; i + 1 < this.chat.length; i += 2) this.showPair(this.chat[i].content, this.chat[i + 1].content);
+    $("chatClear").hidden = !this.chat.length;
+    $("chatClear").onclick = () => { this.chat = []; this.saveChat(); $("chat").replaceChildren(); $("chatClear").hidden = true; };
     root.querySelectorAll("[data-coach]").forEach((b) => b.addEventListener("click", () => this.run(b.dataset.coach)));
     $("coachStop").onclick = () => this.ctl?.abort();
     $("askForm").addEventListener("submit", (e) => { e.preventDefault(); this.ask(); });
     void el;
   },
   ready() { if (!FC.state.sample) this.root.hidden = true; },
-  render() { this.busy(false); },
+  render() { this.busy(false); this.chips(); },
+  CHAT_KEY: "fc-coach-chat",
+  /** Verlauf aus diesem Browser: nur vollständige Frage-Antwort-Paare, höchstens 3 Tage alt. */
+  loadChat() {
+    try {
+      const v = JSON.parse(localStorage.getItem(this.CHAT_KEY) ?? "null");
+      if (!v || Date.now() - Date.parse(v.at) > 3 * 86_400_000 || !Array.isArray(v.msgs)) return [];
+      const m = v.msgs.filter((x) => (x.role === "user" || x.role === "assistant") && typeof x.content === "string");
+      return m.length % 2 ? m.slice(0, -1) : m;
+    } catch { return []; }
+  },
+  saveChat() {
+    try { if (this.chat.length) localStorage.setItem(this.CHAT_KEY, JSON.stringify({ at: new Date().toISOString(), msgs: this.chat.slice(-20) })); else localStorage.removeItem(this.CHAT_KEY); } catch {}
+  },
+  showPair(q, text) {
+    const { $, el, richText } = FC, a = el("div", { class: "a coach-out" });
+    $("chat").append(el("div", { class: "q", text: q }), a); richText(a, text);
+  },
+  /** Fragen zum Antippen, passend zum Tag. */
+  chips() {
+    const { $, el, state } = FC, d = state.data, box = $("askChips");
+    if (!d || !box) return;
+    const rec = d.days.at(-1)?.recovery, gym = d.training?.strengthWorkouts?.days?.some((w) => w.day === d.today);
+    const qs = [
+      gym ? "Was mache ich heute im Gym?" : "Was soll ich heute trainieren?",
+      rec != null && rec < 34 ? "Warum ist meine Erholung heute niedrig?" : "Wie entwickelt sich meine Fitness?",
+      "Wie lief meine letzte Woche?",
+      "Lohnt sich eine Ausfahrt draußen?",
+    ];
+    box.replaceChildren(...qs.map((q) => { const b = el("button", { type: "button", class: "chip", text: q }); b.onclick = () => { if (b.disabled) return; $("askInput").value = q; this.ask(); }; return b; }));
+    box.hidden = !state.sample;
+  },
   rerender() {},
   busy(on) {
     const ok = !!FC.state.data && !!FC.state.sample;
-    this.root.querySelectorAll("[data-coach], #askBtn").forEach((b) => (b.disabled = on || !ok));
+    this.root.querySelectorAll("[data-coach], #askBtn, #askChips button").forEach((b) => (b.disabled = on || !ok));
     FC.$("coachStop").hidden = !on;
   },
   rules: `Du bist ein erfahrener Rad- und Krafttrainer und coachst eine Person, die Krafttraining im Gym und Rennrad (aktuell indoor mit MyWhoosh) macht. Deutsch, per du, freundlich und konkret.
@@ -145,9 +181,13 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
       // Mit Werkzeugen holt sich Claude zur Frage passende Daten selbst (#100); ohne bleibt es bei der Übersicht.
       const tools = (await this.canUseTools()) ? this.tools(a) : null;
       const hint = tools ? "\nWenn die Übersicht für die Frage nicht reicht, hol dir mit den Werkzeugen gezielt mehr Daten (sparsam, höchstens drei Abrufe). Nenne kurz, worauf sich die Antwort stützt." : "";
-      const { text } = await state.sample([{ role: "user", content: `${this.rules}\n\nBeantworte die folgenden Fragen der Person zu ihren Daten.${hint}\n\nDaten (Übersicht):\n${this.data()}` }, ...this.chat.slice(-10)],
+      // Verlauf beginnt immer mit einer Frage; Regeln und Daten stehen in dieser ersten Nachricht (nie zwei Nutzer-Nachrichten hintereinander).
+      const msgs = this.chat.slice(-9).map((m) => ({ ...m }));
+      msgs[0].content = `${this.rules}\n\nBeantworte die Fragen der Person zu ihren Daten.${hint}\n\nDaten (Übersicht):\n${this.data()}\n\nFrage: ${msgs[0].content}`;
+      const { text } = await state.sample(msgs,
         { cache: false, signal: this.ctl.signal, onText: ({ text }) => richText(a, text), ...(tools ? { tools } : {}) });
       this.chat.push({ role: "assistant", content: text });
+      this.saveChat(); $("chatClear").hidden = false;
     } catch (err) {
       this.chat.pop();
       if (err?.text) richText(a, err.text); else a.textContent = "";

@@ -42,6 +42,7 @@ FC.section({
       <p class="muted" id="gyMsg" role="status" style="margin:8px 0 0"></p>`;
     this.root = root;
     this.st = this.loadState();
+    FC.state.gym = this; // „Heute dran“ startet von dort die geplante Krafteinheit
   },
   ready() {
     FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } })
@@ -79,8 +80,11 @@ FC.section({
       el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Was trainierst du?", sel), go),
       el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })));
   },
+  /** Geplante Krafteinheit eines Tages starten (läuft schon eine Einheit, bleibt sie). */
+  startPlan(day) { if (!this.st) this.start(`p:${day}`); },
   async start(src, btn) {
-    btn.disabled = true; this.msg("");
+    if (btn) btn.disabled = true;
+    this.msg("");
     try {
       let list = [], name = null;
       if (src.startsWith("p:")) {
@@ -106,7 +110,7 @@ FC.section({
       if (!this.st.exercises.length) this.st.exercises.push({ name: "", rest: 90, sets: [{ reps: 8, kg: 0, done: false }] });
       this.persist(); this.draw();
     } catch (err) { this.msg(err?.code === "tool_error" ? `Vorschlag nicht verfügbar: ${String(err.message).slice(0, 160)}` : FC.errText(err)); }
-    finally { btn.disabled = false; }
+    finally { if (btn) btn.disabled = false; }
   },
 
   // --- Laufende Einheit ----------------------------------------------------------------------------

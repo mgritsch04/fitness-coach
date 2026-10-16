@@ -34,6 +34,8 @@ import { earlyWarning } from "./warnings";
 import { sleepReport } from "./sleep";
 import { recordsReport } from "./records";
 import { lateTrainingDays, recoveryForecast, type ForecastInput } from "./forecast";
+import { interferenceReport } from "./interference";
+import { hrvTrend } from "./hrv-trend";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -251,4 +253,15 @@ export function enduranceView(c: AnalysisContext) {
 
 export function recoveryForecastView(c: AnalysisContext, input: ForecastInput = {}) {
   return recoveryForecast(c.series, lateTrainingDays(c.workouts, c.settings.timezone), c.today, input);
+}
+
+/** Kraft und Rad im Wechselspiel (#113): Beineinheiten gegen Erholung am Folgetag und die nächste Radeinheit. */
+export async function interferenceView(db: D1Database, c: AnalysisContext, days: number) {
+  const strength = await readStrengthSessions(db, addDays(c.today, -(days + 7)));
+  return interferenceReport({ series: c.series, workouts: c.workouts, strength }, c.today, days);
+}
+
+/** HRV-Trend nach Plews (#125). Der Kontext braucht 67 Tage Vorlauf für Normalband und 7-Tage-Mittel. */
+export function hrvTrendView(c: AnalysisContext, days: number) {
+  return hrvTrend(c.series, c.today, days);
 }
