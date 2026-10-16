@@ -125,7 +125,12 @@ for (const [name, vp, scheme, tab] of shots) {
     // Scheibenrechner (#143): 105 kg an der 20-kg-Stange = je Seite 25 + 15 + 2,5.
     const plates = await p.textContent("#gyPlates").catch(() => "");
     if (plates !== "25 + 15 + 2,5 kg") errors.push(`${name}: Scheibenrechner zeigt „${plates}“`);
+    // Aufwärmsätze (#148): Stange, 40 / 65 / 85 kg vor dem ersten Arbeitssatz.
+    const warm = await p.$$eval("#gyWarm li", (l) => l.map((x) => x.textContent)).catch(() => []);
+    if (warm.length !== 4 || !warm[3].startsWith("85 kg × 2")) errors.push(`${name}: Aufwärmsätze ${JSON.stringify(warm)}`);
+    await p.screenshot({ path: join(out, "phone-gym-warm.png") });
     await p.click("#gyBody .gy-set .ok"); await p.waitForTimeout(100);
+    if (await p.$("#gyWarm")) errors.push(`${name}: Aufwärmsätze nach dem ersten Satz noch sichtbar`);
     if (!/Neuer Bestwert/.test(await p.textContent("#gyBody .gy-note"))) errors.push(`${name}: Gym-Modus meldet keinen Bestwert`);
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
