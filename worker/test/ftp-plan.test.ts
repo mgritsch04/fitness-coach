@@ -50,4 +50,11 @@ describe("ftpTestPlan", () => {
     expect(r.day).toBeNull();
     expect(r.text).toContain("Nächste Woche");
   });
+  it("ohne passenden Tag diese Woche: Vorschlag aus dem Plan der nächsten Woche", () => {
+    const rest = plan(week.days.map((d) => (d.day >= "2026-03-24" ? { ...d, type: "rest" as SessionType } : d)));
+    const next = { ...plan([s("2026-03-30", "rest", "Ruhetag"), s("2026-03-31", "endurance", "Grundlage"), s("2026-04-01", "threshold", "Schwelle Mi")]), weekStart: "2026-03-30" };
+    const r = ftpTestPlan(input(), rest, null, next)!;
+    expect(r.day).toBe("2026-04-01");
+    expect(r.text).toContain("nächste Woche Mittwoch statt „Schwelle Mi“");
+  });
 });

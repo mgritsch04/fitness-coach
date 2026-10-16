@@ -196,7 +196,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     projection,
     notes,
     intensity: intensityCheck(inp),
-    ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null),
+    ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null, next),
     strengthWorkouts: {
       days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions)),
       note: STRENGTH_PLAN_NOTE,
@@ -278,7 +278,7 @@ export interface FtpTestPlan {
   /** Ausgeruht genug für einen Test (Form ≥ 0)? */
   rested: boolean;
   reason: string;
-  /** Vorgeschlagener Testtag in dieser Woche (ab heute) und welche Einheit er ersetzt. */
+  /** Vorgeschlagener Testtag ab heute (diese Woche, sonst nächste) und welche Einheit er ersetzt. */
   day: string | null;
   replaces: string | null;
   text: string;
@@ -290,23 +290,31 @@ export interface FtpTestPlan {
  * Tempo-/Schwellen-/VO2max- oder Grundlageneinheit ab heute, die nicht direkt nach der langen Fahrt,
  * einer harten Einheit oder Beinkraft liegt. Die Form wird am Tag selbst geprüft (Tagesempfehlung).
  */
-export function ftpTestPlan(inp: TrainingInputs, plan: WeekPlan, lastTestDay: string | null): FtpTestPlan | null {
+export function ftpTestPlan(inp: TrainingInputs, plan: WeekPlan, lastTestDay: string | null, nextPlan?: WeekPlan): FtpTestPlan | null {
   const t = inp.days.find((d) => d.day === inp.today) ?? inp.days.at(-1);
   const s = ftpTestSuggestion(t?.tsb ?? null, lastTestDay, inp.today);
   const due = s.daysSinceLastTest == null || s.daysSinceLastTest >= 42;
   if (!due) return null;
-  const ok = (i: number) => {
-    const d = plan.days[i];
-    if (d.day < inp.today || !["tempo", "threshold", "vo2max", "endurance"].includes(d.type)) return false;
-    const prev = plan.days[i - 1];
-    if (prev && (prev.type === "long" || prev.type === "race" || isHard(prev.type) || (prev.strength && !/^Oberkörper/.test(prev.strength.focus)))) return false;
-    return true;
+  const pickIn = (p: WeekPlan) => {
+    const ok = (i: number) => {
+      const d = p.days[i];
+      if (d.day < inp.today || !["tempo", "threshold", "vo2max", "endurance"].includes(d.type)) return false;
+      const prev = p.days[i - 1];
+      if (prev && (prev.type === "long" || prev.type === "race" || isHard(prev.type) || (prev.strength && !/^Oberkörper/.test(prev.strength.focus)))) return false;
+      return true;
+    };
+    const order = p.days.map((_, i) => i).filter(ok).sort((a, b) => Number(isHard(p.days[b].type)) - Number(isHard(p.days[a].type)) || a - b);
+    return order.length ? p.days[order[0]] : null;
   };
-  const order = plan.days.map((_, i) => i).filter(ok).sort((a, b) => Number(isHard(plan.days[b].type)) - Number(isHard(plan.days[a].type)) || a - b);
-  const pick = order.length ? plan.days[order[0]] : null;
+  const pick = pickIn(plan);
+  const later = pick || !nextPlan ? null : pickIn(nextPlan);
   const noFtp = inp.settings.ftpW == null ? " Ohne FTP rechnet der Plan nur mit Puls; mit einem Test bekommst du Wattbereiche für die Rolle." : "";
+  const how = "(Ramp-Test in MyWhoosh, ca. 30–45 min mit Ein- und Ausfahren). Nur testen, wenn du dich an dem Tag frisch fühlst.";
   const text = pick
-    ? `FTP-Test einplanen: ${weekdayName(pick.day)} statt „${pick.title}“ (Ramp-Test in MyWhoosh, ca. 30–45 min mit Ein- und Ausfahren). Nur testen, wenn du dich an dem Tag frisch fühlst.${noFtp}`
-    : `FTP-Test ist fällig; diese Woche passt kein Tag mehr gut. Nächste Woche an einem frischen Tag statt einer Tempo- oder Schwelleneinheit testen.${noFtp}`;
-  return { due, rested: s.tsb != null && s.tsb >= 0, reason: s.reason, day: pick?.day ?? null, replaces: pick?.title ?? null, text, howTo: s.howTo };
+    ? `FTP-Test einplanen: ${weekdayName(pick.day)} statt „${pick.title}“ ${how}${noFtp}`
+    : later
+      ? `FTP-Test ist fällig; diese Woche passt kein Tag mehr. Vorschlag: nächste Woche ${weekdayName(later.day)} statt „${later.title}“ ${how}${noFtp}`
+      : `FTP-Test ist fällig; diese Woche passt kein Tag mehr gut. Nächste Woche an einem frischen Tag statt einer Tempo- oder Schwelleneinheit testen.${noFtp}`;
+  const chosen = pick ?? later;
+  return { due, rested: s.tsb != null && s.tsb >= 0, reason: s.reason, day: chosen?.day ?? null, replaces: chosen?.title ?? null, text, howTo: s.howTo };
 }
