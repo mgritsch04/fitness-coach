@@ -21,7 +21,7 @@ async function attempt<T>(run: () => Promise<T>, isAuthError: (e: unknown) => bo
  * Gleicht alle verbundenen Quellen des Besitzers ab. Eine Quelle, die scheitert, hält die andere nicht auf.
  * Wahoo wird übersprungen, solange die App nicht eingerichtet oder nicht verbunden ist.
  */
-export async function syncAll(env: Env, ownerId: string, opts: { full?: boolean } = {}) {
+export async function syncAll(env: Env, ownerId: string, opts: { full?: boolean; days?: number } = {}) {
   const whoopCreds = { clientId: env.WHOOP_CLIENT_ID, clientSecret: env.WHOOP_CLIENT_SECRET };
   const wahooCreds = wahooCredentials(env);
   const wahooStore = d1WahooTokenStore(env.DB);

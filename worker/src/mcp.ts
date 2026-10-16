@@ -5,6 +5,8 @@ import { syncAll } from "./sync";
 import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
 import { wahooConnectLink, wahooCredentials } from "./wahoo";
 import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./core/repository";
+import { buildDashboard } from "./core/dashboard";
+import { readSettings, writeSettings } from "./core/settings";
 import type { AuthProps, Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -93,12 +95,59 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     "sync_now",
     {
       description:
-        "WHOOP und Wahoo jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten 30 Tage neu. Ergebnis je Quelle; Wahoo wird übersprungen, solange es nicht verbunden ist.",
-      inputSchema: { full: z.boolean().optional() },
+        "WHOOP und Wahoo jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten `days` Tage neu (Standard 30, höchstens 120). Ergebnis je Quelle; Wahoo wird übersprungen, solange es nicht verbunden ist.",
+      inputSchema: { full: z.boolean().optional(), days: z.number().int().min(1).max(120).optional() },
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
-    async ({ full }) => {
-      return json(await syncAll(env, props.whoopUserId, { full }));
+    async ({ full, days: d }) => {
+      return json(await syncAll(env, props.whoopUserId, { full, days: d }));
+    },
+  );
+
+  server.registerTool(
+    "get_dashboard",
+    {
+      description:
+        "Alles für das Dashboard in einem Aufruf: Tagesreihe (Erholung, HRV, Ruhepuls, Schlaf, Strain, Belastung, Fitness/Ermüdung/Form), " +
+        "Trends gegen die persönliche Basis, Wochenübersicht, Workouts mit geschätzter Belastung (Duplikate aus mehreren Quellen zusammengeführt) " +
+        "und die regelbasierte Tagesempfehlung des Coachs. Belastungswerte sind Schätzungen.",
+      inputSchema: { days: z.number().int().min(7).max(365).optional().describe("Zeitraum der Ansicht in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await buildDashboard(env.DB, { days: d })),
+  );
+
+  const settingsShape = {
+    ftpW: z.number().min(50).max(600).nullable().optional().describe("Functional Threshold Power in Watt"),
+    maxHr: z.number().int().min(120).max(230).nullable().optional().describe("maximaler Puls"),
+    restingHr: z.number().int().min(30).max(100).nullable().optional().describe("Ruhepuls (sonst Median der letzten 30 Tage)"),
+    thresholdHr: z.number().int().min(100).max(220).nullable().optional().describe("Puls an der Schwelle (LTHR)"),
+    sleepNeedH: z.number().min(5).max(11).nullable().optional().describe("Schlafbedarf in Stunden"),
+    timezone: z.string().max(60).nullable().optional().describe("IANA-Zeitzone, z. B. Europe/Berlin"),
+  };
+
+  server.registerTool(
+    "get_settings",
+    { description: "Persönliche Einstellungen für die Auswertung (nur die selbst gesetzten Werte).", annotations: { readOnlyHint: true } },
+    async () => json(await readSettings(env.DB)),
+  );
+
+  server.registerTool(
+    "update_settings",
+    {
+      description: "Setzt persönliche Einstellungen (FTP, Pulswerte, Schlafbedarf, Zeitzone). null löscht einen Wert, dann wird er wieder aus den Daten geschätzt.",
+      inputSchema: settingsShape,
+      annotations: { readOnlyHint: false, idempotentHint: true },
+    },
+    async (patch) => {
+      if (patch.timezone) {
+        try {
+          new Intl.DateTimeFormat("en", { timeZone: patch.timezone });
+        } catch {
+          return { ...json({ error: "invalid_timezone", message: `Unbekannte Zeitzone: ${patch.timezone}` }), isError: true };
+        }
+      }
+      return json(await writeSettings(env.DB, patch));
     },
   );
 

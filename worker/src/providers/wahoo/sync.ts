@@ -24,13 +24,13 @@ export async function syncWahoo(
   creds: WahooCredentials,
   store: WahooTokenStore,
   ownerId: string,
-  opts: { now?: number; full?: boolean; fetch?: Fetch } = {},
+  opts: { now?: number; full?: boolean; days?: number; fetch?: Fetch } = {},
 ): Promise<WahooSyncResult> {
   const now = opts.now ?? Date.now();
   const f = opts.fetch ?? fetch;
   const at = new Date(now).toISOString();
   const state = opts.full ? null : await getSyncState(db, "wahoo");
-  const sinceMs = state?.last_success_at ? Date.parse(state.last_success_at) - OVERLAP_DAYS * DAY : now - INITIAL_DAYS * DAY;
+  const sinceMs = state?.last_success_at ? Date.parse(state.last_success_at) - OVERLAP_DAYS * DAY : now - (opts.days ?? INITIAL_DAYS) * DAY;
   try {
     const token = await validAccessToken(creds, store, ownerId, f, now);
     const workouts = [];

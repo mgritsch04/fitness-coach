@@ -1,4 +1,4 @@
-// Abgleich WHOOP → gemeinsames Datenmodell. Erstabgleich: letzte 30 Tage. Danach ab dem letzten
+// Abgleich WHOOP → gemeinsames Datenmodell. Erstabgleich bzw. full: letzte 30 Tage (oder `days`). Danach ab dem letzten
 // erfolgreichen Abgleich minus 3 Tage, weil WHOOP Scores (Schlaf, Recovery) nachträglich anpasst.
 import {
   getSyncState,
@@ -38,8 +38,8 @@ export async function fetchAll<T>(token: string, path: string, start: string, en
   return all;
 }
 
-export function syncWindow(lastSuccessAt: string | null | undefined, now: number) {
-  const startMs = lastSuccessAt ? Date.parse(lastSuccessAt) - OVERLAP_DAYS * DAY : now - INITIAL_DAYS * DAY;
+export function syncWindow(lastSuccessAt: string | null | undefined, now: number, initialDays = INITIAL_DAYS) {
+  const startMs = lastSuccessAt ? Date.parse(lastSuccessAt) - OVERLAP_DAYS * DAY : now - initialDays * DAY;
   return { start: new Date(Math.max(startMs, now - 365 * DAY)).toISOString(), end: new Date(now).toISOString() };
 }
 
@@ -55,13 +55,13 @@ export async function syncWhoop(
   creds: WhoopCredentials,
   store: WhoopTokenStore,
   userId: string,
-  opts: { now?: number; full?: boolean; fetch?: Fetch } = {},
+  opts: { now?: number; full?: boolean; days?: number; fetch?: Fetch } = {},
 ): Promise<SyncResult> {
   const now = opts.now ?? Date.now();
   const f = opts.fetch ?? fetch;
   const at = new Date(now).toISOString();
   const state = opts.full ? null : await getSyncState(db, "whoop");
-  const window = syncWindow(state?.last_success_at, now);
+  const window = syncWindow(state?.last_success_at, now, opts.days);
   try {
     const token = await validAccessToken(creds, store, userId, f, now);
     // Zyklen zuerst: Recovery wird an den Tag des Zyklus gehängt.
