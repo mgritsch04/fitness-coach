@@ -4,6 +4,8 @@ import { validAccessToken, whoopGet, WhoopAuthError } from "./providers/whoop/cl
 import { listWorkouts, toWorkout, validAccessToken as validWahooToken, WahooAuthError } from "./providers/wahoo/client";
 import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
 import { wahooConnectLink, wahooCredentials } from "./wahoo";
+import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./core/repository";
+import { syncWhoop } from "./providers/whoop/sync";
 import type { AuthProps, Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -38,7 +40,70 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     { description: "Ob WHOOP verbunden ist und bis wann das aktuelle Token gilt.", annotations: { readOnlyHint: true } },
     async () => {
       const tokens = await store.get(props.whoopUserId);
-      return json({ connected: Boolean(tokens), tokenExpiresAt: tokens ? new Date(tokens.expiresAt).toISOString() : null });
+      const sync = await getSyncState(env.DB, "whoop");
+      return json({
+        connected: Boolean(tokens),
+        tokenExpiresAt: tokens ? new Date(tokens.expiresAt).toISOString() : null,
+        lastSync: sync?.last_success_at ?? null,
+        lastSyncError: sync?.last_error ?? null,
+      });
+    },
+  );
+
+  const days = { days: z.number().int().min(1).max(365).optional().describe("Zeitraum in Tagen bis heute, Standard 30") };
+  const fromDay = (d?: number) => new Date(Date.now() - (d ?? 30) * 86_400_000).toISOString().slice(0, 10);
+
+  server.registerTool(
+    "get_daily",
+    {
+      description:
+        "Gespeicherte Tageswerte, neueste zuerst: Erholung (recovery_score %, resting_hr, hrv_ms, spo2_pct, skin_temp_c) und Tagesbelastung (strain, energy_kj, avg_hr, max_hr).",
+      inputSchema: days,
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await readDaily(env.DB, fromDay(d))),
+  );
+
+  server.registerTool(
+    "get_sleep",
+    {
+      description: "Gespeicherte Schlafphasen, neueste zuerst. Dauern in Sekunden, day = Tag des Aufwachens, is_nap = Nickerchen.",
+      inputSchema: days,
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await readSleeps(env.DB, fromDay(d))),
+  );
+
+  server.registerTool(
+    "get_workouts",
+    {
+      description: "Gespeicherte Workouts aus allen Quellen, neueste zuerst (Dauer s, Distanz m, Energie kJ, Puls, Leistung W, Strain).",
+      inputSchema: days,
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await readWorkouts(env.DB, fromDay(d))),
+  );
+
+  server.registerTool(
+    "get_body",
+    { description: "Zuletzt gespeicherte Körperwerte (Größe m, Gewicht kg, maximaler Puls).", annotations: { readOnlyHint: true } },
+    async () => json(await readLatestBody(env.DB)),
+  );
+
+  server.registerTool(
+    "sync_now",
+    {
+      description: "WHOOP jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten 30 Tage neu.",
+      inputSchema: { full: z.boolean().optional() },
+      annotations: { readOnlyHint: false, idempotentHint: true },
+    },
+    async ({ full }) => {
+      try {
+        return json(await syncWhoop(env.DB, creds, store, props.whoopUserId, { full }));
+      } catch (err) {
+        if (err instanceof WhoopAuthError) return { ...json({ error: "whoop_not_connected", message: err.message }), isError: true };
+        throw err;
+      }
     },
   );
 
