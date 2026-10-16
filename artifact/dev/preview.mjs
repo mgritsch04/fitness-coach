@@ -1,11 +1,11 @@
 // Vorschau des Dashboards mit synthetischen Daten und einem nachgebauten window.claude.
 //   node artifact/dev/preview.mjs [out-dir]   → schreibt preview.html und Screenshots (Playwright/Chromium)
-import { readFileSync, writeFileSync, mkdirSync, cpSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const out = process.argv[2] ?? join(here, "out");
+const out = resolve(process.argv[2] ?? join(here, "out"));
 mkdirSync(out, { recursive: true });
 const page = readFileSync(join(here, "..", "dashboard.html"), "utf8");
 const mock = readFileSync(join(here, "mock-dashboard.json"), "utf8");
@@ -63,6 +63,8 @@ const pw = await import("playwright").catch(() => import("/opt/node22/lib/node_m
 const chromium = pw.chromium ?? pw.default.chromium;
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
 const errors = [];
+// Jede Abschnittsdatei muss in dashboard.html eingetragen sein (sonst fehlt sie nach dem Veröffentlichen).
+for (const f of readdirSync(join(here, "..", "sections"))) if (f.endsWith(".js") && !page.includes(`src="sections/${f}"`)) errors.push(`sections/${f} fehlt in dashboard.html`);
 const shots = [["desktop-light", { width: 1280, height: 900 }, "light"], ["desktop-dark", { width: 1280, height: 900 }, "dark"],
   ...["heute", "coach", "verlauf", "training", "mehr"].map((t) => [`phone-${t}`, { width: 390, height: 844 }, t === "verlauf" ? "dark" : "light", t])];
 for (const [name, vp, scheme, tab] of shots) {
@@ -74,7 +76,11 @@ for (const [name, vp, scheme, tab] of shots) {
   await p.waitForTimeout(800);
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
-  if (name === "desktop-light") { await p.click("[data-coach=explain]"); await p.waitForTimeout(300); }
+  if (name === "desktop-light") {
+    const stuck = await p.evaluate(() => [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.innerText.includes("Lädt …")).map((s) => s.id));
+    if (stuck.length) errors.push(`${name}: noch „Lädt …“ in ${stuck.join(", ")}`);
+    await p.click("[data-coach=explain]"); await p.waitForTimeout(300);
+  }
   const sw = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (sw > 0) errors.push(`${name}: horizontal overflow ${sw}px`);
   await p.screenshot({ path: join(out, `${name}.png`), fullPage: !tab });
@@ -82,3 +88,4 @@ for (const [name, vp, scheme, tab] of shots) {
 }
 await browser.close();
 console.log(errors.length ? errors.join("\n") : "keine Fehler");
+if (errors.length) process.exitCode = 1;
