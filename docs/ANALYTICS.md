@@ -165,3 +165,11 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `nextRide`: Radeinheiten ab 20 min nach Abstand zur letzten Beineinheit (unter 24 h, 24–48 h, 48–72 h, 3–7 Tage, keine in 7 Tagen). Effizienz = (normierte) Leistung je Herzschlag gegenüber dem Median ähnlich harter Fahrten (locker bzw. ab IF 0,85); dazu die mittlere Intensität harter Einheiten.
 - `suggestion`: kleinster Abstand, ab dem die Effizienz höchstens 2 % unter dem Mittel liegt (und harte Einheiten nicht spürbar weniger intensiv sind); bei zu wenig Gruppen `hours: null`.
 - Dashboard: `sections/interference.js`, Reiter Training. Beobachtungen, keine Ursache-Wirkung, keine Diagnose.
+
+## HRV-Trend (`get_hrv_trend`, #125)
+
+`core/hrv-trend.ts` nach Plews u. a.: Für jeden Tag das 7-Tage-Mittel der logarithmierten HRV (lnRMSSD, mindestens 4 Werte) und ein Normalband aus den 60 Tagen davor (Mittel ± 0,5 SD, mindestens 20 Werte), zur Anzeige in ms zurückgerechnet. Schwankung = Variationskoeffizient der lnRMSSD im 7-Tage-Fenster.
+
+- `current`: Lage (`within`/`above`/`below`), Abstand zur Bandmitte, Veränderung in 14 Tagen, CV jetzt, eine Woche vorher und üblich.
+- `pattern`: `stable`, `high`, `unsettled` (CV ≥ 1,5 × üblich), `fatigue` (unter dem Band, CV steigt um ≥ 1 Punkt oder ≥ 1,3 × üblich), `saturation` (unter dem Band, CV sinkt oder ≤ 0,6 × üblich; Schätzung), `low`; dazu `label` und `advice`.
+- Dashboard: `sections/hrvtrend.js`, Reiter Verlauf. Trainingshinweis, keine Diagnose.
