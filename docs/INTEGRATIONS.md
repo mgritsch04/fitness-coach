@@ -29,6 +29,8 @@ Keine offizielle Entwickler-API gefunden. Strava wird **nicht** genutzt (Entsche
 1. **FIT-Upload (Standard):** Fahrten im MyWhoosh-Webportal (Profil › Aktivitäten) als FIT herunterladen und im Dashboard hochladen; Parsing im Dashboard bzw. Worker. Laut Forenberichten liefern manche App-Versionen GPX statt FIT (Leistungsdaten können fehlen).
 2. **Inoffizielle MyWhoosh-API** (wie Community-Tools): automatisch, braucht aber die MyWhoosh-Logindaten im Worker und kann bei App-Updates brechen – nur mit ausdrücklicher Freigabe des Nutzers.
 
+**Workouts zu MyWhoosh (#63):** Der Coach baut aus einer geplanten Radeinheit eine ZWO-Datei (`get_bike_workout`, Download im Dashboard). Die lädt man selbst im offiziellen MyWhoosh Workout Builder (workout.mywhoosh.com) hoch und überträgt sie mit „Export to MyWhoosh“ in die App (MyWorkouts). Es gibt keinen automatischen Weg und keinen Login im Worker. Quelle: https://mywhoosh.com/everything-you-need-to-know-about-the-new-mywhoosh-workout-builder/
+
 Duplikate: Dieselbe Fahrt kann über MyWhoosh-FIT, Wahoo (wenn ein KICKR-Workout dort landet) und WHOOP (als Workout) kommen → Abgleich über Startzeit ± Toleranz und Dauer.
 
 ## Quellen
