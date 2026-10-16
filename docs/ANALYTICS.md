@@ -89,6 +89,19 @@ Messwerte von heute (oder gestern, falls heute noch keine da sind; fehlt heute n
 - `export_csv {dataset: daily|sleeps|workouts|body, days?=365, excel?}` → `{fileName, mimeType, rows, columns, csv}`. `excel: true` = Semikolon und Dezimalkomma. Texte, die mit `= + - @` beginnen, bekommen ein `'` vorangestellt (keine Formeln in Excel).
 - Abschnitte: `artifact/sections/body.js` (Tab verlauf, order 38, Werkzeuge get_body_history und log_weight) und `artifact/sections/export.js` (Tab mehr, order 85, Werkzeug export_csv, Capability `downloads: true`).
 
+## get_records (#65, `core/records.ts`)
+
+- `get_records {days?=30}` → `{today, range, records[], totalRecords, week, notes[]}`.
+- `records[]`, neueste zuerst: `{day, kind: power|strength|distance|duration, key, label, value, unit, previous, previousDay, delta, text}`.
+  - Rekord = besser als alle früheren Werte, über die ganze Historie geprüft. Der erste Wert zählt nicht.
+  - Leistung: 5 s, 1, 5, 20 und 60 min aus der Leistungskurve.
+  - Kraft: geschätztes 1RM je Übung (Epley), erst ab mehr als 1 % Verbesserung.
+  - Längste Fahrt: Strecke (ab +0,5 km) und Zeit (ab +5 min), nur Radeinheiten.
+- `week`: `{thisWeek, lastWeekSamePeriod, lastWeekFull, change}`.
+  - Je Zeitraum `{from, to, days, workouts, trainingH, load, avgRecovery, avgHrv, avgSleepH, avgStrain}`.
+  - `change` vergleicht diese Woche bis heute mit denselben Wochentagen der Vorwoche.
+- Abschnitt: `artifact/sections/records.js` (Tab heute, order 15).
+
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.
 

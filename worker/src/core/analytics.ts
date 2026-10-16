@@ -32,6 +32,7 @@ import {
 import { recoveryFactors, strainRecovery } from "./insights";
 import { earlyWarning } from "./warnings";
 import { sleepReport } from "./sleep";
+import { recordsReport } from "./records";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -230,4 +231,13 @@ export function sleepReportView(c: AnalysisContext) {
       "Empfohlene Schlafenszeit = übliche Aufwachzeit minus Schlafbedarf minus übliche Wachzeit im Bett (Schätzung).",
     ],
   };
+}
+
+/** Bestleistungen-Feed (#65): Rekorde über die ganze Historie, Feed über `days`, Wochenvergleich. */
+export async function recordsView(db: D1Database, c: AnalysisContext, days: number) {
+  const [rides, strength] = await Promise.all([
+    readWorkouts(db, "0000-00-00") as Promise<unknown> as Promise<WorkoutRow[]>,
+    readStrengthSessions(db, "0000-00-00"),
+  ]);
+  return recordsReport({ powerRows: c.powerRows, workouts: rides, strength, series: c.series }, c.today, days);
 }

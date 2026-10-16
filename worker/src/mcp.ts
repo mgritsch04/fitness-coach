@@ -10,7 +10,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -376,6 +376,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(sleepReportView(await analysisContext(env.DB, { days: d ?? 30, maxDays: 365 }))),
+  );
+
+  server.registerTool(
+    "get_records",
+    {
+      description:
+        "Bestleistungen-Feed: neue Rekorde (Leistung 5 s bis 60 min, geschätztes Kraft-1RM, längste Fahrt nach Strecke und Zeit) mit Vorwert und Datum, " +
+        "plus Vergleich dieser Woche mit denselben Tagen der Vorwoche (Stunden, Belastung, Erholung, HRV, Schlaf). 1RM und Belastung sind Schätzungen.",
+      inputSchema: { days: z.number().int().min(7).max(365).optional().describe("Zeitraum des Feeds in Tagen, Standard 30") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await recordsView(env.DB, await analysisContext(env.DB, { days: 14 }), d ?? 30)),
   );
 
   registerStrengthTools(server, env);
