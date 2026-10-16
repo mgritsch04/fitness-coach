@@ -1,5 +1,6 @@
 // Wahoo-Anbindung (offizielle Cloud API, OAuth 2.0). Nur hier steht Wahoo-spezifischer Code.
 // Doku: https://cloud-api.wahooligan.com/ (Authentication, Workouts, Workout Summary)
+import type { WahooWorkoutRaw } from "./map";
 
 export const WAHOO_AUTH_URL = "https://api.wahooligan.com/oauth/authorize";
 export const WAHOO_TOKEN_URL = "https://api.wahooligan.com/oauth/token";
@@ -111,32 +112,6 @@ export interface WahooUser {
 
 export const getUser = (token: string, f?: Fetch) => wahooGet<WahooUser>(token, "/v1/user", f);
 
-/** Rohform laut Wahoo-Doku. Zahlen kommen teils als Strings, Felder können fehlen. */
-export interface WahooWorkoutRaw {
-  id: number;
-  starts: string;
-  minutes?: number | string | null;
-  name?: string | null;
-  workout_type_id?: number | null;
-  created_at?: string;
-  updated_at?: string;
-  workout_summary?: {
-    ascent_accum?: number | string | null;
-    cadence_avg?: number | string | null;
-    calories_accum?: number | string | null;
-    distance_accum?: number | string | null;
-    duration_active_accum?: number | string | null;
-    duration_total_accum?: number | string | null;
-    heart_rate_avg?: number | string | null;
-    power_avg?: number | string | null;
-    power_bike_np_last?: number | string | null;
-    power_bike_tss_last?: number | string | null;
-    speed_avg?: number | string | null;
-    work_accum?: number | string | null;
-    file?: { url?: string | null } | null;
-  } | null;
-}
-
 export interface WahooWorkoutPage {
   workouts: WahooWorkoutRaw[];
   total?: number;
@@ -146,70 +121,4 @@ export interface WahooWorkoutPage {
 
 export function listWorkouts(token: string, page = 1, perPage = 10, f?: Fetch) {
   return wahooGet<WahooWorkoutPage>(token, `/v1/workouts?page=${page}&per_page=${perPage}`, f);
-}
-
-/** Wahoo-Workout-Typen (Auszug, aus der Doku-Liste übernommen, nicht vollständig geprüft); Rest wird „other“. */
-const WORKOUT_TYPES: Record<number, string> = {
-  0: "cycling", 11: "cycling", 12: "cycling", 13: "cycling", 14: "cycling", 15: "cycling", 16: "cycling", 21: "cycling",
-  1: "running", 3: "running", 4: "running", 5: "running",
-  6: "walking", 7: "walking", 8: "walking", 9: "hiking",
-  22: "rowing",
-  25: "swimming", 26: "swimming",
-};
-
-/**
- * Workout in einer anbieterneutralen Form (vorläufig, bis das gemeinsame Datenmodell in D1 steht).
- * Einheiten: Sekunden, Meter, kcal, Watt, Schläge/min, m/s.
- */
-export interface WahooWorkout {
-  source: "wahoo";
-  sourceId: string;
-  startedAt: string;
-  sport: string;
-  /** Wahoo-Typnummer, falls `sport` „other“ ist oder die Zuordnung nicht passt. */
-  sourceType: number | null;
-  name: string | null;
-  durationSec: number | null;
-  movingSec: number | null;
-  distanceM: number | null;
-  ascentM: number | null;
-  calories: number | null;
-  avgHeartRate: number | null;
-  avgPowerW: number | null;
-  normalizedPowerW: number | null;
-  tss: number | null;
-  avgSpeedMps: number | null;
-  avgCadence: number | null;
-  hasFitFile: boolean;
-}
-
-const num = (v: unknown): number | null => {
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-};
-
-export function toWorkout(w: WahooWorkoutRaw): WahooWorkout {
-  const s = w.workout_summary ?? {};
-  const minutes = num(w.minutes);
-  return {
-    source: "wahoo",
-    sourceId: String(w.id),
-    startedAt: w.starts,
-    sport: (w.workout_type_id != null && WORKOUT_TYPES[w.workout_type_id]) || "other",
-    sourceType: w.workout_type_id ?? null,
-    name: w.name ?? null,
-    durationSec: num(s.duration_total_accum) ?? (minutes != null ? minutes * 60 : null),
-    movingSec: num(s.duration_active_accum),
-    distanceM: num(s.distance_accum),
-    ascentM: num(s.ascent_accum),
-    calories: num(s.calories_accum),
-    avgHeartRate: num(s.heart_rate_avg),
-    avgPowerW: num(s.power_avg),
-    normalizedPowerW: num(s.power_bike_np_last),
-    tss: num(s.power_bike_tss_last),
-    avgSpeedMps: num(s.speed_avg),
-    avgCadence: num(s.cadence_avg),
-    hasFitFile: Boolean(s.file?.url),
-  };
 }

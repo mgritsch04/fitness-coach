@@ -1,4 +1,5 @@
 import { authorizeUrl, exchangeCode, getUser, WahooAuthError, type WahooCredentials } from "./providers/wahoo/client";
+import { syncWahoo } from "./providers/wahoo/sync";
 import { consumeWahooLinkState, createWahooLinkState, d1WahooTokenStore } from "./store";
 import { escape, html } from "./html";
 import type { Env } from "./env";
@@ -22,7 +23,7 @@ export async function wahooConnectLink(env: Env, origin: string, ownerId: string
 const page = (title: string, text: string, status = 200) =>
   html(`${title} – Fitness Coach`, `<h1>${escape(title)}</h1><p>${escape(text)}</p>`, undefined, status);
 
-export async function handleWahooCallback(req: Request, env: Env): Promise<Response> {
+export async function handleWahooCallback(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(req.url);
   const state = url.searchParams.get("state");
   const code = url.searchParams.get("code");
@@ -34,7 +35,10 @@ export async function handleWahooCallback(req: Request, env: Env): Promise<Respo
   try {
     const tokens = await exchangeCode(creds, code, wahooCallbackUrl(url.origin));
     const user = await getUser(tokens.accessToken);
-    await d1WahooTokenStore(env.DB).connect(ownerId, String(user.id), tokens);
+    const store = d1WahooTokenStore(env.DB);
+    await store.connect(ownerId, String(user.id), tokens);
+    // Erstabgleich im Hintergrund, damit die letzten 30 Tage gleich da sind.
+    ctx.waitUntil(syncWahoo(env.DB, creds, store, ownerId).catch(() => undefined));
     return page("Wahoo verbunden", "Fertig. Du kannst dieses Fenster schließen und zu Claude zurückgehen.");
   } catch (err) {
     if (err instanceof WahooAuthError) return page("Anmeldung fehlgeschlagen", err.message, 400);

@@ -1,11 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { validAccessToken, whoopGet, WhoopAuthError } from "./providers/whoop/client";
-import { listWorkouts, toWorkout, validAccessToken as validWahooToken, WahooAuthError } from "./providers/wahoo/client";
+import { syncAll } from "./sync";
 import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
 import { wahooConnectLink, wahooCredentials } from "./wahoo";
 import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./core/repository";
-import { syncWhoop } from "./providers/whoop/sync";
 import type { AuthProps, Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -93,17 +92,13 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
   server.registerTool(
     "sync_now",
     {
-      description: "WHOOP jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten 30 Tage neu.",
+      description:
+        "WHOOP und Wahoo jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten 30 Tage neu. Ergebnis je Quelle; Wahoo wird übersprungen, solange es nicht verbunden ist.",
       inputSchema: { full: z.boolean().optional() },
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
     async ({ full }) => {
-      try {
-        return json(await syncWhoop(env.DB, creds, store, props.whoopUserId, { full }));
-      } catch (err) {
-        if (err instanceof WhoopAuthError) return { ...json({ error: "whoop_not_connected", message: err.message }), isError: true };
-        throw err;
-      }
+      return json(await syncAll(env, props.whoopUserId, { full }));
     },
   );
 
@@ -162,29 +157,8 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         configured: Boolean(wahooCredentials(env)),
         connected: Boolean(tokens),
         tokenExpiresAt: tokens ? new Date(tokens.expiresAt).toISOString() : null,
+        sync: await getSyncState(env.DB, "wahoo"),
       });
-    },
-  );
-
-  server.registerTool(
-    "wahoo_workouts",
-    {
-      description:
-        "Letzte Wahoo-Workouts mit Zusammenfassung (Dauer, Distanz, Puls, Leistung, TSS), neueste zuerst. Direkt von Wahoo gelesen, noch ohne Speicherung. Einheiten: Sekunden, Meter, Watt, m/s.",
-      inputSchema: { limit: z.number().int().min(1).max(30).optional(), page: z.number().int().min(1).optional() },
-      annotations: { readOnlyHint: true },
-    },
-    async ({ limit, page }) => {
-      const wahooCreds = wahooCredentials(env);
-      if (!wahooCreds) return wahooNotConfigured();
-      try {
-        const token = await validWahooToken(wahooCreds, wahooStore, props.whoopUserId);
-        const result = await listWorkouts(token, page ?? 1, limit ?? 10);
-        return json({ total: result.total ?? null, page: result.page ?? page ?? 1, workouts: result.workouts.map(toWorkout) });
-      } catch (err) {
-        if (err instanceof WahooAuthError) return { ...json({ error: "wahoo_not_connected", message: err.message }), isError: true };
-        throw err;
-      }
     },
   );
 

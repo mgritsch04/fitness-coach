@@ -6,8 +6,7 @@ import { html, markdownToHtml } from "./html";
 import { createServer } from "./mcp";
 import { handleWahooCallback } from "./wahoo";
 import type { AuthProps, Env } from "./env";
-import { syncWhoop } from "./providers/whoop/sync";
-import { d1WhoopTokenStore } from "./store";
+import { syncAll } from "./sync";
 
 const WORKER_URL = "https://fitness-coach.fitness-coach-worker.workers.dev";
 
@@ -22,11 +21,11 @@ const mcpApi: ExportedHandler<Env> = {
 };
 
 const site: ExportedHandler<Env> = {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
     if (pathname === "/authorize") return handleAuthorize(request, env);
     if (pathname === "/auth/whoop/callback") return handleWhoopCallback(request, env);
-    if (pathname === "/auth/wahoo/callback") return handleWahooCallback(request, env);
+    if (pathname === "/auth/wahoo/callback") return handleWahooCallback(request, env, ctx);
     if (pathname === "/privacy") return html("Privacy Policy – Fitness Coach", markdownToHtml(privacyMarkdown));
     if (pathname === "/") return html("Fitness Coach", '<h1>Fitness Coach</h1><p>Private application. <a href="/privacy">Privacy Policy</a></p>');
     return new Response("Not found", { status: 404 });
@@ -52,7 +51,8 @@ export default {
   async scheduled(_event, env) {
     const owner = await env.DB.prepare("SELECT whoop_user_id FROM app_owner WHERE id = 1").first<{ whoop_user_id: string }>();
     if (!owner) return;
-    const creds = { clientId: env.WHOOP_CLIENT_ID, clientSecret: env.WHOOP_CLIENT_SECRET };
-    await syncWhoop(env.DB, creds, d1WhoopTokenStore(env.DB), owner.whoop_user_id);
+    const { whoop, wahoo } = await syncAll(env, owner.whoop_user_id);
+    if (!whoop.ok) throw new Error(`WHOOP-Abgleich: ${whoop.message}`);
+    if (!wahoo.ok && wahoo.message !== "übersprungen") throw new Error(`Wahoo-Abgleich: ${wahoo.message}`);
   },
 } satisfies ExportedHandler<Env>;
