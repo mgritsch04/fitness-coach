@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+# lokale Gesundheitsdaten und Exporte
+data/
+*.sqlite
+*.sqlite3
+*.db
+imports/
+*.fit
+*.gpx
+*.tcx
+!test/fixtures/**/*.fit
+playwright-report/
+test-results/
+.DS_Store

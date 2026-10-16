@@ -1,0 +1,75 @@
+# Entwicklungs-Workflow
+
+_Stand 2026-10-16 · übernommen und angepasst aus `mgritsch04/wohnungsplaner-3d`._
+
+## Repository
+- GitHub: `mgritsch04/fitness-coach` (privat), Standard-Branch `main`.
+- CI: kommt mit dem ersten Code (`.github/workflows/ci.yml`: Lint, Typprüfung, Unit-Tests, Build; später E2E). Läuft auf Pushes nach `main` und auf Pull Requests.
+
+## Branches und Commits
+- Claude arbeitet auf Branches `claude/<thema>-<issue>`; Integration nach `main` per **Pull Request mit Merge-Commit**, sobald lokal alle Checks grün sind **und** die CI des PR grün ist.
+- Mehrere Branches parallel sind erlaubt (z. B. ein Agent je Anbieter), jeder über einen eigenen PR.
+- Commits klein und thematisch: `feat:`, `fix:`, `test:`, `perf:`, `docs:`, `ci:`. Nach jedem Commit pushen und prüfen.
+
+## Verboten
+Force-Push, History-Rewrite, Löschen ungemergter Branches, direkter Push auf `main`, Umgehen von Checks, Ändern von Sicherheitseinstellungen, Committen von Secrets, Tokens, echten Gesundheitsdaten oder Build-Artefakten.
+
+## Ideen, Aufgaben und Abnahme über GitHub-Issues
+
+**Rollen**
+- **Du (Nutzer):** Ideen erfassen (im Projekt-Chat oder als Issue), User-Tests durchführen und im Issue mit `BESTANDEN` bzw. `FEHLGESCHLAGEN: …` antworten, `user-task`-Aufgaben erledigen, Entscheidungen treffen.
+- **Ideen-Erfassung** (Projekt-Chat, Handy oder eigene Session): legt nur Issues mit Label `idea-inbox` an oder ergänzt offene per Kommentar. Ändert keine Dateien. Anleitung: [`IDEA_CAPTURE.md`](IDEA_CAPTURE.md).
+- **Umsetzende Session (Thread im Projekt „Fitness“ bzw. Routine):** übernimmt Ideen nach [`IDEAS.md`](IDEAS.md), setzt um, testet, legt User-Test-Issues an, integriert. Nur die integrierende Session pflegt `IDEAS.md` und `PROJECT_STATUS.md`.
+
+**Labels (Status; je Issue genau eines)**
+| Label | Bedeutung |
+|---|---|
+| `idea-inbox` | neue Idee, noch nicht übernommen |
+| `planned` | geprüft und in `docs/IDEAS.md` aufgenommen |
+| `in-progress` | wird umgesetzt |
+| `user-test` | `[USERTEST]`-Issue: manuelle Prüfung durch dich offen |
+| `needs-fix` | dein User-Test ist fehlgeschlagen (Issue bleibt offen) |
+| `done` | vollständig abgeschlossen (bei User-Tests: von dir bestanden) |
+| `user-task` | `[AUFGABE]`-Issue: Claude braucht etwas von dir (Entwickler-App, Freigabe, Entscheidung, Datei) |
+
+Zusatzlabels: `priority: high` (Blocker/dringend, vor neuen Ideen), `info` (erledigt, enthält aber eine wichtige Info für dich – du schließt es), `blocked`, sowie Bereichslabels `area: whoop`, `area: wahoo`, `area: mywhoosh`, `area: dashboard`, `area: coach`. Anlegen: [`../scripts/setup-labels.sh`](../scripts/setup-labels.sh).
+
+**Prioritäten**
+1. Ein ausdrücklicher Auftrag von dir geht immer vor.
+2. Fehlgeschlagene User-Tests (`needs-fix`) – vorher prüfen, ob der getestete Stand schon in `main` war.
+3. Issues mit `priority: high`.
+4. Deine Kommentare in offenen Issues (Antworten auf `user-task`, Rückfragen).
+5. Neue `idea-inbox`-Issues übernehmen, dann die oberste `Ready`-Zeile in `IDEAS.md`.
+
+**Ablauf je Durchlauf (ohne konkreten Auftrag)**
+1. `git status`/`git fetch`; fremde uncommittete Änderungen nie überschreiben. Offene PRs von `claude/…`-Branches: CI grün und konfliktfrei → mit Merge-Commit integrieren; rot → zuerst beheben.
+2. `user-test`-Issues: `BESTANDEN` → in `PROJECT_STATUS.md` vermerken, Label `done`, schließen. `FEHLGESCHLAGEN` → `needs-fix`, beheben, erneut um Test bitten. Nie einen fehlgeschlagenen Test als bestanden markieren.
+3. `user-task`-Issues auf Antworten prüfen und umsetzen (z. B. „App angelegt, Secrets in .env“ → Anbindung von `Blocked` nach `Ready`); erledigte schließen.
+4. Neue `idea-inbox`-Issues: Duplikate prüfen → Zeile in `IDEAS.md` (mit `#Nummer`, Priorität, Nutzen, Abhängigkeiten, Abnahme) → Label `planned`. Ungeeignet/schon da → im Issue begründen und schließen.
+5. Oberste unblockierte `Ready`-Aufgabe (höchstens 1–2 gleichzeitig), Label `in-progress`, umsetzen, Checks, PR, nach grüner CI mergen.
+6. Manuelle Abnahme sinnvoll → `[USERTEST]`-Issue (Anleitung für Nicht-Entwickler, erwartetes Ergebnis, Bezug). Implementierungs-Issue danach `done` und schließen.
+7. Etwas von dir nötig → `[AUFGABE]`-Issue mit `user-task` (Blocker zusätzlich `priority: high`), in `IDEAS.md` verlinken.
+8. `IDEAS.md`, `PROJECT_STATUS.md` und das Entwicklungs-Dashboard ([`DASHBOARD.md`](DASHBOARD.md)) aktualisieren.
+
+**Issue-Pflege:** Issue-Check zu Sitzungsbeginn und nach jeder abgeschlossenen Aufgabe. Dafür darf ein Hilfsagent mit kleinem Modell (Haiku) eine **Arbeitsliste** vorbereiten (Reihenfolge nach Prioritäten, empfohlene Aktion, Entwurf der `IDEAS.md`-Zeile). Er ändert keine Dateien, kein Git, schließt keine Issues und fasst `user-test`/`user-task`-Entscheidungen nicht an.
+
+**Statusbegriffe:** implementiert · automatisiert getestet · User-Test offen (#) · vom Nutzer bestätigt (Datum) · fehlgeschlagen (#) · blockiert. „Done“ heißt nicht automatisch „von dir bestätigt“.
+
+## Modellwahl
+Kleinstes Modell, das die Aufgabe sicher schafft (Kontingent schonen).
+
+| Aufgabentyp | Modell |
+|---|---|
+| Doku-Pflege, Issue-Housekeeping, Labels, Dashboard-Updater | Haiku |
+| normale Feature-Arbeit (UI, Anbieter-Client, Import), Tests, Fehlersuche | Sonnet |
+| Datenmodell/Migrationen, Trainingslast- und Coach-Logik, Duplikat-Abgleich, schwierige Fehlersuche, weitreichende Entscheidungen | Opus |
+
+- Eine Session kann ihr eigenes Modell nicht wechseln; sie delegiert Teilaufgaben an Hilfsagenten mit kleinerem Modell und prüft deren Ergebnis.
+- **Paralleler Coding-Agent:** für klar abgegrenzte Aufgaben (z. B. ein Anbieter) in eigenem Worktree/Branch `claude/…`; ändert `IDEAS.md`/`PROJECT_STATUS.md` nicht, öffnet keinen PR – das macht die integrierende Session.
+- **Kontingent:** nur das deines Plans. Claude kauft nichts, aktiviert keine „usage credits“ und ändert keine Abrechnung. Ist das Limit erreicht, stoppt die Sitzung; fortgesetzt wird durch deine Nachricht oder den nächsten Routine-Lauf.
+
+## Geplante Durchläufe (Routine)
+Optional, nur auf deinen Wunsch: Claude-Code-Routine mit diesem Repository, höchstens eine Aufgabe pro Lauf. Prompt und Einrichtung: [`ROUTINE_PROMPT.md`](ROUTINE_PROMPT.md). Läufe zählen gegen dein Kontingent; abgelehnte Läufe werden nicht nachgeholt. Verwalten: https://claude.ai/code/routines
+
+## Sitzungsübergreifend
+Zu Beginn: `docs/PROJECT_STATUS.md`, `git status`, `git log`. Auftrag: `docs/MASTER_PROMPT.md`; Konventionen: `CLAUDE.md`.
