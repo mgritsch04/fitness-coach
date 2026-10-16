@@ -19,6 +19,7 @@ const payloads = {
   get_training_load: () => window.__MOCK__.get_training_load,
   get_health_trends: () => window.__MOCK__.get_health_trends,
   get_strain_recovery: () => window.__MOCK__.get_strain_recovery,
+  get_recovery_factors: () => window.__MOCK__.get_recovery_factors,
   get_period_summaries: (i) => window.__MOCK__.get_period_summaries[i.period ?? "month"],
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
