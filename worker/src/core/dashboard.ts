@@ -15,6 +15,7 @@ import {
   type WorkoutRow,
 } from "./analysis";
 import { coachAdvice } from "./coach";
+import { trainingOverview } from "./training";
 import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -63,7 +64,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
 
-  return {
+  const result = {
     generatedAt: new Date(opts.now ?? Date.now()).toISOString(),
     today,
     range: { from: viewFrom, to: today, days },
@@ -99,4 +100,6 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     ].filter(Boolean),
     sync: { whoop: whoopSync, wahoo: wahooSync },
   };
+  // Coach-Gedächtnis: Ziele, Wochenplan mit Soll/Ist, Abgleich heutige Einheit ↔ Tagesform.
+  return { ...result, training: await trainingOverview(db, result) };
 }

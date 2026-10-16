@@ -8,6 +8,7 @@ import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } fro
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
 import type { AuthProps, Env } from "./env";
+import { registerCoachTools } from "./coach-tools";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
 
@@ -210,6 +211,8 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       });
     },
   );
+
+  registerCoachTools(server, env);
 
   return server;
 }
