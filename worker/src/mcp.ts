@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -496,6 +496,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await intervalQualityView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_cadence_profile",
+    {
+      description:
+        "Trittfrequenz-Profil aus FIT-Sekundenwerten: Zeit je Kadenzbereich, Median-Kadenz je Leistungszone (nach FTP), " +
+        "Verlauf der Kadenz in Zone 2 je Woche und Hinweise. Trainingshinweise, keine Diagnose.",
+      inputSchema: { days: z.number().int().min(14).max(365).optional().describe("Zeitraum in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await cadenceView(env.DB, d ?? 90)),
   );
 
   server.registerTool(

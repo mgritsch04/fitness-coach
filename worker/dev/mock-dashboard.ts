@@ -20,6 +20,7 @@ import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body"
 import { durabilityReport } from "../src/core/durability";
 import { aerobicReport } from "../src/core/aerobic";
 import { intervalReport } from "../src/core/intervals";
+import { cadenceReport } from "../src/core/cadence";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -128,6 +129,16 @@ process.stdout.write(JSON.stringify({
     }
     for (let t = 0; t < 600; t++) { power.push(150); heartRate.push(122); }
     return { day: addDays("2026-03-31", -5 * (7 - k) - 1), source: "mywhoosh", sourceId: `i${k}`, power, heartRate, cadence: null };
+  }), 285, "2026-03-31", 90),
+  // Synthetische Fahrten: Grundlage mit langsam steigender Kadenz, dazu harte Blöcke mit höherer Kadenz.
+  get_cadence_profile: cadenceReport(Array.from({ length: 10 }, (_, k) => {
+    const n = 75 * 60, power: number[] = [], cadence: number[] = [];
+    for (let t = 0; t < n; t++) {
+      const hard = t % 900 >= 720, z = Math.sin(t / 7) * 4;
+      power.push(hard ? 300 : t % 900 >= 600 ? 240 : 185);
+      cadence.push(t % 600 === 0 ? 0 : Math.round((hard ? 94 : t % 900 >= 600 ? 82 : 78 + k * 0.6) + z));
+    }
+    return { day: addDays("2026-03-31", -7 * (9 - k) - 1), source: "mywhoosh", sourceId: `c${k}`, power, heartRate: null, cadence };
   }), 285, "2026-03-31", 90),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
