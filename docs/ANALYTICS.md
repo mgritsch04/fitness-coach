@@ -189,3 +189,12 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `table[]`: je Dauer und Arbeitsschwelle die beste Leistung über alle Fahrten, die Anzahl der Fahrten mit genug Arbeit und der Anteil an der frischen Leistung.
 - `verdict`: Einordnung über 5 min nach 1000 kJ (ersatzweise 500 kJ): ab 95 % sehr ermüdungsresistent, ab 88 % solide, darunter ausbaufähig.
 - Dashboard: `sections/durability.js`, Reiter Training. Schätzung, nur aussagekräftig mit harten Phasen spät in langen Fahrten.
+
+## Aerobe Basis (`get_aerobic_decoupling`, #145)
+
+`core/aerobic.ts` nutzt Fahrten mit Leistung und Puls je Sekunde (FIT-Upload, höchstens 120 im Zeitraum). Je Fahrt ab 50 min werden die ersten 10 min als Aufwärmen verworfen. Gleichmäßig ist eine Fahrt mit Variabilitätsindex (NP / Ø-Leistung) bis 1,10; Intervalltrainings zählen nicht. Für sie wird die Pa:HR-Entkopplung berechnet (Leistung je Herzschlag, zweite gegen erste Hälfte, wie im Workout-Detail).
+
+- `rides[]`: Tag, Dauer, Ø-Leistung, Variabilitätsindex, Entkopplung und Einordnung (`good` unter 5 %, `ok` bis 8 %, sonst `high`).
+- `current`: Median der letzten 4 Fahrten und der 4 davor; `trend` ab 1 Prozentpunkt Unterschied besser oder schlechter.
+- `longestGood`: längste Fahrt mit unter 5 %; `skipped`: zu kurze bzw. ungleichmäßige Fahrten.
+- Dashboard: `sections/aerobic.js`, Reiter Training. Schätzung; Hitze auf der Rolle und wenig Trinken erhöhen die Entkopplung.

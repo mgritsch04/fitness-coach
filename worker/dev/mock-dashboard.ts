@@ -18,6 +18,7 @@ import { buildBikeWorkout, toZwo, zwoFileName } from "../src/core/bike-workout";
 import { bestWindow, parseForecast, rideAdvice } from "../src/core/weather";
 import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 import { durabilityReport } from "../src/core/durability";
+import { aerobicReport } from "../src/core/aerobic";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -105,6 +106,15 @@ process.stdout.write(JSON.stringify({
       return Math.round(175 * hard * fade);
     }),
   })), "2026-03-31", 90),
+  // Synthetische Sekundenreihen: zehn ruhige Fahrten (75–150 min), der Puls driftet mit der Zeit immer weniger.
+  get_aerobic_decoupling: aerobicReport(Array.from({ length: 10 }, (_, k) => {
+    const len = (75 + (k % 4) * 25) * 60, drift = 0.22 - k * 0.019;
+    return {
+      day: addDays("2026-03-31", -6 * (9 - k) - 1), source: "mywhoosh", sourceId: `a${k}`,
+      power: Array.from({ length: len }, (_, t) => 165 + ((t * 7) % 23)),
+      heartRate: Array.from({ length: len }, (_, t) => Math.round(128 * (1 + drift * (t / len)))),
+    };
+  }), "2026-03-31", 120),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];

@@ -38,6 +38,7 @@ import { interferenceReport } from "./interference";
 import { hrvTrend } from "./hrv-trend";
 import { timingReport } from "./timing";
 import { durabilityReport, readRideStreams } from "./durability";
+import { aerobicReport, readHrRideStreams } from "./aerobic";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -278,4 +279,11 @@ export async function durabilityView(db: D1Database, days: number, now?: number)
   const settings = await readSettings(db);
   const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
   return durabilityReport(await readRideStreams(db, addDays(today, -(days - 1))), today, days);
+}
+
+/** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
+export async function aerobicView(db: D1Database, days: number, now?: number) {
+  const settings = await readSettings(db);
+  const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
+  return aerobicReport(await readHrRideStreams(db, addDays(today, -(days - 1))), today, days);
 }
