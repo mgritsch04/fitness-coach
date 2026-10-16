@@ -147,8 +147,17 @@ export async function readWorkouts(db: D1Database, fromDay: string) {
   return results;
 }
 
+/** Größe und Maximalpuls vom Anbieter, Gewicht vom neuesten Eintrag (eigener Eintrag vor WHOOP am selben Tag, #30). */
 export async function readLatestBody(db: D1Database) {
-  return db.prepare("SELECT source, measured_at, height_m, weight_kg, max_hr FROM body_measurements ORDER BY measured_at DESC LIMIT 1").first();
+  return db
+    .prepare(
+      `SELECT b.source, b.measured_at, b.height_m, b.max_hr,
+         COALESCE((SELECT weight_kg FROM body_measurements WHERE weight_kg IS NOT NULL
+                   ORDER BY substr(measured_at, 1, 10) DESC, source = 'manual' DESC, measured_at DESC LIMIT 1), b.weight_kg) AS weight_kg
+       FROM (SELECT 1) LEFT JOIN (SELECT * FROM body_measurements WHERE source <> 'manual' ORDER BY measured_at DESC LIMIT 1) b
+       WHERE b.source IS NOT NULL OR EXISTS (SELECT 1 FROM body_measurements)`,
+    )
+    .first();
 }
 
 /** Bestleistungskurven aller Workouts mit Leistungsdaten ab `fromDay`, neueste zuerst. */

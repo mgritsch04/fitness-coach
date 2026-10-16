@@ -81,6 +81,14 @@ Messwerte von heute (oder gestern, falls heute noch keine da sind; fehlt heute n
 - `sleepNeedH`, `tips[]` (deutsche Sätze zu Schlafschuld, Regelmäßigkeit, Wochenende, Schlafenszeit).
 - Artefakt-Abschnitt: `artifact/sections/sleep.js` (Reiter verlauf, order 32), lädt mit dem Zeitraum-Umschalter neu.
 
+## Körperwerte und Export (#30, `core/body.ts`, `body-tools.ts`)
+
+- `get_body_history {days?=180}` → `{today, range, points[{day, weightKg, source, avg7dKg}], summary{latest, heightM, bmi, minKg, maxKg, change7dKg, change30dKg, change90dKg, trendKgPerWeek, manualEntries}, wattsPerKg{value, ftpW, ftpOrigin}, goal{title, targetValue, targetDate, remainingKg, neededKgPerWeek, onTrack} | null, notes[]}`. Ein Wert je Tag; eigener Eintrag (`source: "manual"`) hat Vorrang vor WHOOP. Trend = Ausgleichsgerade der letzten 28 Tage (mind. 4 Werte über 14 Tage). Ziel = aktives Ziel mit `metric: "weightKg"`.
+- `log_weight {weightKg, day?}` speichert einen eigenen Eintrag (kein Datum in der Zukunft) und liefert den Bericht über 90 Tage zurück. `delete_weight {day}` löscht nur eigene Einträge.
+- `readLatestBody` (Dashboard, Einstellungen) nimmt Größe und Maximalpuls weiter vom Anbieter, das Gewicht vom neuesten Eintrag.
+- `export_csv {dataset: daily|sleeps|workouts|body, days?=365, excel?}` → `{fileName, mimeType, rows, columns, csv}`. `excel: true` = Semikolon und Dezimalkomma. Texte, die mit `= + - @` beginnen, bekommen ein `'` vorangestellt (keine Formeln in Excel).
+- Abschnitte: `artifact/sections/body.js` (Tab verlauf, order 38, Werkzeuge get_body_history und log_weight) und `artifact/sections/export.js` (Tab mehr, order 85, Werkzeug export_csv, Capability `downloads: true`).
+
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.
 
