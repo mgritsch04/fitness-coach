@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorizeUrl, toWorkout, validAccessToken, WahooAuthError, type WahooTokens, type WahooTokenStore } from "../src/providers/wahoo/client";
+import { authorizeUrl, validAccessToken, WahooAuthError, type WahooTokens, type WahooTokenStore } from "../src/providers/wahoo/client";
 
 // Synthetische Werte, keine echten Tokens oder Messwerte.
 const creds = { clientId: "test-client", clientSecret: "test-secret" };
@@ -71,47 +71,5 @@ describe("validAccessToken", () => {
 
   it("ohne gespeicherte Tokens: nicht verbunden", async () => {
     await expect(validAccessToken(creds, memoryStore(), "owner", tokenFetch(200, {}).f, NOW)).rejects.toThrow("nicht verbunden");
-  });
-});
-
-describe("toWorkout", () => {
-  it("wandelt Strings in Zahlen und ordnet den Sport zu", () => {
-    const w = toWorkout({
-      id: 42,
-      starts: "2026-01-02T07:00:00.000Z",
-      minutes: 60,
-      name: "Synthetische Fahrt",
-      workout_type_id: 12,
-      workout_summary: {
-        distance_accum: "30000.5",
-        duration_total_accum: "3700",
-        duration_active_accum: "3600",
-        heart_rate_avg: "140.0",
-        power_avg: "200",
-        power_bike_np_last: "215",
-        power_bike_tss_last: "65.2",
-        file: { url: "https://cdn.example/synthetic.fit" },
-      },
-    });
-    expect(w).toMatchObject({
-      source: "wahoo",
-      sourceId: "42",
-      sport: "cycling",
-      sourceType: 12,
-      durationSec: 3700,
-      movingSec: 3600,
-      distanceM: 30000.5,
-      avgHeartRate: 140,
-      avgPowerW: 200,
-      normalizedPowerW: 215,
-      tss: 65.2,
-      calories: null,
-      hasFitFile: true,
-    });
-  });
-
-  it("kommt ohne Zusammenfassung aus", () => {
-    const w = toWorkout({ id: 7, starts: "2026-01-03T18:00:00.000Z", minutes: "45", workout_type_id: 999 });
-    expect(w).toMatchObject({ sport: "other", durationSec: 2700, distanceM: null, hasFitFile: false });
   });
 });

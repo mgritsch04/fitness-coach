@@ -1,26 +1,7 @@
-import { readFileSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readDaily, readSleeps, runBatched, setSyncState, getSyncState, updateRecovery, upsertDaily, upsertSleep } from "../src/core/repository";
 import { mapCycle, mapRecovery, mapSleep } from "../src/providers/whoop/map";
-
-// Kleiner D1-Ersatz auf node:sqlite, damit die echten SQL-Anweisungen gegen das echte Schema laufen.
-function fakeD1(): D1Database {
-  const sql = new DatabaseSync(":memory:");
-  for (const f of ["0001_init.sql", "0002_wahoo.sql", "0003_datamodel.sql"]) sql.exec(String(readFileSync(fileURLToPath(new URL(`../migrations/${f}`, import.meta.url).href), "utf8")));
-  const prepare = (query: string) => {
-    let args: unknown[] = [];
-    const stmt = {
-      bind: (...a: unknown[]) => ((args = a), stmt),
-      run: async () => (sql.prepare(query).run(...(args as never[])), { success: true }),
-      first: async () => sql.prepare(query).get(...(args as never[])) ?? null,
-      all: async () => ({ results: sql.prepare(query).all(...(args as never[])) }),
-    };
-    return stmt;
-  };
-  return { prepare, batch: async (s: { run: () => Promise<unknown> }[]) => Promise.all(s.map((x) => x.run())) } as unknown as D1Database;
-}
+import { fakeD1 } from "./fake-d1";
 
 describe("Repository", () => {
   it("erneuter Abgleich aktualisiert statt zu verdoppeln, Recovery landet am Tag", async () => {
