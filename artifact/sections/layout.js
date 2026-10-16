@@ -12,7 +12,7 @@ FC.section({
     .lo-row.off span { color: var(--ink-3); text-decoration: line-through; }
     .lo-row button { padding: 4px 10px; min-width: 36px; }`,
   // Namen für Bereiche, die ausgeblendet und darum nicht aufgebaut sind (sonst zählt die Überschrift).
-  NAMES: { warning: "Frühwarnung", briefing: "Morgen-Briefing", today: "Heute", coach: "Coach", recovery: "Erholung und Schlaf", sleep: "Schlaf im Detail",
+  NAMES: { warning: "Frühwarnung", briefing: "Morgen-Briefing", today: "Heute", journal: "Check-in", coach: "Coach", plan: "Wochenplan und Ziele", recovery: "Erholung und Schlaf", sleep: "Schlaf im Detail",
     insights: "Was beeinflusst deine Erholung?", health: "Körpersignale", strain: "Belastung und Erholung", load: "Trainingslast", fit: "Rolle und Leistung",
     hrzones: "Pulszonen", strength: "Krafttraining", weeks: "Wochen", periods: "Monate und Jahre", year: "Jahr im Überblick", workouts: "Workouts",
     settings: "Einstellungen", sources: "Datenquellen" },
