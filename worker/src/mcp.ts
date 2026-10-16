@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -520,6 +520,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await riderProfileView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_muscle_balance",
+    {
+      description:
+        "Muskelbalance im Krafttraining: Arbeitssätze je Muskelgruppe im Wochenmittel gegen einen Zielbereich für Radfahrer mit Krafttraining, " +
+        "Verhältnis Ziehen/Drücken und Beinbeuger/Beinstrecker, vernachlässigte Gruppen mit Übungsvorschlägen. Trainingsempfehlungen, keine Diagnose.",
+      inputSchema: { weeks: z.number().int().min(1).max(12).optional().describe("Zeitraum in Wochen, Standard 4") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ weeks }) => json(await muscleBalanceView(env.DB, weeks ?? 4)),
   );
 
   server.registerTool(

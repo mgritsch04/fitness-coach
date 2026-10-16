@@ -227,3 +227,12 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `focus`: Training für die schwächste Dauer (nur wenn wirklich schwach), sonst Schwellenarbeit.
 - `hints[]`: beste 20 min deutlich über der FTP (FTP vermutlich zu niedrig), geschätzte FTP.
 - Dashboard: `sections/riderprofile.js`, Reiter Training. Schätzung, nur mit echten Maximalbelastungen in jeder Dauer aussagekräftig.
+
+## Muskelbalance (`get_muscle_balance`, #171)
+
+`core/muscle-balance.ts` zählt die Arbeitssätze der gespeicherten Krafteinheiten je Muskelgruppe (wie `muscleVolume`: Hauptmuskel ganz, Hilfsmuskel halb) und teilt durch die Wochenzahl (Standard 4).
+
+- `muscles[]`: Sätze pro Woche, Zielbereich (große Gruppen 6–12, Schultern und Rumpf 4–10, Arme und Waden 2–8, gedacht für zwei Einheiten neben dem Radtraining) und Status `none`/`low`/`ok`/`high`.
+- `ratios`: Ziehen (Rücken, Bizeps) zu Drücken (Brust, Schultern, Trizeps), Ziel ab 0,8; Beinbeuger zu Beinstrecker, Ziel ab 0,6.
+- `hints[]`: gar nicht trainierte und zu schwach trainierte Gruppen mit Übungen aus dem Katalog, unausgewogene Verhältnisse, sehr viel Beinvolumen.
+- Dashboard: `sections/musclebalance.js`, Reiter Training nach dem Krafttraining. Trainingsempfehlungen, keine Diagnose.

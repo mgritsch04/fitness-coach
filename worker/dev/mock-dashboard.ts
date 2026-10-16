@@ -22,6 +22,7 @@ import { aerobicReport } from "../src/core/aerobic";
 import { intervalReport } from "../src/core/intervals";
 import { cadenceReport } from "../src/core/cadence";
 import { riderProfile } from "../src/core/rider-profile";
+import { muscleBalance } from "../src/core/muscle-balance";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -146,6 +147,16 @@ process.stdout.write(JSON.stringify({
     curve: { "5": 980, "60": 640, "300": 355, "1200": 300 }, previousCurve: { "5": 1000, "60": 610, "300": 340, "1200": 292 },
     ftpW: 285, ftpOrigin: "user", weightKg: 76,
   }, "2026-03-31", 90),
+  // Synthetische Krafteinheiten: zweimal pro Woche, viel Drücken und Beinstrecker, wenig Rücken und Beinbeuger.
+  get_muscle_balance: muscleBalance(Array.from({ length: 8 }, (_, k) => {
+    const set = (exercise: string, n: number, reps: number, weightKg: number) => Array.from({ length: n }, () => ({ exercise, exerciseName: exercise, reps, weightKg }));
+    return {
+      id: `m${k}`, day: addDays("2026-03-31", -3.5 * k | 0), startTime: null, durationMin: 50, rpe: 7, name: null, notes: null, linkedSource: null, linkedSourceId: null,
+      sets: k % 2
+        ? [...set("bench_press", 4, 8, 70), ...set("overhead_press", 3, 8, 40), ...set("triceps_extension", 3, 12, 25), ...set("lat_pulldown", 2, 10, 55)]
+        : [...set("back_squat", 4, 6, 90), ...set("leg_extension", 3, 12, 45), ...set("leg_curl", 1, 12, 35), ...set("plank", 2, 1, 0)],
+    };
+  }), "2026-03-31", 4),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];
