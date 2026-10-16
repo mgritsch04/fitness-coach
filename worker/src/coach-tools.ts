@@ -241,7 +241,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         recentDays: dash.days.slice(-n).map((d) => ({
           day: d.day, recovery: d.recovery, hrv: d.hrv, rhr: d.rhr, sleepH: d.sleepH, strain: d.strain, load: d.load, ctl: d.ctl, atl: d.atl, tsb: d.tsb, trainingMin: d.trainingMin,
         })),
-        recentWorkouts: dash.workouts.slice(-20).map((w) => ({ day: w.day, sport: w.sport, durationMin: w.durationMin, load: w.load, avgHr: w.avgHr, avgPowerW: w.avgPowerW, intensity: w.intensity })),
+        recentWorkouts: dash.workouts.slice(0, 20).map((w) => ({ day: w.day, sport: w.sport, durationMin: w.durationMin, load: w.load, rpe: w.rpe, avgHr: w.avgHr, avgPowerW: w.avgPowerW, intensity: w.intensity })),
         weeks: dash.weeks.slice(-4).map((w) => ({ week: w.week, trainingH: w.trainingH, load: w.load, workouts: w.workouts, avgRecovery: w.avgRecovery, avgSleepH: w.avgSleepH, ctlEnd: w.ctlEnd, ctlChange: w.ctlChange, bySport: w.bySport })),
         goals: t.goals,
         prefs: t.prefs,
@@ -252,6 +252,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         },
         nextWeek: t.nextWeek,
         settings: { ftpW: dash.settings.ftpW, maxHr: dash.settings.maxHr, restingHr: dash.settings.restingHr, thresholdHr: dash.settings.thresholdHr, sleepNeedH: dash.settings.sleepNeedH, origin: dash.settings.origin },
+        journal: { today: dash.journal.today, recent: dash.journal.recent.slice(0, 7), tagEffects: dash.journal.tagEffects.slice(0, 5) },
         coachNotes: t.notes.slice(0, 5).map((nn) => ({ kind: nn.kind, day: nn.day, title: nn.title, body: nn.body.slice(0, 600) })),
         dataNotes: dash.notes,
         guidance: [
@@ -259,6 +260,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
           "Nur Trainingsempfehlungen, keine medizinischen Diagnosen. Bei Schmerzen, Krankheitszeichen oder auffälligen Werten zur Pause raten und ärztliche Abklärung empfehlen.",
           "Schätzungen (Belastung, Fitness/Form, FTP aus Puls) als Schätzungen kennzeichnen. Gründe aus den Daten nennen.",
           "Kraft und Rad zusammen denken: keine schweren Beine vor Intervallen oder der langen Fahrt; harte Tage hart, lockere Tage locker.",
+          "Das Tagebuch (Befinden, Muskelkater, Stress, Tags wie krank/Reise/Alkohol) ist so wichtig wie die Messwerte; tagEffects sind Beobachtungen, keine Ursachen.",
           "Planänderungen mit save_plan speichern, dauerhafte Erkenntnisse mit save_coach_note, Ziele mit set_goals.",
         ],
       });
