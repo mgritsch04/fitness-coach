@@ -4,6 +4,7 @@
 import { addDays, daysBetween, weekStart, type DayPoint, type EffectiveSettings, type WeekSummary } from "./analysis";
 import type { CoachAdvice, Readiness } from "./coach";
 import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goals";
+import { projectEvent, type EventProjection } from "./projection";
 import {
   PHASE_LABEL,
   buildWeekPlan,
@@ -159,6 +160,8 @@ export interface TrainingOverview {
   thisWeek: WeekView;
   nextWeek: { week: string; stored: boolean; phase: WeekPlan["phase"]; phaseLabel: string; phaseReason: string };
   today: TodayCheck;
+  /** Formprognose bis zum nächsten Terminziel (null ohne Termin). */
+  projection: EventProjection | null;
   notes: CoachNote[];
   disclaimer: string;
 }
@@ -170,13 +173,35 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
   const nextStored = await readPlan(db, nextWs);
   const next = nextStored ?? proposePlan(inp, nextWs, goals, prefs);
   const planned = thisWeek.plan.days.find((d) => d.day === inp.today) ?? null;
+  const projection = eventProjection(inp, goals, prefs, thisWeek.plan);
   return {
     goals: goalProgress(goals, inp),
     prefs,
     thisWeek,
     nextWeek: { week: nextWs, stored: Boolean(nextStored), phase: next.phase, phaseLabel: PHASE_LABEL[next.phase], phaseReason: next.phaseReason },
     today: todayCheck(planned, inp.coach, thisWeek.plan),
+    projection,
     notes,
     disclaimer: "Trainingsplan und Belastungen sind Schätzungen nach Faustregeln, keine medizinische Beratung. Bei Schmerzen oder Krankheit pausieren.",
   };
+}
+
+/** Prognose ab dem Stand von gestern, mit dem Plan der laufenden Woche. */
+export function eventProjection(inp: TrainingInputs, goals: Goal[], prefs: TrainingPrefs, currentPlan: WeekPlan | null, goalId?: number): EventProjection | null {
+  const y = inp.days.find((d) => d.day === addDays(inp.today, -1));
+  const t = inp.days.find((d) => d.day === inp.today);
+  return projectEvent({
+    today: inp.today,
+    ctl: y?.ctl ?? 0,
+    atl: y?.atl ?? 0,
+    todayLoad: t?.load ?? 0,
+    goals,
+    prefs,
+    weeks: inp.weeks,
+    currentPlan,
+    ftpW: inp.settings.ftpW,
+    thresholdHr: inp.settings.thresholdHr,
+    maxHr: inp.settings.maxHr,
+    goalId,
+  });
 }
