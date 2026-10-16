@@ -66,8 +66,7 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 - Form am Wettkampfmorgen: Wunschbereich A-Ziel +5 … +25, B/C −5 … +20 (Faustregel). `verdict`: `on_track`, `too_tired` (Tapering früher), `too_fresh` (Tapering kürzer), `short` (unter einer Woche).
 - Anzeige: Prognose-Linie (gestrichelt) im Trainingslast-Diagramm an `days` anhängen.
 
-## Frühwarnung (#24, `core/warning.ts`)
-- Je Signal Abweichung vom Mittel der Tage −35 … −8 in Standardabweichungen (ab 1,5) und mit Mindestabstand: Ruhepuls +3, HRV −5 ms, Atemfrequenz +0,7, Hauttemperatur +0,4 °C, SpO2 −1,5 %. Ohne Erholungswerte von heute gilt gestern.
-- Stufen: `watch` (1 Signal, nur Hinweis) · `elevated` (2 → höchstens locker) · `high` (≥ 3 → Ruhe; oder 2 an 2 Tagen in Folge → höchstens locker). Macht die Empfehlung nie härter.
-- `get_dashboard` → `warning: { level, signals: [{ key, label, day, value, baseline, z, delta, unit, text }], streak, headline, text, disclaimer }`; die Empfehlung (`coach`) enthält bei `elevated`/`high` eine Warnung und den Grund `factor: "warning"`. Keine Diagnose.
+## Frühwarnung in der Empfehlung (#24)
+- Die Erkennung selbst liegt in `core/warnings.ts` (Analysen, siehe `docs/ANALYTICS.md`); `get_dashboard` → `earlyWarning`.
+- `core/warning-cap.ts` begrenzt die Tagesempfehlung: `caution` → höchstens locker, `alert` → Ruhe; Grund `factor: "warning"` mit dem Rat aus `earlyWarning.advice`. Macht die Empfehlung nie härter. Keine Diagnose.
 - Reihenfolge in `get_dashboard`: Regeln (`coach.ts`) → Kraft-Hinweise (`strength.ts`) → Frühwarnung → Tagebuch.

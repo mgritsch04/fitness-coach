@@ -254,7 +254,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
       return json({
         today: dash.today,
         readiness: dash.coach,
-        earlyWarning: dash.warning,
+        earlyWarning: dash.earlyWarning,
         planToday: t.today,
         trends: trendBrief,
         recentDays: dash.days.slice(-n).map((d) => ({
