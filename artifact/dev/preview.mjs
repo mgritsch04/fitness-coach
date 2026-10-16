@@ -1,6 +1,6 @@
 // Vorschau des Dashboards mit synthetischen Daten und einem nachgebauten window.claude.
 //   node artifact/dev/preview.mjs [out-dir]   → schreibt preview.html und Screenshots (Playwright/Chromium)
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, cpSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,7 +17,12 @@ const payloads = {
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
   update_settings: (i) => i,
-  import_fit: () => ({ imported: true, duplicate: false, workout: { day: "2026-03-30", sport: "cycling", durationMin: 62, normalizedPowerW: 212 } }),
+  import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.today, startTime: window.__MOCK__.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
+  get_power_curve: () => {
+    const durs = [1, 5, 10, 15, 30, 60, 120, 180, 300, 600, 1200, 1800, 3600, 5400, 7200];
+    const curve = (k) => Object.fromEntries(durs.map((s) => [s, Math.round(k * (230 + 700 * Math.exp(-s / 25) + 120 * Math.exp(-s / 400) - 12 * Math.log10(s)))]));
+    return { best: curve(1), workouts: [{ day: window.__MOCK__.today, source: "mywhoosh", source_id: "a", start_time: "", power_curve: curve(0.94) }, { day: "2025-12-01", source: "mywhoosh", source_id: "b", start_time: "", power_curve: curve(1) }] };
+  },
 };
 const mcp = {
   watchTool(s, t, input, h) { setTimeout(() => h({ type: "data", result: { payload: payloads[t](input) } }), 50); return () => {}; },
@@ -31,22 +36,27 @@ window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample
 </script>`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
 writeFileSync(join(out, "preview.html"), html);
+for (const d of ["app", "sections"]) cpSync(join(here, "..", d), join(out, d), { recursive: true });
 
 const pw = await import("playwright").catch(() => import("/opt/node22/lib/node_modules/playwright/index.js"));
 const chromium = pw.chromium ?? pw.default.chromium;
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
 const errors = [];
-for (const [name, vp, scheme] of [["desktop-light", { width: 1280, height: 900 }, "light"], ["desktop-dark", { width: 1280, height: 900 }, "dark"], ["phone-light", { width: 400, height: 860 }, "light"]]) {
+const shots = [["desktop-light", { width: 1280, height: 900 }, "light"], ["desktop-dark", { width: 1280, height: 900 }, "dark"],
+  ...["heute", "coach", "verlauf", "training", "mehr"].map((t) => [`phone-${t}`, { width: 390, height: 844 }, t === "verlauf" ? "dark" : "light", t])];
+for (const [name, vp, scheme, tab] of shots) {
   const ctx = await browser.newContext({ viewport: vp, colorScheme: scheme });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
   p.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
   await p.goto("file://" + join(out, "preview.html"));
   await p.waitForTimeout(800);
+  if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
+  if (tab === "training") { await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (name === "desktop-light") { await p.click("[data-coach=explain]"); await p.waitForTimeout(300); }
   const sw = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (sw > 0) errors.push(`${name}: horizontal overflow ${sw}px`);
-  await p.screenshot({ path: join(out, `${name}.png`), fullPage: true });
+  await p.screenshot({ path: join(out, `${name}.png`), fullPage: !tab });
   await ctx.close();
 }
 await browser.close();
