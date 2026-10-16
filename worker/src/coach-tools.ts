@@ -306,6 +306,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         },
         nextWeek: t.nextWeek,
         intensityCheck: t.intensity,
+        fuelingToday: t.fueling.days.find((f) => f.day === dash.today) ?? null,
         eventProjection: t.projection
           ? { goal: t.projection.goal.title, date: t.projection.goal.targetDate, daysLeft: t.projection.daysLeft, atEvent: t.projection.atEvent, targetTsb: t.projection.targetTsb, verdict: t.projection.verdict, advice: t.projection.advice, weeks: t.projection.weeks }
           : null,
