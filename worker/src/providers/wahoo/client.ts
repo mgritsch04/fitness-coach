@@ -122,3 +122,15 @@ export interface WahooWorkoutPage {
 export function listWorkouts(token: string, page = 1, perPage = 10, f?: Fetch) {
   return wahooGet<WahooWorkoutPage>(token, `/v1/workouts?page=${page}&per_page=${perPage}`, f);
 }
+
+/**
+ * Zusammenfassung eines einzelnen Workouts. Fehlt sie in der Liste, wird sie hiermit nachgeladen.
+ * Wahoo verweigert manche Zusammenfassungen einzeln (401/403/404): dann null statt Fehler.
+ */
+export async function getWorkoutSummary(token: string, workoutId: number, f: Fetch = fetch): Promise<WahooWorkoutRaw["workout_summary"]> {
+  const res = await f(`${WAHOO_API}/v1/workouts/${workoutId}/workout_summary`, { headers: { authorization: `Bearer ${token}` } });
+  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  if (res.status === 429) throw new Error("Wahoo-Anfragelimit erreicht, später noch einmal versuchen");
+  if (!res.ok) throw new Error(`Wahoo-API workout_summary antwortet ${res.status}`);
+  return (await res.json()) as WahooWorkoutRaw["workout_summary"];
+}
