@@ -78,3 +78,8 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 ## Wochenrückblick (#76, `core/review.ts`)
 - `get_week_review` (Standard: letzte abgeschlossene Woche, höchstens 6 Wochen zurück): Stunden, Belastung, Fitnessänderung, Zeit je Sport, Pulszonen-Anteile, Erholung/HRV/Ruhepuls/Schlaf gegen die Vorwoche, Plan-Soll/Ist, Highlights, Tagebuch und höchstens 3 regelbasierte Punkte für die nächste Woche (`nextWeek`). Dazu `savedReview`, der gespeicherte Text von Claude.
 - Abschnitt `artifact/sections/review.js` (Tab „coach“, order 25): Kennzahlen mit Pfeilen zur Vorwoche. „Rückblick schreiben (Claude)“ schreibt den Text per `sample` und speichert ihn mit `save_coach_note` (kind `weekly_review`, day = Montag).
+
+## Verpflegung je Einheit (`core/fueling.ts`)
+- `training.fueling.days`: für jeden Trainingstag der laufenden Woche Hinweise für vorher, währenddessen und danach, dazu eine Kurzfassung (`short`). Mengen richten sich nach dem Körpergewicht, wenn eines bekannt ist.
+- Faustregeln: unter 60 min locker nur Wasser. Bei harten Einheiten oder ab 60 min 30–60 g Kohlenhydrate pro Stunde, ab 90 min 60–80 g, ab 150 min 70–90 g. Dazu 0,5–0,8 l pro Stunde trinken, auf der Rolle mehr. Nach langen oder harten Einheiten etwa 1 g/kg Kohlenhydrate und 0,3 g/kg Eiweiß, nach Kraft 0,3 g/kg Eiweiß. Keine Ernährungsberatung.
+- Anzeige im Wochenplan (Tagesdetail und Zeile „heute“) und in `get_coach_context` als `fuelingToday`.

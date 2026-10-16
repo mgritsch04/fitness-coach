@@ -86,11 +86,13 @@ FC.section({
     if (!t) return;
     const w = t.thisWeek, cmp = w.comparison;
     $("planPhase").textContent = `${w.phaseLabel}${w.stored ? (w.plan.source === "coach" ? " · von Claude angepasst" : " · gespeichert") : " · Vorschlag"}`;
-    $("planToday").textContent = t.today.text;
+    const fToday = (t.fueling?.days ?? []).find((f) => f.day === d.today);
+    $("planToday").textContent = t.today.text + (fToday && fToday.short !== "nur Wasser" ? ` Verpflegung: ${fToday.short}.` : "");
     $("planSummary").textContent = `${cmp.summary} Geplant: ${de(w.plan.targetHours, 1)} h, ~${de(w.plan.days.reduce((a, x) => a + x.targetLoad, 0))} Belastungspunkte (geschätzt).`;
     if (t.intensity && t.intensity.verdict !== "ok") $("planSummary").textContent += ` ${t.intensity.text}`;
     const MARK = { done: "✓", missed: "✗", partial: "◐", extra: "+", today: "•", upcoming: "", rest: "" };
     const grid = $("wplan"); grid.replaceChildren();
+    const fuel = new Map((t.fueling?.days ?? []).map((f) => [f.day, f]));
     for (const x of cmp.days) {
       const box = el("button", { type: "button", class: `pd${x.type === "rest" ? " rest" : ""}${x.day === d.today ? " today" : ""}`, "aria-label": `${fmtDayLong(x.day)}: ${x.title}` });
       box.style.textAlign = "left"; box.style.font = "inherit"; box.style.color = "inherit"; box.style.background = "transparent"; box.style.cursor = "pointer";
@@ -105,6 +107,7 @@ FC.section({
           el("p", {}, el("strong", { text: `${fmtDayLong(x.day)}: ${x.title}` })),
           x.intensity ? el("p", { text: x.intensity }) : null,
           el("p", { text: x.description }),
+          ...(fuel.get(x.day) ? [el("p", {}, el("strong", { text: "Verpflegung: " }), [fuel.get(x.day).before, fuel.get(x.day).during, fuel.get(x.day).after].filter(Boolean).join(" ")), el("p", { class: "fine", text: t.fueling.note })] : []),
           x.actualMin || x.actualLoad ? el("p", { class: "muted", text: `Tatsächlich: ${x.actualMin} min, Belastung ~${de(x.actualLoad)}${x.actualSports.length ? ` (${x.actualSports.map(FC.sport).join(", ")})` : ""}.` }) : null,
         ].filter(Boolean));
       };

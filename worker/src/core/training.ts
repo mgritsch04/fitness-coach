@@ -4,6 +4,7 @@
 import { addDays, daysBetween, weekStart, type DayPoint, type EffectiveSettings, type WeekSummary } from "./analysis";
 import type { CoachAdvice, Readiness } from "./coach";
 import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goals";
+import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
 import { projectEvent, type EventProjection } from "./projection";
 import {
   PHASE_LABEL,
@@ -165,6 +166,8 @@ export interface TrainingOverview {
   notes: CoachNote[];
   /** Liegen die Ausdauer-Einheiten im geplanten Pulsbereich? (null ohne Pulsdaten) */
   intensity: IntensityCheck | null;
+  /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
+  fueling: { days: Fueling[]; note: string };
   disclaimer: string;
 }
 
@@ -185,6 +188,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     projection,
     notes,
     intensity: intensityCheck(inp),
+    fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null), note: FUELING_NOTE },
     disclaimer: "Trainingsplan und Belastungen sind Schätzungen nach Faustregeln, keine medizinische Beratung. Bei Schmerzen oder Krankheit pausieren.",
   };
 }
