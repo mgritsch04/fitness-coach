@@ -8,7 +8,7 @@ Grundregel: Client-Secrets und Tokens nur serverseitig (`.env` lokal bzw. Umgebu
 
 ## WHOOP – offizielle API (OAuth 2.0)
 - **Nutzer:** App im [WHOOP Developer Dashboard](https://developer.whoop.com/docs/developing/getting-started) anlegen (mit dem eigenen WHOOP-Konto) → liefert Client-ID und Client-Secret.
-- Pflichtangaben: mindestens eine Redirect-URL (Standard hier: `http://localhost:8787/auth/whoop/callback`), mindestens ein Scope.
+- Pflichtangaben: Privacy-Policy-URL (`https://fitness-coach.<subdomain>.workers.dev/privacy`, Text in [`PRIVACY.md`](PRIVACY.md), wird vom Worker ausgeliefert), mindestens eine Redirect-URL (Standard hier: `http://localhost:8787/auth/whoop/callback`), mindestens ein Scope.
 - Scopes: `read:recovery`, `read:cycles`, `read:sleep`, `read:workout`, `read:body_measurement`, `read:profile`, dazu `offline` für Refresh-Tokens.
 - Endpunkte: Auth `https://api.prod.whoop.com/oauth/oauth2/auth`, Token `https://api.prod.whoop.com/oauth/oauth2/token` ([OAuth-Doku](https://developer.whoop.com/docs/developing/oauth)).
 - Entwicklungsmodus reicht für bis zu 10 WHOOP-Mitglieder → für den eigenen Account keine Freigabe nötig. Refresh-Tokens rotieren (immer den neuesten speichern).
