@@ -37,6 +37,7 @@ import { lateTrainingDays, recoveryForecast, type ForecastInput } from "./foreca
 import { interferenceReport } from "./interference";
 import { hrvTrend } from "./hrv-trend";
 import { timingReport } from "./timing";
+import { durabilityReport, readRideStreams } from "./durability";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -270,4 +271,11 @@ export function hrvTrendView(c: AnalysisContext, days: number) {
 /** Beste Trainingszeit (#131): Tageszeit gegen Effizienz, Schlaf der Nacht danach und Erholung. */
 export function trainingTimingView(c: AnalysisContext, days: number) {
   return timingReport(c.series, c.workouts, c.settings.timezone, c.today, days);
+}
+
+/** Ermüdungsresistenz (#139): beste 5/20 min frisch und nach 500/1000/1500 kJ, aus FIT-Sekundenwerten. */
+export async function durabilityView(db: D1Database, days: number, now?: number) {
+  const settings = await readSettings(db);
+  const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
+  return durabilityReport(await readRideStreams(db, addDays(today, -(days - 1))), today, days);
 }

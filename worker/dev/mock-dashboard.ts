@@ -17,6 +17,7 @@ import { weekStart } from "../src/core/analysis";
 import { buildBikeWorkout, toZwo, zwoFileName } from "../src/core/bike-workout";
 import { bestWindow, parseForecast, rideAdvice } from "../src/core/weather";
 import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
+import { durabilityReport } from "../src/core/durability";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -95,6 +96,15 @@ process.stdout.write(JSON.stringify({
   get_strength_cycling_interference: await interferenceView(db, await ctx(180), 180),
   get_hrv_trend: hrvTrendView(await ctx(157), 90),
   get_training_timing: trainingTimingView(await ctx(120), 120),
+  // Synthetische Sekundenreihen (keine Datenbank): 3 h Grundlage mit harten Blöcken früh und spät, Leistung fällt mit der Arbeit leicht ab.
+  get_durability: durabilityReport([0, 1, 2].map((k) => ({
+    day: addDays("2026-03-31", -7 * k - 2), source: "mywhoosh", sourceId: `d${k}`,
+    power: Array.from({ length: 3 * 3600 - k * 1800 }, (_, t) => {
+      const fade = 1 - t / 3600 * (0.025 + k * 0.01);
+      const hard = (t >= 900 && t < 2100) || (t >= 7200 && t < 8400) ? 1.45 : t % 2400 < 300 ? 1.75 : 1;
+      return Math.round(175 * hard * fade);
+    }),
+  })), "2026-03-31", 90),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];
