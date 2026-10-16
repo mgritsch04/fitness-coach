@@ -181,3 +181,11 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `slots[]`: Anzahl Einheiten (nach Startzeit); Effizienz der Radeinheiten nach Startzeit, also (normierte) Leistung je Herzschlag gegenüber dem Mittel ähnlich harter Fahrten (locker bzw. ab IF 0,85). Dazu Schlafdauer (min), Schlafleistung und Erholung der folgenden Nacht bzw. des nächsten Morgens, zugeordnet nach der Endzeit des letzten Trainings am Tag und gegenüber dem Mittel aller Nächte. Verglichen erst ab 3 Fällen.
 - `hints[]`: effizientestes Fenster (ab +1 %), Abend- bzw. Spätfenster mit mindestens 20 min weniger Schlaf oder 5 Punkten weniger Erholung.
 - Dashboard: `sections/timing.js`, Reiter Training. Beobachtungen, keine Ursache-Wirkung.
+
+## Ermüdungsresistenz (`get_durability`, #139)
+
+`core/durability.ts` nutzt die Sekundenwerte der FIT-Dateien (`workout_streams.power`, höchstens 120 Fahrten im Zeitraum). Je Fahrt wird die Sekunde bestimmt, ab der 500, 1000 bzw. 1500 kJ geleistet sind. Danach wird die beste 5- und 20-min-Leistung gesucht, die frühestens dort beginnt. „Frisch“ ist die beste Leistung der ganzen Fahrt.
+
+- `table[]`: je Dauer und Arbeitsschwelle die beste Leistung über alle Fahrten, die Anzahl der Fahrten mit genug Arbeit und der Anteil an der frischen Leistung.
+- `verdict`: Einordnung über 5 min nach 1000 kJ (ersatzweise 500 kJ): ab 95 % sehr ermüdungsresistent, ab 88 % solide, darunter ausbaufähig.
+- Dashboard: `sections/durability.js`, Reiter Training. Schätzung, nur aussagekräftig mit harten Phasen spät in langen Fahrten.
