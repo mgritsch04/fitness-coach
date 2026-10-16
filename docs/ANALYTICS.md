@@ -112,6 +112,18 @@ Messwerte von heute (oder gestern, falls heute noch keine da sind; fehlt heute n
 - `get_ftp_tests` gibt `{today, current{ftpW, origin, estimate}, tests[{day, protocol, label, basisW, ftpW, weightKg, wattsPerKg, changeW, applied}], suggestion{suggest, reason, daysSinceLastTest, tsb, howTo[]}}` zurück. Ein Test wird vorgeschlagen, wenn die Form (TSB) bei mindestens 0 liegt und der letzte Test mindestens 42 Tage her ist. Die Funktion `ftpTestSuggestion` kann auch der Coach nutzen.
 - Abschnitt: `artifact/sections/ftp.js` (Tab training, order 46).
 
+## get_endurance_profile (#92, `core/endurance.ts`)
+
+- Rückgabe: `{today, criticalPower, ftpW, cpVsFtpPct, holdTimes[{watts, seconds|null}], efficiency, notes[]}`.
+- `criticalPower`: `{cpW, wPrimeKj, r2, points[{durationS, watts, day}], confidence: high|medium|low, note}` oder `null`.
+  - Rechnung: 2-Parameter-Modell, Arbeit = CP · t + W′, Regression über die besten 3, 5, 10 und 20 min der letzten 90 Tage (mindestens 3 Dauern).
+  - `high`: 4 Dauern, r² ≥ 0,998 und W′ zwischen 6 und 35 kJ. `medium`: r² ≥ 0,99.
+- `holdTimes`: haltbare Dauer W′/(P − CP) für 90–150 % der CP. `null` bedeutet unter oder an CP.
+- `efficiency`: `{rides[], weekly[{week, rides, ef}], recentEf, previousEf, changePct, verdict}`.
+  - EF = NP / mittlerer Puls lockerer Fahrten (IF < 0,8, ab 30 min).
+  - `changePct` vergleicht die letzten 4 Wochen mit den 8 Wochen davor.
+- Abschnitt: `artifact/sections/endurance.js` (Tab training, order 48).
+
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.
 

@@ -1,7 +1,7 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, enduranceView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { ftpHistory, ftpTestSuggestion, readFtpTests, saveFtpTest } from "../src/core/ftp-test";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
@@ -89,6 +89,7 @@ process.stdout.write(JSON.stringify({
       fileName: zwoFileName(w, "2026-03-31"), zwo: toZwo(w), howTo: [] };
   })(),
   get_records: await recordsView(db, await ctx(14), 30),
+  get_endurance_profile: enduranceView(await ctx(180)),
   get_ftp_tests: await (async () => {
     const c = await ctx(7);
     await saveFtpTest(db, { day: "2026-01-12", source: "mywhoosh", source_id: "t1", protocol: "ramp", basis_w: 310, ftp_w: 233, weight_kg: 77.4, applied: 0 });

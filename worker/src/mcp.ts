@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -397,6 +397,17 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await recordsView(env.DB, await analysisContext(env.DB, { days: 14 }), d ?? 30)),
+  );
+
+  server.registerTool(
+    "get_endurance_profile",
+    {
+      description:
+        "Ausdauer-Profil Rad: Critical Power (CP) und W′ aus den besten 3–20-min-Leistungen der letzten 90 Tage (2-Parameter-Modell), " +
+        "wie lange welche Wattzahl haltbar ist, Vergleich mit der FTP und der Effizienz-Faktor (NP/Puls) lockerer Fahrten im Wochenverlauf. Schätzungen.",
+      annotations: { readOnlyHint: true },
+    },
+    async () => json(enduranceView(await analysisContext(env.DB, { days: 180, maxDays: 365 }))),
   );
 
   registerStrengthTools(server, env);
