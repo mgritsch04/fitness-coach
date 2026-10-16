@@ -94,6 +94,20 @@ for (const [name, vp, scheme, tab] of shots) {
   await p.waitForTimeout(800);
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
+  if (tab === "heute") {
+    // „Heute dran“ (#122): Wochenstreifen da, Knopf startet den Gym-Modus mit der Planeinheit.
+    const n = await p.$$eval("#agBody .ag-day", (d) => d.length);
+    if (n !== 7) errors.push(`${name}: Heute dran zeigt ${n} statt 7 Tage`);
+    await p.screenshot({ path: join(out, "phone-heute.png"), fullPage: false });
+    const gymBtn = await p.$("#agBody .ag-act .primary");
+    if (gymBtn && (await gymBtn.textContent()).includes("Gym")) {
+      await gymBtn.click(); await p.waitForTimeout(400);
+      const on = await p.evaluate(() => document.querySelectorAll("#gyBody .gy-ex").length);
+      if (!on) errors.push(`${name}: Heute dran startet den Gym-Modus nicht`);
+      await p.evaluate(() => localStorage.removeItem("fc-gym"));
+    } else errors.push(`${name}: Heute dran ohne Gym-Knopf am Krafttag`);
+    await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
+  }
   if (tab === "training") {
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     const plan = await p.$eval("#gySrc", (s) => s.value);
