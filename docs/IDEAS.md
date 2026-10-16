@@ -61,6 +61,8 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 46 | Beste Trainingszeit (#131) | Tageszeit des Trainings gegen Schlaf, Erholung und Leistung | Training günstig legen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#135; User-Test #138) |
 | 47 | Ermüdungsresistenz (#139) | Beste 5/20 min nach 500/1000/1500 kJ | Langfahrten realistisch planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#141, v16; User-Test #144) |
 | 48 | Scheibenrechner im Gym-Modus (#143) | Scheiben je Seite für Langhantel-Übungen, Stange 20/15/10 kg | weniger Kopfrechnen im Gym | P3 | S | Zeile 38 | Vorschau, User-Test | Done (#142, v16; User-Test #146) |
+| 49 | Aufwärmsätze im Gym-Modus (#148) | Aufwärm-Treppe zum Arbeitsgewicht mit Scheiben je Seite | sicherer und schneller ins Training | P3 | S | Zeile 48 | Vorschau, User-Test | Done (#149, v17; User-Test #151) |
+| 50 | „Neu im Dashboard“ (#152) | Box oben im Heute-Tab mit neuen Abschnitten und Sprung dorthin | neue Funktionen finden | P2 | S | – | Vorschau, User-Test | In Progress (Haupt-Thread) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
