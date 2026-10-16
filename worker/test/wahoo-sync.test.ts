@@ -37,6 +37,8 @@ describe("mapWorkout", () => {
       avgPowerW: 200,
       normalizedPowerW: 215,
       strain: null,
+      avgCadenceRpm: null,
+      tss: null,
     });
   });
 

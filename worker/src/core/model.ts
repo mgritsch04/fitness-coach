@@ -58,6 +58,21 @@ export interface Workout extends Base {
   avgPowerW: number | null;
   normalizedPowerW: number | null;
   strain: number | null;
+  avgCadenceRpm?: number | null;
+  /** Training Stress Score, wie ihn die Quelle selbst berechnet hat (mit ihrer FTP). */
+  tss?: number | null;
+}
+
+/** Sekundenreihen eines Workouts (Index = Sekunde ab startTime, null = kein Wert). */
+export interface WorkoutStream {
+  source: Source;
+  sourceId: string;
+  startTime: string;
+  power: (number | null)[] | null;
+  heartRate: (number | null)[] | null;
+  cadence: (number | null)[] | null;
+  /** Beste Durchschnittsleistung je Dauer in Sekunden, z. B. {"300": 310}. */
+  powerCurve: Record<string, number> | null;
 }
 
 export interface BodyMeasurement {

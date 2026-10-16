@@ -80,5 +80,7 @@ export function mapWorkout(w: WahooWorkoutRaw): Workout {
     avgPowerW: num(s.power_avg),
     normalizedPowerW: num(s.power_bike_np_last),
     strain: null,
+    avgCadenceRpm: num(s.cadence_avg),
+    tss: num(s.power_bike_tss_last),
   };
 }

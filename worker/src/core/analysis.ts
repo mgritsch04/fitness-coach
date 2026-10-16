@@ -49,6 +49,8 @@ export interface WorkoutRow {
   avg_power_w: number | null;
   normalized_power_w: number | null;
   strain: number | null;
+  avg_cadence_rpm?: number | null;
+  tss?: number | null;
 }
 
 /** Vom Nutzer gesetzte Werte; fehlende werden aus den Daten geschätzt. */
