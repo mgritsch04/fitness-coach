@@ -22,6 +22,9 @@ const payloads = {
   get_recovery_factors: () => window.__MOCK__.get_recovery_factors,
   get_sleep_report: () => window.__MOCK__.get_sleep_report,
   get_period_summaries: (i) => window.__MOCK__.get_period_summaries[i.period ?? "month"],
+  get_body_history: () => window.__MOCK__.get_body_history,
+  log_weight: (i) => ({ saved: { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
+  export_csv: (i) => ({ fileName: "fitness-" + i.dataset + ".csv", rows: 2, csv: "day;value\\n2026-03-30;1\\n2026-03-31;2\\n" }),
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
   update_settings: (i) => i,
@@ -53,7 +56,8 @@ const mcp = {
 };
 const sample = async (input, o = {}) => { const text = "**Heute normales Training.** Deine Erholung ist gelb und die HRV liegt im Normalbereich.\\n- 45–60 min Grundlage auf dem Rad\\n- danach 10 min Mobility"; o.onText?.({ text, delta: text }); return { text, truncated: false }; };
 sample.json = async () => ({ hinweis: "Beispielplan.", tage: [{ tag: "2026-03-31", einheit: "Rad locker", dauerMin: 60, intensitaet: "locker", belastung: 45, ziel: "Grundlage" }] });
-window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample : null) };
+const downloads = { async save() {} };
+window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample : n === "downloads" ? downloads : null) };
 </script>`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
 writeFileSync(join(out, "preview.html"), html);
