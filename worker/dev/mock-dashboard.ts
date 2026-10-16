@@ -21,6 +21,7 @@ import { durabilityReport } from "../src/core/durability";
 import { aerobicReport } from "../src/core/aerobic";
 import { intervalReport } from "../src/core/intervals";
 import { cadenceReport } from "../src/core/cadence";
+import { riderProfile } from "../src/core/rider-profile";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -140,6 +141,11 @@ process.stdout.write(JSON.stringify({
     }
     return { day: addDays("2026-03-31", -7 * (9 - k) - 1), source: "mywhoosh", sourceId: `c${k}`, power, heartRate: null, cadence };
   }), 285, "2026-03-31", 90),
+  // Synthetische Leistungskurve: guter Antritt, schwächerer Sprint.
+  get_rider_profile: riderProfile({
+    curve: { "5": 980, "60": 640, "300": 355, "1200": 300 }, previousCurve: { "5": 1000, "60": 610, "300": 340, "1200": 292 },
+    ftpW: 285, ftpOrigin: "user", weightKg: 76,
+  }, "2026-03-31", 90),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];

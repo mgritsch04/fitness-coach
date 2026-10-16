@@ -217,3 +217,13 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `weeks[]`: Median-Kadenz in Zone 2 je Woche, ab 5 min.
 - `hints[]`: Schwelle unter 80 U/min, Grundlage unter 75 U/min, deutlich höhere Kadenz bei harten Belastungen, Veränderung in Zone 2 ab 3 U/min (erste gegen letzte zwei Wochen).
 - Dashboard: `sections/cadence.js`, Reiter Training. Trainingshinweise, keine Diagnose.
+
+## Fahrertyp (`get_rider_profile`, #164)
+
+`core/rider-profile.ts` nimmt die beste 5-s-, 1-min- und 5-min-Leistung der Leistungskurve im Zeitraum (`readPowerCurves`, `combineCurves`) und teilt sie durch die wirksame FTP. Dieses Verhältnis wird mit dem typischen Verhältnis aus der Mitte von Coggans Leistungsprofil verglichen (5 s: 4,14 × FTP, 1 min: 2,07, 5 min: 1,20). 100 Punkte sind typisch, ab 106 eine Stärke, unter 94 eine Schwäche. Das ist gewichtsunabhängig; W/kg wird nur angezeigt.
+
+- `type`/`label`/`text`: Sprinter, Puncheur, Kletterer (VO2max-stark) nach der stärksten Dauer; Zeitfahrer, wenn alle drei schwach sind; Allrounder, wenn alle typisch sind.
+- `durations[]`: Watt, W/kg, Verhältnis zur FTP, Punkte, Einordnung und Veränderung zum gleich langen Vorzeitraum.
+- `focus`: Training für die schwächste Dauer (nur wenn wirklich schwach), sonst Schwellenarbeit.
+- `hints[]`: beste 20 min deutlich über der FTP (FTP vermutlich zu niedrig), geschätzte FTP.
+- Dashboard: `sections/riderprofile.js`, Reiter Training. Schätzung, nur mit echten Maximalbelastungen in jeder Dauer aussagekräftig.
