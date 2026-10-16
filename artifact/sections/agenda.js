@@ -26,7 +26,20 @@ FC.section({
     .ag-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }`,
   async ready() {
     this.dl = await window.claude?.use?.("downloads").catch(() => null);
-    if (this.dl && FC.state.data?.training?.thisWeek) this.draw();
+    // Knopf nachreichen statt neu zu zeichnen, sonst ginge ein gerade laufender Tipp verloren.
+    const act = FC.$("agBody")?.querySelector(".ag-act");
+    if (act && !act.querySelector(".ag-cal")) { const b = this.calButton(); if (b) act.append(b); }
+  },
+  /** Restliche Woche als Kalenderdatei (#157), nur wenn der Download-Dialog verfügbar ist. */
+  calButton() {
+    const d = FC.state.data, t = d?.training, days = t?.thisWeek?.comparison?.days ?? [];
+    if (!this.dl || !days.some((y) => y.day >= d.today && y.type !== "rest")) return null;
+    const cal = FC.el("button", { type: "button", class: "ag-cal", text: "In den Kalender (.ics)" });
+    cal.onclick = async () => {
+      try { await this.dl.save({ filename: `trainingsplan-${t.thisWeek.week ?? d.today}.ics`, data: new Blob([this.ics(days, d.today, t)], { type: "text/calendar;charset=utf-8" }) }); FC.$("agMsg").textContent = "Kalenderdatei gespeichert. Öffnen und in den Kalender übernehmen."; }
+      catch { FC.$("agMsg").textContent = "Nicht gespeichert."; }
+    };
+    return cal;
   },
   /** Kalenderdatei (RFC 5545) mit ganztägigen Terminen ab heute, ohne Ruhetage. */
   ics(days, today, t) {
@@ -112,15 +125,8 @@ FC.section({
     const all = el("button", { type: "button", text: "Ganzer Wochenplan" });
     all.onclick = () => this.go("coach", "plan");
     act.append(all);
-    // Restliche Woche als Kalenderdatei (#157), nur wenn der Download-Dialog verfügbar ist.
-    if (this.dl && days.some((y) => y.day >= d.today && y.type !== "rest")) {
-      const cal = el("button", { type: "button", text: "In den Kalender (.ics)" });
-      cal.onclick = async () => {
-        try { await this.dl.save({ filename: `trainingsplan-${t.thisWeek.week ?? d.today}.ics`, data: new Blob([this.ics(days, d.today, t)], { type: "text/calendar;charset=utf-8" }) }); FC.$("agMsg").textContent = "Kalenderdatei gespeichert. Öffnen und in den Kalender übernehmen."; }
-        catch { FC.$("agMsg").textContent = "Nicht gespeichert."; }
-      };
-      act.append(cal);
-    }
+    const cal = this.calButton();
+    if (cal) act.append(cal);
     // Heutige Workouts ohne Anstrengung: kurz nachfragen (#134), verbessert die Belastungsschätzung beim Krafttraining.
     const open = isToday && FC.state.rpePicker ? d.workouts.filter((w) => w.day === d.today && !w.rpe && w.durationMin >= 10).slice(0, 2) : [];
     const ask = open.map((w) => el("div", { class: "ag-rpe" }, el("p", { text: `Wie anstrengend war dein ${FC.sport(w.sport)} (${de(w.durationMin)} min)? 1 sehr leicht, 10 maximal.` }), FC.state.rpePicker(w)));

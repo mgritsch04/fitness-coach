@@ -117,7 +117,7 @@ for (const [name, vp, scheme, tab] of shots) {
       if (await p.evaluate(() => !document.getElementById("sec-whatsnew").hidden)) errors.push(`${name}: Neu im Dashboard nach „Alles gesehen“ noch da`);
     }
     // Wochenplan als Kalenderdatei (#157): gültiger Aufbau, Zeilen höchstens 75 Byte.
-    const calBtn = await p.$("#agBody .ag-act button:text('In den Kalender')");
+    const calBtn = await p.$("#agBody .ag-act .ag-cal");
     if (!calBtn) errors.push(`${name}: Heute dran ohne Kalender-Knopf`);
     else {
       await calBtn.click(); await p.waitForTimeout(200);
@@ -131,8 +131,8 @@ for (const [name, vp, scheme, tab] of shots) {
     if (n !== 7) errors.push(`${name}: Heute dran zeigt ${n} statt 7 Tage`);
     await p.screenshot({ path: join(out, "phone-heute.png"), fullPage: false });
     await p.evaluate(() => document.querySelector("#agBody .ag-rpe")?.scrollIntoView({ block: "center" }));
-    const rpeBtn = await p.$("#agBody .ag-rpe .rpe-pick button:nth-child(7)");
-    if (!rpeBtn) errors.push(`${name}: Heute dran fragt nicht nach der Anstrengung`);
+    const rpeBtn = p.locator("#agBody .ag-rpe .rpe-pick button:nth-child(7)");
+    if (!(await rpeBtn.count())) errors.push(`${name}: Heute dran fragt nicht nach der Anstrengung`);
     else { await rpeBtn.click(); await p.waitForTimeout(300); const r = await p.evaluate(() => window.__rpeSaved); if (!(r?.rpe === 7 && r.source && r.sourceId)) errors.push(`${name}: Anstrengung falsch gespeichert ${JSON.stringify(r)}`); }
     const gymBtn = await p.$("#agBody .ag-act .primary");
     if (gymBtn && (await gymBtn.textContent()).includes("Gym")) {
