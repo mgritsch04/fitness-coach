@@ -5,6 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 22, id: "riderprofile", title: "Fahrertyp", text: "Stärken und Schwächen deiner Leistungskurve im Verhältnis zur FTP." },
     { n: 20, id: "cadence", title: "Trittfrequenz", text: "Welche Kadenz du fährst, je Leistungszone und im Verlauf." },
     { n: 19, id: "intervals", title: "Intervall-Qualität", text: "Wie stark die Leistung innerhalb einer Intervall-Serie abfällt, je Intervallart im Verlauf." },
     { n: 18, id: "agenda", title: "Wochenplan in den Kalender", text: "Unter „Heute dran“: die restliche Woche als Kalenderdatei (.ics) speichern." },

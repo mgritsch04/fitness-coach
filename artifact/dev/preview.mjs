@@ -146,6 +146,15 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
   }
   if (tab === "training") {
+    // Sprungleiste (#168): Abschnittsnamen oben, Tippen scrollt zum Abschnitt.
+    const jumps = await p.$$eval("#jump:not([hidden]) button", (b) => b.map((x) => x.textContent));
+    if (jumps.length < 4 || !jumps.includes("Trittfrequenz")) errors.push(`${name}: Sprungleiste fehlt oder unvollständig ${JSON.stringify(jumps)}`);
+    else {
+      await p.click("#jump button:text-is('Trittfrequenz')"); await p.waitForTimeout(900);
+      const top = await p.evaluate(() => document.getElementById("sec-cadence").getBoundingClientRect().top);
+      if (Math.abs(top) > 40) errors.push(`${name}: Sprungleiste springt nicht (top ${top})`);
+      await p.evaluate(() => window.scrollTo(0, 0));
+    }
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     const plan = await p.$eval("#gySrc", (s) => s.value);
     if (!plan.startsWith("p:")) errors.push(`${name}: Gym-Modus bietet die Krafteinheit aus dem Wochenplan nicht an (${plan})`);
