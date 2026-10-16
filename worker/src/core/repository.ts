@@ -127,3 +127,29 @@ export async function readWorkouts(db: D1Database, fromDay: string) {
 export async function readLatestBody(db: D1Database) {
   return db.prepare("SELECT source, measured_at, height_m, weight_kg, max_hr FROM body_measurements ORDER BY measured_at DESC LIMIT 1").first();
 }
+
+// --- Leistungskurve ---------------------------------------------------------------------------
+
+/** Bestwerte einer Fahrt speichern (ersetzt frühere Werte derselben Fahrt je Dauer). */
+export function upsertPowerBests(
+  db: D1Database,
+  ride: { source: Source; sourceId: string; day: string },
+  bests: readonly { durationS: number; watts: number }[],
+): D1PreparedStatement[] {
+  return bests.map((b) =>
+    db
+      .prepare(
+        `INSERT INTO power_bests (source, source_id, day, duration_s, watts, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT (source, source_id, duration_s) DO UPDATE SET day = excluded.day, watts = excluded.watts, updated_at = excluded.updated_at`,
+      )
+      .bind(ride.source, ride.sourceId, ride.day, b.durationS, b.watts),
+  );
+}
+
+export async function readPowerBests(db: D1Database, fromDay: string) {
+  const { results } = await db
+    .prepare("SELECT source, source_id, day, duration_s, watts FROM power_bests WHERE day >= ? ORDER BY day DESC")
+    .bind(fromDay)
+    .all();
+  return results;
+}
