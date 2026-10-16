@@ -13,16 +13,17 @@ const shim = `<script>
 window.__MOCK__ = ${mock};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const payloads = {
-  get_dashboard: () => window.__MOCK__,
+  get_dashboard: () => window.__MOCK__.get_dashboard,
+  get_power_curve: () => window.__MOCK__.get_power_curve,
+  get_fitness_profile: () => window.__MOCK__.get_fitness_profile,
+  get_training_load: () => window.__MOCK__.get_training_load,
+  get_health_trends: () => window.__MOCK__.get_health_trends,
+  get_strain_recovery: () => window.__MOCK__.get_strain_recovery,
+  get_period_summaries: (i) => window.__MOCK__.get_period_summaries[i.period ?? "month"],
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
   update_settings: (i) => i,
-  import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.today, startTime: window.__MOCK__.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
-  get_power_curve: () => {
-    const durs = [1, 5, 10, 15, 30, 60, 120, 180, 300, 600, 1200, 1800, 3600, 5400, 7200];
-    const curve = (k) => Object.fromEntries(durs.map((s) => [s, Math.round(k * (230 + 700 * Math.exp(-s / 25) + 120 * Math.exp(-s / 400) - 12 * Math.log10(s)))]));
-    return { best: curve(1), workouts: [{ day: window.__MOCK__.today, source: "mywhoosh", source_id: "a", start_time: "", power_curve: curve(0.94) }, { day: "2025-12-01", source: "mywhoosh", source_id: "b", start_time: "", power_curve: curve(1) }] };
-  },
+  import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.get_dashboard.today, startTime: window.__MOCK__.get_dashboard.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
 };
 const mcp = {
   watchTool(s, t, input, h) { setTimeout(() => h({ type: "data", result: { payload: payloads[t](input) } }), 50); return () => {}; },

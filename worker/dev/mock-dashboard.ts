@@ -1,8 +1,11 @@
-// Erzeugt synthetische Dashboard-Daten (keine echten Messwerte) für die Vorschau des Artefakts:
+// Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
-import { runBatched, updateRecovery, upsertBody, upsertDaily, upsertSleep, upsertWorkout } from "../src/core/repository";
+import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
+import { readPowerCurves } from "../src/core/repository";
+import { runBatched, updateRecovery, upsertBody, upsertDaily, upsertSleep, upsertWorkout, upsertWorkoutStream } from "../src/core/repository";
 import { setSyncState } from "../src/core/repository";
 import { fakeD1 } from "../test/fake-d1";
 
@@ -32,9 +35,24 @@ for (let i = 0; i < 182; i++) {
       distanceM: null, energyKj: 600, avgHr: 115 + Math.round(rnd() * 25), maxHr: 160, avgPowerW: null, normalizedPowerW: null, strain: 9 }));
     if (i % 6 === 0) stmts.push(upsertWorkout(db, { source: "mywhoosh", sourceId: `m${i}`, day, startTime: `${day}T16:01:00.000Z`, endTime: new Date(Date.parse(`${day}T16:01:00.000Z`) + dur * 1000).toISOString(), sport: "cycling", durationS: dur,
       distanceM: 25000, energyKj: 650, avgHr: null, maxHr: null, avgPowerW: 180, normalizedPowerW: 195, strain: null }));
+    if (i % 6 === 0) {
+      const k = 0.9 + i / 1800 + rnd() * 0.06;
+      const curve = Object.fromEntries(CURVE_DURATIONS_S.filter((d) => d <= dur).map((d) => [d, Math.round(k * (225 + 650 * Math.exp(-d / 25) + 110 * Math.exp(-d / 400) - 10 * Math.log10(d)))]));
+      stmts.push(upsertWorkoutStream(db, { source: "mywhoosh", sourceId: `m${i}`, startTime: `${day}T16:01:00.000Z`, power: null, heartRate: null, cadence: null, powerCurve: curve }));
+    }
   }
 }
 stmts.push(upsertBody(db, { source: "whoop", measuredAt: "2026-03-31", heightM: 1.8, weightKg: 75, maxHr: 188 }));
 await runBatched(db, stmts);
 await setSyncState(db, "whoop", true, null, new Date(now - 20 * 60_000).toISOString());
-process.stdout.write(JSON.stringify(await buildDashboard(db, { days: 180, now })));
+const curves = await readPowerCurves(db, addDays("2026-03-31", -364));
+const ctx = (days: number) => analysisContext(db, { days, now });
+process.stdout.write(JSON.stringify({
+  get_dashboard: await buildDashboard(db, { days: 180, now }),
+  get_power_curve: { best: combineCurves(curves.map((w) => w.power_curve)), workouts: curves },
+  get_fitness_profile: fitnessProfileView(await ctx(28)),
+  get_training_load: trainingLoadView(await ctx(90)),
+  get_health_trends: healthTrendsView(await ctx(60)),
+  get_strain_recovery: strainRecoveryView(await ctx(90)),
+  get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
+}));

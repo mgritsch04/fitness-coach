@@ -1,4 +1,4 @@
-// MyWhoosh-Fahrten per FIT-Datei hochladen (import_fit) und Leistungskurve (get_power_curve) mit FTP-Schätzung.
+// MyWhoosh-Fahrten per FIT-Datei hochladen (import_fit) Leistungskurve, FTP-Schätzung und Zeit je Zone (get_fitness_profile).
 FC.section({
   id: "fit",
   tab: "training",
@@ -12,6 +12,12 @@ FC.section({
     .fit-log .item { border-left: 3px solid var(--line); padding: 2px 0 2px 10px; }
     .fit-log .item.ok { border-color: var(--good); } .fit-log .item.bad { border-color: var(--bad); }
     .pc-stats { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 8px; }
+    .zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; margin-top: 12px; }
+    .zones .chart-cap { grid-column: 1 / -1; margin: 0; }
+    .zl { display: grid; gap: 4px; } .zl h4 { margin: 0 0 2px; font-size: .95rem; }
+    .zr { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 4.5em; gap: 8px; align-items: center; font-size: .88rem; }
+    .zr .zb { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; } .zr .zb i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+    .zr .num { text-align: right; }
     .pc-stats b { font-family: var(--font-display); font-size: 1.4rem; }`,
   mount(root) {
     root.innerHTML = `
@@ -22,7 +28,7 @@ FC.section({
             <div class="muted" style="margin-top:6px">Export aus dem MyWhoosh-Webportal. Dieselbe Datei nochmal hochladen aktualisiert die Fahrt.</div></div>
           <div class="fit-log" id="fitLog"></div></div>
         <div class="panel"><h3>Leistungskurve</h3><div class="pc-stats" id="pcStats"></div><div class="chart" id="cPower"></div>
-          <p class="chart-cap" id="pcCap">Beste Durchschnittsleistung je Dauer. Nur Fahrten mit Sekundenwerten (FIT-Import).</p></div>
+          <p class="chart-cap" id="pcCap"></p><div class="zones" id="pcZones"></div></div>
       </div>`;
     const { $ } = FC, drop = $("fitDrop");
     $("fitFile").onchange = (e) => { this.upload([...e.target.files]); e.target.value = ""; };
@@ -66,40 +72,52 @@ FC.section({
         item.textContent = `${f.name}: ${e?.code ? FC.errText(e) : e?.message ?? "Import fehlgeschlagen."}`;
       }
     }
-    if (any) { await FC.invalidate(); await Promise.all([FC.reload(), this.loadCurve(true)]); }
+    if (any) { await FC.invalidate(); await Promise.all([FC.reload(), this.loadProfile(true)]); }
   },
-  fmtDur(s) { return s < 60 ? `${s} s` : s < 3600 ? `${s / 60} min` : `${de2(s / 3600)} h`; },
-  async ready() { await this.loadCurve(); },
-  async loadCurve(fresh) {
-    try { this.curve = await FC.call("get_power_curve", { days: 365 }, fresh ? { cache: false } : { cache: { staleTime: 300_000, gcTime: 86_400_000 } }); }
-    catch (e) { this.curve = { error: FC.errText(e) }; }
+  fmtDur(s) { return s < 60 ? `${s} s` : s < 3600 ? `${s / 60} min` : `${FC.de(s / 3600, s % 3600 ? 1 : 0)} h`; },
+  async ready() { await this.loadProfile(); },
+  async loadProfile(fresh) {
+    try { this.prof = await FC.call("get_fitness_profile", { days: 42 }, fresh ? { cache: false } : { cache: { staleTime: 300_000, gcTime: 86_400_000 } }); }
+    catch (e) { this.prof = { error: FC.errText(e) }; }
     if (FC.state.data) this.render(FC.state.data);
   },
+  zoneList(dist, label) {
+    const { el, de } = FC;
+    if (!dist?.totalMinutes) return null;
+    const max = Math.max(...dist.zones.map((z) => z.minutes));
+    return el("div", { class: "zl" }, el("h4", { text: `${label} · ${de(dist.totalMinutes / 60, 1)} h` }),
+      ...dist.zones.map((z, i) => el("div", { class: "zr" }, el("span", { text: `Z${z.zone} ${z.name}` }),
+        el("span", { class: "zb" }, Object.assign(el("i"), { style: `width:${max ? (z.minutes / max) * 100 : 0}%;opacity:${0.35 + (0.65 * i) / (dist.zones.length - 1)}` })),
+        el("span", { class: "num", text: `${de(z.minutes)} min` }))),
+      el("div", { class: "muted", text: `locker ${de(dist.intensity.easyPct)} % · mittel ${de(dist.intensity.moderatePct)} % · hart ${de(dist.intensity.hardPct)} %` }));
+  },
   render(d) {
-    const { $, el, chart, cssVar, de, addDays } = FC, c = this.curve;
-    const box = $("cPower"), stats = $("pcStats");
-    if (!c) { box.replaceChildren(el("div", { class: "empty", text: "Lädt …" })); stats.replaceChildren(); return; }
-    if (c.error) { box.replaceChildren(el("div", { class: "empty", text: c.error })); stats.replaceChildren(); return; }
-    const recentFrom = addDays(d.today, -41), recent = {};
-    for (const w of c.workouts ?? []) if (w.day >= recentFrom) for (const [k, v] of Object.entries(w.power_curve)) recent[k] = Math.max(recent[k] ?? 0, v);
-    const pts = Object.keys(c.best ?? {}).map(Number).sort((a, b) => a - b).map((s) => ({ s, best: c.best[s], recent: recent[s] ?? null }));
-    if (!pts.length) { box.replaceChildren(el("div", { class: "empty", text: "Noch keine Fahrt mit Sekundenwerten. Lade links eine FIT-Datei hoch." })); stats.replaceChildren(); return; }
-    const w20 = c.best[1200], ftpEst = w20 ? Math.round(w20 * 0.95) : null, ftp = d.settings.ftpW;
+    const { $, el, chart, cssVar, de } = FC, c = this.prof;
+    const box = $("cPower"), stats = $("pcStats"), zones = $("pcZones");
+    if (!c || c.error) { box.replaceChildren(el("div", { class: "empty", text: c?.error ?? "Lädt …" })); stats.replaceChildren(); zones.replaceChildren(); return; }
+    const cur = Object.fromEntries((c.powerCurve.last42d ?? []).map((p) => [p.durationS, p]));
+    const all = Object.fromEntries((c.powerCurve.last90d ?? []).map((p) => [p.durationS, p]));
+    const pts = Object.keys(all).map(Number).sort((a, b) => a - b).map((s) => ({ s, best: all[s].watts, bestDay: all[s].day, recent: cur[s]?.watts ?? null }));
+    const ftp = c.ftp, est = ftp.estimate;
     const stat = (label, v, hint) => el("div", {}, el("div", { class: "muted", text: label }), el("b", { text: v }), ...(hint ? [el("div", { class: "muted", text: hint })] : []));
-    stats.replaceChildren(stat("5 s", c.best[5] ? `${de(c.best[5])} W` : "–"), stat("1 min", c.best[60] ? `${de(c.best[60])} W` : "–"),
-      stat("5 min", c.best[300] ? `${de(c.best[300])} W` : "–"), stat("20 min", w20 ? `${de(w20)} W` : "–"),
-      stat("FTP geschätzt", ftpEst ? `${de(ftpEst)} W` : "–", ftpEst ? (ftp ? `eingestellt: ${de(ftp)} W` : "95 % der 20-min-Leistung") : "braucht eine Fahrt ≥ 20 min"));
-    if (ftpEst && (!ftp || Math.abs(ftpEst - ftp) / ftp > 0.05)) {
-      const b = el("button", { type: "button", text: `FTP auf ${de(ftpEst)} W setzen` });
-      b.onclick = async () => { b.disabled = true; try { await FC.call("update_settings", { ftpW: ftpEst }); await FC.invalidate(); await FC.reload(); } catch (e) { FC.banner(FC.errText(e), "bad"); b.disabled = false; } };
+    const w = (s) => (all[s] ? `${de(all[s].watts)} W` : "–");
+    stats.replaceChildren(stat("5 s", w(5)), stat("1 min", w(60)), stat("5 min", w(300)), stat("20 min", w(1200)),
+      stat(ftp.origin === "user" ? "FTP (eingestellt)" : "FTP geschätzt", ftp.watts ? `${de(ftp.watts)} W` : "–",
+        [ftp.wattsPerKg ? `${de(ftp.wattsPerKg, 2)} W/kg` : null, ftp.origin === "user" && est ? `Schätzung ${de(est.watts)} W` : est?.note ?? (ftp.watts ? null : "braucht Fahrten mit Leistung")].filter(Boolean).join(" · ")));
+    if (est && (ftp.origin !== "user" || Math.abs(est.watts - ftp.watts) / ftp.watts > 0.05)) {
+      const b = el("button", { type: "button", text: `${de(est.watts)} W als FTP übernehmen` });
+      b.title = "Speichert die Schätzung als deine FTP. Belastung und Zonen rechnen dann damit.";
+      b.onclick = async () => { b.disabled = true; try { await FC.call("update_settings", { ftpW: est.watts }); await FC.invalidate(); await Promise.all([FC.reload(), this.loadProfile(true)]); } catch (e) { FC.banner(FC.errText(e), "bad"); b.disabled = false; } };
       stats.append(el("div", { style: "align-self:end" }, b));
     }
-    chart(box, { days: pts, yMin: 0, aria: "Leistungskurve", xFmt: (p) => this.fmtDur(p.s), tipTitle: (p) => `Beste Leistung über ${this.fmtDur(p.s)}`,
-      ref: ftp ? { value: ftp } : undefined, series: [
-        { label: "12 Monate", kind: "line", color: cssVar("--s1"), value: (p) => p.best, fmt: (v) => `${de(v)} W` },
+    if (!pts.length) box.replaceChildren(el("div", { class: "empty", text: "Noch keine Fahrt mit Sekundenwerten in den letzten 90 Tagen. Lade links eine FIT-Datei hoch." }));
+    else chart(box, { days: pts, yMin: 0, aria: "Leistungskurve", xFmt: (p) => this.fmtDur(p.s), tipTitle: (p) => `Beste Leistung über ${this.fmtDur(p.s)}`,
+      ref: ftp.watts ? { value: ftp.watts } : undefined, series: [
+        { label: "90 Tage", kind: "line", color: cssVar("--s1"), value: (p) => p.best, fmt: (v) => `${de(v)} W` },
         { label: "letzte 6 Wochen", kind: "line", color: cssVar("--s2"), value: (p) => p.recent, fmt: (v) => `${de(v)} W` },
       ] });
-    $("pcCap").textContent = `Beste Durchschnittsleistung je Dauer aus ${c.workouts.length} Fahrt${c.workouts.length === 1 ? "" : "en"} mit Sekundenwerten.${ftp ? " Gestrichelt: eingestellte FTP." : ""} FTP-Schätzung = 95 % der besten 20 Minuten, nur ein Richtwert.`;
+    $("pcCap").textContent = `Beste Durchschnittsleistung je Dauer, nur Fahrten mit Sekundenwerten (FIT-Import).${ftp.watts ? " Gestrichelt: FTP." : ""} Geschätzte Werte sind Richtwerte.`;
+    zones.replaceChildren(...[this.zoneList(c.zoneDistribution.power, "Leistungszonen"), this.zoneList(c.zoneDistribution.hr, "Pulszonen")].filter(Boolean));
+    if (zones.children.length) zones.append(el("p", { class: "chart-cap", text: "Letzte 6 Wochen. Näherung: jede Einheit zählt ganz in die Zone ihres Mittelwerts." }));
   },
 });
-function de2(v) { return FC.de(v, v % 1 ? 1 : 0); }
