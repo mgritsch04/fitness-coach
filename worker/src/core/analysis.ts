@@ -49,6 +49,8 @@ export interface WorkoutRow {
   avg_power_w: number | null;
   normalized_power_w: number | null;
   strain: number | null;
+  avg_cadence_rpm?: number | null;
+  tss?: number | null;
 }
 
 /** Vom Nutzer gesetzte Werte; fehlende werden aus den Daten geschätzt. */
@@ -116,7 +118,14 @@ export function weekStart(day: string): string {
 
 // --- Einstellungen ---------------------------------------------------------------------------
 
-export function effectiveSettings(user: UserSettings, daily: DailyRow[], workouts: WorkoutRow[], bodyMaxHr: number | null): EffectiveSettings {
+/** `ftpEstimateW`: FTP-Schätzung aus den Leistungsdaten (performance.ts), gilt nur ohne eigene FTP. */
+export function effectiveSettings(
+  user: UserSettings,
+  daily: DailyRow[],
+  workouts: WorkoutRow[],
+  bodyMaxHr: number | null,
+  ftpEstimateW: number | null = null,
+): EffectiveSettings {
   const origin: EffectiveSettings["origin"] = { ftpW: "none", maxHr: "none", restingHr: "none", thresholdHr: "none", sleepNeedH: "default", timezone: "default" };
 
   let maxHr: number | null = null;
@@ -142,8 +151,9 @@ export function effectiveSettings(user: UserSettings, daily: DailyRow[], workout
     [thresholdHr, origin.thresholdHr] = [Math.round(restingHr + 0.85 * (maxHr - restingHr)), "default"];
   }
 
-  const ftpW = user.ftpW ?? null;
-  if (ftpW) origin.ftpW = "user";
+  let ftpW: number | null = null;
+  if (user.ftpW) [ftpW, origin.ftpW] = [user.ftpW, "user"];
+  else if (ftpEstimateW) [ftpW, origin.ftpW] = [ftpEstimateW, "data"];
   const sleepNeedH = user.sleepNeedH ?? DEFAULT_SLEEP_NEED_H;
   if (user.sleepNeedH) origin.sleepNeedH = "user";
   const timezone = user.timezone ?? DEFAULT_TIMEZONE;

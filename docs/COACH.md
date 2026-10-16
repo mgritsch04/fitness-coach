@@ -1,0 +1,50 @@
+# Trainingscoach – Gedächtnis, Wochenplan, Connector-Werkzeuge
+
+_Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen), `goals.ts` (D1), `training.ts` (Übersicht), `worker/src/coach-tools.ts` (Werkzeuge) · Tests: `worker/test/coach-plan.test.ts`, `coach-tools.test.ts` · Issue #22_
+
+## Aufbau (Entscheidung)
+- **Der Worker rechnet und merkt sich**, **Claude im Artefakt spricht**. Regeln (Tagesempfehlung `core/coach.ts`, Wochenplan `core/plan.ts`) liefern nachvollziehbare Zahlen und Gründe; Claude (über die `sample`-Capability des Artefakts, kein API-Schlüssel) erklärt sie, beantwortet Fragen, passt den Plan an und speichert das Ergebnis über die Werkzeuge zurück.
+- **Kein eigenes Coach-Artefakt:** Der Coach ist ein Bereich im Fitness-Dashboard (pflegt der Haupt-Thread). `get_dashboard` enthält dafür das Feld `training`; Texte, die Claude erzeugt, landen als Coach-Notizen in D1 und erscheinen beim nächsten Öffnen wieder.
+- Sportarten: Rennrad (derzeit indoor mit MyWhoosh) **und Krafttraining**. Standard: 2 Krafteinheiten pro Woche.
+- Alles sind Trainingsempfehlungen, keine Diagnosen; Belastung (TSS-Maßstab), Phasen und Zeitbudget sind Schätzungen.
+
+## Tabellen (Migration `0006_coach.sql`)
+| Tabelle | Inhalt |
+|---|---|
+| `goals` | Ziele: `kind` (event/fitness/weight/habit/other), `title`, `target_date`, `metric` (ftpW/ctl/weightKg/weeklyHours), `target_value`, `unit`, `priority` A/B/C, `status` active/done/dropped |
+| `training_plans` | ein Plan je Woche (`week_start` = Montag), JSON, `source` rule/coach |
+| `coach_notes` | Texte des Coachs: daily (je Tag einer), weekly_review (je Woche einer), insight, chat; optional `data` (JSON für Diagramme) |
+| `settings` Schlüssel `trainingPrefs` | Zeitbudget, Ruhetage, Langtag, Kraft pro Woche |
+
+## Planungsregeln (`plan.ts`)
+- **Phase** rückwärts vom nächsten aktiven Terminziel (A vor B vor C): Wettkampfwoche · 1 Woche Tapering · 2–3 Wochen Spitze · 4–11 Wochen Aufbau · davor Grundlage. Ohne Termin: „Erhalten“ (mit Fitnessziel: Grundlage). Erholungswoche nach drei Wochen mit steigender Fitness oder bei Form (TSB) unter −25.
+- **Wochenbelastung** = Fitness (CTL) × 7 × Faktor (Grundlage 1,05 · Aufbau 1,1 · Spitze 1,0 · Tapering 0,6 · Erholung 0,6). Ohne Lastdaten (CTL < 15) nach Zeit.
+- **Zeitbudget**: `weeklyHours` aus den Vorlieben, sonst Schnitt der letzten 4 Wochen (3–12 h, als Schätzung markiert).
+- **Tage**: 3–6 Trainingstage je nach Zeit, feste Ruhetage bleiben frei, lange Einheit am Langtag (Standard Samstag). Schlüsseleinheiten (Tempo/Schwelle/VO₂max) nie an Nachbartagen von harten Tagen oder dem Langtag; Tag nach Langtag/VO₂max eher Erholung. Watt- und Pulsbereiche aus FTP und Schwellenpuls.
+- **Kraft**: nie am Tag vor Intervallen, Langtag oder Wettkampf; bevorzugt nach einer harten Radeinheit („harte Tage hart“) oder an freien Tagen, mindestens ein Tag zwischen zwei Krafttagen, Beine früh in der Woche. Tapering/Erholung höchstens eine leichte, Wettkampfwoche keine.
+- **Soll/Ist** (`comparePlan`): je Tag `done` (≥ 70 % von Belastung oder Dauer), `partial`, `missed`, `extra` (Training am Ruhetag), `today`, `upcoming`, `rest`; Kraft erledigt, wenn an dem Tag ein Kraft-Workout (WHOOP: weightlifting, bodybuilding, functional …) vorliegt.
+- **Heute** (`todayCheck`): vergleicht die geplante Einheit mit der Bereitschaft aus der Tagesempfehlung → `ok`, `reduce` (leichter), `swap` (mit einem späteren lockeren Tag tauschen), `rest`.
+
+## Werkzeuge
+| Werkzeug | Parameter | Inhalt |
+|---|---|---|
+| `get_goals` | `status` (active/done/dropped/all) | Ziele |
+| `set_goals` | `goals[]` (ohne `id` = neu, mit `id` = ändern), `delete[]` | speichert, gibt alle aktiven Ziele zurück |
+| `get_training_prefs` / `set_training_prefs` | `weeklyHours`, `restDays` (0 = Mo … 6 = So), `longDay`, `maxWeekdayMin`, `mainSport`, `strengthPerWeek` (`null` = Standard) | Vorlieben |
+| `get_plan` | `week` = current/next/previous/Datum | `{ week, stored, savedAt, plan, phaseLabel, comparison, today, readiness }` |
+| `save_plan` | `week`, `accept` (Vorschlag übernehmen) **oder** `days[]` (angepasster Plan, fehlende Tage = Ruhe) **oder** `reset` | gespeicherter Plan mit Soll/Ist |
+| `save_coach_note` | `kind`, `day` (Std. heute bzw. Montag), `title`, `body`, `data` | Notiz |
+| `get_coach_notes` / `delete_coach_note` | `days`, `kind`, `limit` / `id` | Notizen |
+| `get_coach_context` | `days` (7–42, Std. 14) | kompakter Überblick für Coach-Prompts: Tagesempfehlung, `planToday`, Trends, letzte Tage/Workouts/Wochen, Ziele, Plan mit Soll/Ist, Einstellungen, letzte Notizen, `guidance` (Regeln für Claude) |
+
+### Plan (`plan`)
+`{ weekStart, phase, phaseReason, goalId, targetLoad, targetHours, notes[], source, days[7] }`, je Tag `{ day, type, title, durationMin, targetLoad, intensity, description, key, strength: { durationMin, focus } | null }`. `type`: rest, recovery, endurance, long, tempo, threshold, vo2max, strength, opener, race.
+
+### `get_dashboard` → `training`
+`{ goals: [{ goal, daysLeft, weeksLeft, current, text }], prefs, thisWeek: (wie get_plan), nextWeek: { week, stored, phase, phaseLabel, phaseReason }, today: { planned, verdict, text }, notes: [letzte Coach-Notizen, 14 Tage], disclaimer }`.
+
+## Vorschlag für den Coach-Bereich im Dashboard
+1. Kopf: `coach.headline` + `training.today.text`, Gründe als Chips.
+2. Wochenplan als 7 Kacheln mit Status-Häkchen aus `thisWeek.comparison.days`, Phase und Fortschritt (`comparison.summary`). Knöpfe „Vorschlag übernehmen“ (`save_plan accept`) und „An Tagesform anpassen“ (Claude erhält `get_coach_context`, gibt geänderte `days` zurück → `save_plan days`).
+3. Ziele mit Countdown (`training.goals`), Formular → `set_goals`.
+4. Coach-Chat: Prompt = `get_coach_context` + Frage; gute Antworten mit `save_coach_note kind=chat` merken. Wochenrückblick sonntags → `kind=weekly_review`.

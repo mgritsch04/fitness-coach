@@ -4,9 +4,12 @@ import { validAccessToken, whoopGet, WhoopAuthError } from "./providers/whoop/cl
 import { syncAll } from "./sync";
 import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
 import { wahooConnectLink, wahooCredentials } from "./wahoo";
-import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./core/repository";
+import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./core/repository";
+import { combineCurves } from "./core/power";
+import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerCoachTools } from "./coach-tools";
 
@@ -84,6 +87,44 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await readWorkouts(env.DB, fromDay(d))),
+  );
+
+  server.registerTool(
+    "import_fit",
+    {
+      description:
+        "Importiert eine FIT-Datei (z. B. MyWhoosh-Export aus dem Webportal) als Workout mit Quelle mywhoosh: Dauer, Distanz, " +
+        "Leistung (Ø, NP), Puls, Trittfrequenz, TSS sowie Sekundenwerte und Bestleistungskurve. Erneuter Upload derselben Fahrt " +
+        "aktualisiert sie. Dieselbe Fahrt aus WHOOP/Wahoo wird beim Auslesen zusammengeführt (sameRideIn nennt diese Quellen).",
+      inputSchema: {
+        fileBase64: z.string().min(16).max(12_000_000).describe("Inhalt der .fit-Datei als Base64 (Data-URL erlaubt)"),
+        fileName: z.string().max(200).optional().describe("Dateiname, nur für die Rückmeldung"),
+      },
+      annotations: { readOnlyHint: false, idempotentHint: true },
+    },
+    async ({ fileBase64, fileName }) => {
+      try {
+        return json({ fileName: fileName ?? null, ...(await importFit(env.DB, fileBase64)) });
+      } catch (err) {
+        if (err instanceof FitImportError) return { ...json({ error: "invalid_fit", fileName: fileName ?? null, message: err.message }), isError: true };
+        throw err;
+      }
+    },
+  );
+
+  server.registerTool(
+    "get_power_curve",
+    {
+      description:
+        "Leistungskurve (beste Durchschnittsleistung in Watt je Dauer in Sekunden, 1 s bis 2 h) über den Zeitraum, dazu die Kurve je Workout. " +
+        "Bisher nur aus importierten FIT-Dateien mit Sekundenwerten.",
+      inputSchema: { days: z.number().int().min(1).max(3650).optional().describe("Zeitraum in Tagen bis heute, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => {
+      const workouts = await readPowerCurves(env.DB, fromDay(d ?? 90));
+      return json({ best: combineCurves(workouts.map((w) => w.power_curve)), workouts });
+    },
   );
 
   server.registerTool(
@@ -210,6 +251,74 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         sync: await getSyncState(env.DB, "wahoo"),
       });
     },
+  );
+
+  // --- Auswertungen (core/analytics.ts); Ausgaben sind in docs/ANALYTICS.md beschrieben. ---------
+  const viewDays = (def: number) => ({
+    days: z.number().int().min(7).max(730).optional().describe(`Zeitraum der Ansicht in Tagen bis heute, Standard ${def}`),
+  });
+
+  server.registerTool(
+    "get_training_load",
+    {
+      description:
+        "Trainingslast: Tagesreihe mit Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL), Form (TSB) und Form-Bereich, " +
+        "aktueller Stand mit Anstieg der Fitness in 7 Tagen, ATL/CTL-Verhältnis, Monotonie und die belastendsten Workouts. Schätzungen.",
+      inputSchema: viewDays(90),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(trainingLoadView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 730 }))),
+  );
+
+  server.registerTool(
+    "get_fitness_profile",
+    {
+      description:
+        "Leistungsprofil: FTP (eigene oder geschätzt, mit Methode), W/kg, Leistungszonen (Coggan) und Pulszonen (Friel), " +
+        "Zeit je Zone und Verteilung locker/mittel/hart, Leistungskurve (beste Leistung 5 s … 2 h) für 42/90 Tage und gesamt. Schätzungen.",
+      inputSchema: viewDays(28),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(fitnessProfileView(await analysisContext(env.DB, { days: d ?? 28, maxDays: 730 }))),
+  );
+
+  server.registerTool(
+    "get_health_trends",
+    {
+      description:
+        "Gesundheitstrends je Tag mit persönlichem Normalbereich: HRV, Ruhepuls, Erholung, Schlafdauer, Atemfrequenz, Hauttemperatur, SpO2 " +
+        "(Wert, 7-Tage-Mittel, Basis ± Streuung, Status), HRV-Stabilität und Schlafrhythmus (Einschlaf-/Aufwachzeit, Schlafschuld).",
+      inputSchema: viewDays(60),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(healthTrendsView(await analysisContext(env.DB, { days: d ?? 60, maxDays: 365 }))),
+  );
+
+  server.registerTool(
+    "get_period_summaries",
+    {
+      description:
+        "Zusammenfassungen je Woche, Monat oder Jahr: Workouts, Stunden, Belastung, Distanz, Sportarten, Erholung (grün/gelb/rot), " +
+        "HRV, Ruhepuls, Schlaf und Schlafschuld, Strain, Fitness-Veränderung und Vergleich zum vorigen Zeitraum.",
+      inputSchema: {
+        period: z.enum(["week", "month", "year"]).optional().describe("Standard month"),
+        ...viewDays(180),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ period, days: d }) => json(periodSummariesView(await analysisContext(env.DB, { days: d ?? 180, maxDays: 730 }), period ?? "month")),
+  );
+
+  server.registerTool(
+    "get_strain_recovery",
+    {
+      description:
+        "Strain und Belastung gegen die Erholung am Folgetag: Tagespaare, Mittelwerte je Strain- und Belastungsstufe, Korrelation, " +
+        "letzte 7 gegen 28 Tage und kurze Erkenntnisse. Beobachtungen aus deinen Daten, keine Ursache-Wirkung.",
+      inputSchema: viewDays(90),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(strainRecoveryView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 365 }))),
   );
 
   registerCoachTools(server, env);

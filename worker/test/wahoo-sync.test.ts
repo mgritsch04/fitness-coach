@@ -37,6 +37,8 @@ describe("mapWorkout", () => {
       avgPowerW: 200,
       normalizedPowerW: 215,
       strain: null,
+      avgCadenceRpm: null,
+      tss: null,
     });
   });
 
@@ -111,5 +113,26 @@ describe("Wahoo-Einmal-Link", () => {
     const late = await createWahooLinkState(db, "owner", NOW);
     expect(await consumeWahooLinkState(db, late, NOW + 16 * 60_000)).toBeNull();
     expect(await consumeWahooLinkState(db, "unbekannt", NOW)).toBeNull();
+  });
+});
+
+describe("fehlende Zusammenfassung", () => {
+  it("wird einzeln nachgeladen, eine verweigerte bleibt leer", async () => {
+    const { db, store, connect } = setup();
+    await connect();
+    const bare = (id: number): WahooWorkoutRaw => ({ ...ride(id, 1), workout_summary: null });
+    const urls: string[] = [];
+    const f = (async (url: RequestInfo | URL) => {
+      const u = String(url);
+      urls.push(u);
+      if (u.endsWith("/v1/workouts/11/workout_summary")) return new Response(JSON.stringify({ distance_accum: "1234", duration_total_accum: "600" }));
+      if (u.endsWith("/workout_summary")) return new Response("{}", { status: 401 });
+      return new Response(JSON.stringify({ workouts: [bare(11), bare(12)] }));
+    }) as typeof fetch;
+    await syncWahoo(db, creds, store, "owner", { now: NOW, fetch: f });
+    const rows = await readWorkouts(db, "2026-01-01");
+    expect(rows.find((r) => r.source_id === "11")).toMatchObject({ distance_m: 1234, duration_s: 600 });
+    expect(rows.find((r) => r.source_id === "12")).toMatchObject({ distance_m: null, duration_s: 3600 });
+    expect(urls.filter((u) => u.includes("workout_summary"))).toHaveLength(2);
   });
 });

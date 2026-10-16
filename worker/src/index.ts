@@ -5,6 +5,7 @@ import { handleAuthorize, handleWhoopCallback } from "./auth";
 import { html, markdownToHtml } from "./html";
 import { createServer } from "./mcp";
 import { handleWahooCallback } from "./wahoo";
+import { handleWahooWebhook, handleWhoopWebhook } from "./webhooks";
 import type { AuthProps, Env } from "./env";
 import { syncAll } from "./sync";
 
@@ -26,6 +27,8 @@ const site: ExportedHandler<Env> = {
     if (pathname === "/authorize") return handleAuthorize(request, env);
     if (pathname === "/auth/whoop/callback") return handleWhoopCallback(request, env);
     if (pathname === "/auth/wahoo/callback") return handleWahooCallback(request, env, ctx);
+    if (pathname === "/webhooks/wahoo") return handleWahooWebhook(request, env);
+    if (pathname === "/webhooks/whoop") return handleWhoopWebhook(request, env, ctx);
     if (pathname === "/privacy") return html("Privacy Policy – Fitness Coach", markdownToHtml(privacyMarkdown));
     if (pathname === "/") return html("Fitness Coach", '<h1>Fitness Coach</h1><p>Private application. <a href="/privacy">Privacy Policy</a></p>');
     return new Response("Not found", { status: 404 });
