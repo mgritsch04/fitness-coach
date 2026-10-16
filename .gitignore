@@ -19,3 +19,6 @@ test-results/
 .DS_Store
 .dev.vars
 .wrangler/
+# Vorschau des Dashboard-Artefakts (synthetische Daten)
+artifact/dev/out/
+artifact/dev/mock-dashboard.json

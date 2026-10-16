@@ -67,3 +67,14 @@ Je Tag: Erholung bzw. HRV am Morgen gegen Schlaf der Nacht davor und das Trainin
 
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.
+
+## get_workout_detail
+Detail einer Fahrt mit Sekundenwerten (FIT-Import), Code `worker/src/core/workout-detail.ts`. Parameter: `source`, `sourceId` (aus `get_workouts`; ohne beide die neueste Fahrt mit Sekundenwerten), `maxPoints` (50–3600, Std. 600).
+- `found`: `false` mit `message`, wenn es keine Sekundenwerte gibt. `available[]`: die letzten 20 Fahrten mit Sekundenwerten (`day, source, source_id, start_time, sport, duration_s, avg_power_w, normalized_power_w`) als Auswahlliste.
+- `workout`: Zeile aus `workouts`. `reference`: `{ ftpW, thresholdHr }`, `ftpOrigin` (`user`/`data`).
+- `stats`: `{ durationS, avgPowerW, normalizedPowerW, maxPowerW, variabilityIndex, intensityFactor, tssEstimate, workKj, avgHr, maxHr, avgCadence }`.
+- `series`: `{ stepS, points: [{ t, power, hr, cadence }] }` – Mittel je Abschnitt von `stepS` Sekunden, `t` = Sekunde ab Start.
+- `zones`: `{ power, hr }`, je `[...Zone, seconds, sharePct]` aus echten Sekundenwerten (oder `null` ohne FTP bzw. Schwellenpuls).
+- `intervals`: `{ thresholdW, basis: "ftp"|"average", intervals: [{ startS, durationS, avgPowerW, pctFtp, avgHr, maxHr, avgCadence }] }` – 30-s-Mittel über 88 % FTP (ohne FTP 115 % des Fahrtdurchschnitts), ab 60 s, Lücken bis 15 s überbrückt.
+- `decoupling`: `{ pct, firstHalf, secondHalf }` (Leistung/Puls je Hälfte) oder `null` (unter 20 min Daten).
+- `powerCurve`: Bestleistungen dieser Fahrt `{"Sekunden": Watt}`.
