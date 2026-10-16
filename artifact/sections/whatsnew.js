@@ -5,6 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 17, id: "aerobic", title: "Aerobe Basis", text: "Wie stabil dein Puls bei lockeren Fahrten zur Leistung bleibt (Entkopplung) im Verlauf." },
     { n: 16, id: "gym", title: "Gym-Modus: Scheiben und Aufwärmen", text: "Scheiben je Seite für Langhantel-Übungen und eine Aufwärm-Treppe zum Arbeitsgewicht." },
     { n: 15, id: "durability", title: "Ermüdungsresistenz", text: "Wie viel Leistung nach 500, 1000 und 1500 kJ noch da ist." },
     { n: 14, id: "timing", title: "Beste Trainingszeit", text: "Tageszeit des Trainings gegen Schlaf, Erholung und Leistung." },
