@@ -270,6 +270,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
           days: t.thisWeek.comparison.days.map((d) => ({ day: d.day, type: d.type, title: d.title, durationMin: d.durationMin, targetLoad: d.targetLoad, strength: d.strength, status: d.status, actualMin: d.actualMin, actualLoad: d.actualLoad })),
         },
         nextWeek: t.nextWeek,
+        intensityCheck: t.intensity,
         eventProjection: t.projection
           ? { goal: t.projection.goal.title, date: t.projection.goal.targetDate, daysLeft: t.projection.daysLeft, atEvent: t.projection.atEvent, targetTsb: t.projection.targetTsb, verdict: t.projection.verdict, advice: t.projection.advice, weeks: t.projection.weeks }
           : null,

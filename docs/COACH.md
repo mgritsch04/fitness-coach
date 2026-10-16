@@ -70,3 +70,7 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 - Die Erkennung selbst liegt in `core/warnings.ts` (Analysen, siehe `docs/ANALYTICS.md`); `get_dashboard` → `earlyWarning`.
 - `core/warning-cap.ts` begrenzt die Tagesempfehlung: `caution` → höchstens locker, `alert` → Ruhe; Grund `factor: "warning"` mit dem Rat aus `earlyWarning.advice`. Macht die Empfehlung nie härter. Keine Diagnose.
 - Reihenfolge in `get_dashboard`: Regeln (`coach.ts`) → Kraft-Hinweise (`strength.ts`) → Frühwarnung → Tagebuch.
+
+## Intensitäts-Check und WHOOP-Zonen
+- Pulsangaben im Plan beziehen sich auf die Schwelle (Grundlage 80–89 %). Dahinter steht die passende WHOOP-Zone (Anteil der maximalen Herzfrequenz), damit die Zahlen zum Pulszonen-Diagramm im Dashboard passen.
+- `training.intensity` (`core/training.ts`, `intensityCheck`): Ausdauer-Einheiten der letzten 28 Tage (ab 20 min, mit Puls) gegen den Grundlagenbereich. `below` gilt, wenn ≥ 60 % mehr als 10 Schläge darunter liegen, `above`, wenn ≥ 50 % darüber liegen. Erklärt, warum die gemessene Belastung unter dem Soll bleibt. Hinweis, wenn die Schwelle nur geschätzt ist.
