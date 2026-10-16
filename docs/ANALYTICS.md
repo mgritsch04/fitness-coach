@@ -11,6 +11,7 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 | `get_health_trends` | `days` (7–365, Std. 60) | HRV, Ruhepuls usw. mit Normalbereich, Schlafrhythmus |
 | `get_period_summaries` | `period` = `week`/`month`/`year` (Std. `month`), `days` (Std. 180) | Zusammenfassungen je Zeitraum |
 | `get_strain_recovery` | `days` (7–365, Std. 90) | Strain/Belastung gegen Erholung am Folgetag |
+| `get_recovery_factors` | `days` (7–365, Std. 90) | Was hängt mit Erholung und HRV zusammen (#21) |
 
 `get_dashboard` enthält zusätzlich `ftpEstimate` (siehe unten), `hrZones` (wie `hrZoneTime` unten, für gestapelte Wochenbalken) und je Workout `hrZoneMin` (Minuten je Zone 0–5 oder `null`); `settings.origin.ftpW` ist `"data"`, wenn die FTP geschätzt ist.
 
@@ -33,7 +34,7 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 - `zoneDistribution`: `{ power, hr }`, je `{ basis, zones: [...Zone, minutes, sharePct, workouts], totalMinutes, intensity: { easyPct, moderatePct, hardPct } }`. **Näherung:** jede Einheit zählt komplett in die Zone ihres Mittelwerts (bis Sekundendaten bzw. WHOOP-Zonenzeiten da sind, #19).
 - `hrZoneTime` (#19): Zeit je Pulszone nach WHOOP-Schema (Zone 0–5 = < 50 %, 50–60, 60–70, 70–80, 80–90, ≥ 90 % HFmax), gemessen von WHOOP je Workout:
   `{ scheme: [{ zone, name }], total, weeks: [{ week, ...HrZoneTime }], verdict }`, `HrZoneTime = { minutes: number[6], totalMin, workouts, easyPct, moderatePct, hardPct }`.
-  Locker = Zone 0–3, mittel = 4, hart = 5 (Ziel grob 80 % locker). `verdict` ist ein kurzer deutscher Hinweis ab 3 h Daten, sonst `null`.
+  Locker = Zone 1–3, mittel = 4, hart = 5, Anteile an der Zeit ab Zone 1 (Zone 0, z. B. Pausen im Krafttraining, zählt nicht; Ziel grob 80 % locker). `verdict` ist ein kurzer deutscher Hinweis ab 3 h Trainingszeit ab Zone 1, sonst `null`.
 - `powerCurve`: `{ last30d, last90d, last365d, allTime }`, je `[{ durationS, watts, day, source }]` für die Dauern aus `core/power.ts` (1 s … 2 h). Leer, solange keine FIT-Datei mit Leistung importiert ist.
 
 ## get_health_trends
@@ -53,6 +54,16 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 - `correlation`: `{ strainToNextRecovery, loadToNextRecovery, n }` (Pearson, −1…1).
 - `balance`: `{ strain7d, strain28d, recovery7d, recovery28d }`.
 - `insights[]`: kurze deutsche Sätze (Beobachtungen, keine Ursache-Wirkung).
+
+## get_recovery_factors (#21)
+Je Tag: Erholung bzw. HRV am Morgen gegen Schlaf der Nacht davor und das Training am Vortag.
+- `factors[]` (stärkste zuerst), je Ziel `target` = `recovery` oder `hrv`:
+  `{ key, label, target, kind: "numeric"|"yesno"|"weekday", n, r, effect, strength: "none"|"weak"|"moderate"|"strong", groups: [{ label, n, avg }], text }`.
+  - `key`: `sleep_duration`, `sleep_deep`, `bedtime`, `strain_prev`, `load_prev`, `late_workout` (Training endete am Vorabend nach 19 Uhr), `rest_day_prev`, `weekday`.
+  - numeric: `effect` = Mittel des oberen minus unteren Drittels, `groups` = unteres/oberes Drittel. yesno: `effect` = ja minus nein. weekday: `groups` je Wochentag, `effect` = bester minus schlechtester.
+  - `text`: ein deutscher Satz ab schwachem Zusammenhang, sonst `null`.
+- `highlights[]`: bis zu 5 Sätze mit mindestens deutlichem Zusammenhang – Grundlage für Claudes Deutung im Dashboard.
+- `days`, `enoughData` (ab 21 Tagen mit Erholung).
 
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.

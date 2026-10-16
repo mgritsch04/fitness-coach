@@ -67,6 +67,12 @@ describe("Pulszonen von WHOOP", () => {
     expect(merged[0]).toMatchObject({ source: "wahoo", hr_zone_s: "[0,1,2,3,4,5]" });
   });
 
+  it("Zone 0 zählt nicht zur Intensitätsverteilung", () => {
+    const r = hrZoneReport([row({ hr_zone_s: JSON.stringify([3600, 0, 0, 0, 600, 0]) })], "2026-03-02", "2026-03-02");
+    expect(r.total).toMatchObject({ totalMin: 70, easyPct: 0, moderatePct: 100 });
+    expect(r.verdict).toBeNull();
+  });
+
   it("ignoriert kaputte Werte", () => {
     expect(parseZones("[1,2]")).toBeNull();
     expect(parseZones("kein json")).toBeNull();

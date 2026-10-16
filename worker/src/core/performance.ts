@@ -435,7 +435,7 @@ export function coefficientOfVariation(series: readonly DayPoint[], key: HealthK
 
 // --- Schlafrhythmus -----------------------------------------------------------------------------
 
-function localMinutes(iso: string, timeZone: string): number | null {
+export function localMinutes(iso: string, timeZone: string): number | null {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
   try {
@@ -447,7 +447,7 @@ function localMinutes(iso: string, timeZone: string): number | null {
   }
 }
 
-const hhmm = (min: number) => {
+export const hhmm = (min: number) => {
   const m = ((Math.round(min) % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 };
@@ -505,8 +505,11 @@ export const HR_ZONE_SCHEME = [
   { zone: 5, name: "90–100 % (maximal)" },
 ] as const;
 
-/** Zone 0–3 zählt als locker, 4 als mittel, 5 als hart (grobe Übertragung des 3-Zonen-Modells nach Seiler auf % HFmax). */
-const intensityOf = (zone: number) => (zone <= 3 ? "easy" : zone === 4 ? "moderate" : "hard");
+/**
+ * Zone 1–3 zählt als locker, 4 als mittel, 5 als hart (grobe Übertragung des 3-Zonen-Modells nach Seiler
+ * auf % HFmax). Zone 0 (unter 50 %, z. B. Pausen im Krafttraining) zählt nicht zur Trainingsintensität.
+ */
+const intensityOf = (zone: number) => (zone === 0 ? "none" : zone <= 3 ? "easy" : zone === 4 ? "moderate" : "hard");
 
 export function parseZones(json: string | null | undefined): number[] | null {
   if (!json) return null;
@@ -521,6 +524,7 @@ export function parseZones(json: string | null | undefined): number[] | null {
 export interface HrZoneTime {
   /** Minuten je Zone 0–5. */
   minutes: number[];
+  /** Anteile locker (Zone 1–3), mittel (4), hart (5) an der Zeit ab Zone 1. */
   totalMin: number;
   workouts: number;
   easyPct: number;
@@ -538,7 +542,8 @@ function zoneTime(rows: readonly WorkoutRow[]): HrZoneTime {
     z.forEach((s, i) => (sec[i] += s));
   }
   const total = sec.reduce((a, b) => a + b, 0);
-  const pct = (k: string) => (total ? round((sec.reduce((a, s, i) => a + (intensityOf(i) === k ? s : 0), 0) / total) * 100)! : 0);
+  const active = total - sec[0];
+  const pct = (k: string) => (active ? round((sec.reduce((a, s, i) => a + (intensityOf(i) === k ? s : 0), 0) / active) * 100)! : 0);
   return {
     minutes: sec.map((s) => Math.round(s / 60)),
     totalMin: Math.round(total / 60),
@@ -565,7 +570,7 @@ export function hrZoneReport(workouts: readonly WorkoutRow[], fromDay: string, t
   for (const w of inRange) weeks.get(weekStart(w.day))?.push(w);
   const total = zoneTime(inRange);
   let verdict: string | null = null;
-  if (total.totalMin >= 180) {
+  if (total.totalMin - total.minutes[0] >= 180) {
     if (total.easyPct >= 75) verdict = `${total.easyPct} % deiner Trainingszeit war locker – passt zum 80/20-Prinzip.`;
     else if (total.moderatePct > total.hardPct && total.moderatePct >= 20)
       verdict = `Viel Zeit im mittleren Bereich (${total.moderatePct} %). Für mehr Fortschritt locker lockerer und hart härter trainieren (Ziel etwa 80 % locker).`;
