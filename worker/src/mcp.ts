@@ -10,7 +10,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -363,6 +363,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async () => json(earlyWarningView(await analysisContext(env.DB, { days: 7 }))),
+  );
+
+  server.registerTool(
+    "get_sleep_report",
+    {
+      description:
+        "Schlaf-Detail je Nacht: Einschlaf-/Aufwachzeit, Phasen (leicht/tief/REM, Anteile), Effizienz, Nickerchen, Schlafschuld der letzten 7 Nächte; " +
+        "Zusammenfassung mit Regelmäßigkeit, Wochenend-Verschiebung, Anteil Nächte mit genug Schlaf, empfohlener Schlafenszeit und Tipps.",
+      inputSchema: viewDays(30),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(sleepReportView(await analysisContext(env.DB, { days: d ?? 30, maxDays: 365 }))),
   );
 
   registerStrengthTools(server, env);

@@ -66,6 +66,15 @@ describe("Frühwarnung", () => {
     expect(earlyWarning(series({ rhr: 57, hrv: 55 }, 2, true), TODAY)).toMatchObject({ day: addDays(TODAY, -1), level: "caution" });
   });
 
+  it("fehlende Werte von heute kommen von gestern", () => {
+    const sr = series({ rhr: 57, hrv: 55 }, 2);
+    const today = sr.at(-1)!;
+    Object.assign(today, { rhr: null, hrv: null }); // Erholung heute noch nicht ausgewertet
+    const w = earlyWarning(sr, TODAY);
+    expect(w).toMatchObject({ day: TODAY, level: "caution", flaggedCount: 2 });
+    expect(w.signals.find((s) => s.key === "rhr")).toMatchObject({ flagged: true, fromDay: addDays(TODAY, -1) });
+  });
+
   it("ohne Basis keine Aussage", () => {
     const w = earlyWarning(series({}).slice(-5), TODAY);
     expect(w).toMatchObject({ day: null, level: "none" });
