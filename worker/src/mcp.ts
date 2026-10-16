@@ -292,7 +292,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     {
       description:
         "Leistungsprofil: FTP (eigene oder geschätzt, mit Methode), W/kg, Leistungszonen (Coggan) und Pulszonen (Friel), " +
-        "Zeit je Zone und Verteilung locker/mittel/hart, Leistungskurve (beste Leistung 5 s … 2 h) für 42/90 Tage und gesamt. Schätzungen.",
+        "Zeit je Zone und Verteilung locker/mittel/hart, Leistungskurve (beste Leistung 1 s … 2 h) für 30/90/365 Tage und gesamt, Zeit je WHOOP-Pulszone je Woche (80/20). Schätzungen.",
       inputSchema: viewDays(28),
       annotations: { readOnlyHint: true },
     },
