@@ -206,11 +206,11 @@
   function section(def) { sections.push(def); }
   function renderAll() {
     const d = state.data; if (!d) return;
-    for (const s of sections) { try { s.render?.(d); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
+    for (const s of live()) { try { s.render?.(d); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
   }
   function rerender() {
     const d = state.data; if (!d) return;
-    for (const s of sections) { try { s.rerender ? s.rerender(d) : s.render?.(d); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
+    for (const s of live()) { try { s.rerender ? s.rerender(d) : s.render?.(d); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
   }
   const listeners = new Set();
   function setRange(days) { state.range = days; try { localStorage.setItem("fc-range", String(days)); } catch {} rerender(); for (const f of listeners) f(days); }
@@ -252,6 +252,54 @@
   ];
   let tab = "heute";
   try { const t = localStorage.getItem("fc-tab"); if (TABS.some((x) => x.id === t)) tab = t; } catch {}
+  // ---------- Anpassung (#67): Bereiche ein-/ausblenden und sortieren, im Browser gemerkt ----------
+  const LAYOUT_KEY = "fc-layout";
+  const layout = (() => {
+    try { const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "{}"); return { hidden: new Set(v.hidden ?? []), order: v.order ?? {} }; }
+    catch { return { hidden: new Set(), order: {} }; }
+  })();
+  let booted = false;
+  const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ hidden: [...layout.hidden], order: layout.order })); } catch {} };
+  const rank = (s) => layout.order[s.id] ?? s.order;
+  const sortSections = () => sections.sort((a, b) => rank(a) - rank(b) || a.order - b.order);
+  /** Abschnitte, die eingebaut und sichtbar sind; ausgeblendete laden keine Daten. */
+  const live = () => sections.filter((s) => s.mounted && !layout.hidden.has(s.id));
+  function mountOne(s) {
+    try { s.mount?.($(`sec-${s.id}`)); s.mounted = true; } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
+  }
+  function readyOne(s) {
+    if (s.isReady) return;
+    s.isReady = true;
+    try { s.ready?.(); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
+  }
+  const layoutApi = {
+    list: () => sections.map((s) => ({ id: s.id, tab: s.tab ?? "mehr", title: $(`h-${s.id}`)?.textContent || s.title || s.id, hidden: layout.hidden.has(s.id), locked: !!s.locked })),
+    setHidden(id, hidden) {
+      const s = sections.find((x) => x.id === id); if (!s || s.locked) return;
+      if (hidden) layout.hidden.add(id); else layout.hidden.delete(id);
+      saveLayout();
+      const host = $(`sec-${id}`); host.hidden = hidden;
+      if (!hidden) {
+        if (!s.mounted) mountOne(s);
+        if (booted) readyOne(s);
+        if (state.data) try { s.render?.(state.data); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
+      }
+    },
+    move(id, dir) {
+      const s = sections.find((x) => x.id === id); if (!s) return;
+      const same = sections.filter((x) => (x.tab ?? "mehr") === (s.tab ?? "mehr"));
+      const i = same.indexOf(s), j = i + dir;
+      if (j < 0 || j >= same.length) return;
+      // Die Plätze des Tabs untereinander tauschen, damit andere Tabs (am Rechner untereinander) ihre Lage behalten.
+      const slots = same.map((x, k) => rank(x) + k / 1000).sort((a, b) => a - b);
+      [same[i], same[j]] = [same[j], same[i]];
+      same.forEach((x, k) => (layout.order[x.id] = slots[k]));
+      saveLayout(); sortSections();
+      const root = $("sections"); for (const x of sections) root.append($(`sec-${x.id}`));
+    },
+    reset() { layout.hidden.clear(); layout.order = {}; saveLayout(); },
+  };
+
   function showTab(id, scroll) {
     tab = id;
     try { localStorage.setItem("fc-tab", id); } catch {}
@@ -265,10 +313,12 @@
     const root = $("sections");
     const css = sections.map((s) => s.css).filter(Boolean).join("\n");
     if (css) document.head.append(el("style", { text: css }));
-    for (const s of sections.sort((a, b) => a.order - b.order)) {
+    sortSections();
+    for (const s of sections) {
       const host = el("section", { id: `sec-${s.id}`, "aria-labelledby": `h-${s.id}` });
+      host.hidden = layout.hidden.has(s.id);
       root.append(host);
-      try { s.mount?.(host); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
+      if (!host.hidden) mountOne(s);
     }
     const bar = $("tabbar");
     for (const t of TABS) {
@@ -291,13 +341,14 @@
     state.mcp = mcp;
     $("app").classList.add("loading");
     startWatch();
-    for (const s of sections) { try { s.ready?.(); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
+    booted = true;
+    for (const s of live()) readyOne(s);
   }
 
   window.FC = Object.freeze({
     SERVER, state, $, el, sv, de, dayDate, fmtDay, fmtDayLong, fmtWeekday, fmtH, ago, addDays, sport, SOURCES, recStatus, cssVar,
     chart, spark, rolling, richText, errText, sampleErrText, banner, call, watch, reload, section, rerender, setRange,
-    onRange: (f) => listeners.add(f), boot, showTab,
+    onRange: (f) => listeners.add(f), boot, showTab, layout: layoutApi,
     invalidate: () => state.mcp?.invalidate(SERVER, "get_dashboard").catch(() => {}),
   });
 })();

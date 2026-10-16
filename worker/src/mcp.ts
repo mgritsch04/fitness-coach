@@ -15,6 +15,7 @@ import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
 import { registerJournalTools } from "./journal-tools";
+import { registerBodyTools } from "./body-tools";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
 
@@ -380,6 +381,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
   registerStrengthTools(server, env);
   registerCoachTools(server, env);
   registerJournalTools(server, env);
+  registerBodyTools(server, env);
 
   return server;
 }
