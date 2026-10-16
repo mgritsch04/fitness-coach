@@ -37,7 +37,14 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 22 | WHOOP-Webhooks (#29) | `/webhooks/whoop` mit Signaturprüfung, betroffene Daten sofort nachladen | Daten ohne Wartezeit | P2 | M | Zeile 3 | Unit-Tests | Done ⚙️ (#36; User-Test #39) |
 | 23 | Körperwerte und Export (#30) | Gewichtsverlauf, manuelle Eingabe, W/kg, CSV-Export | vollständiges Bild | P3 | S | Zeile 11 | User-Test | Ready |
 | 25 | Handy-Version (#37) | Tab-Leiste unten, Tabellen als Karten, große Zahlen | Dashboard am Handy | P1 | S | Zeile 11 | User-Test | Done ⚙️ (#18; User-Test #44) |
-| 24 | Krafttraining (#33) | Übungen/Sätze/Gewicht erfassen, Volumen je Muskelgruppe, 1RM-Verlauf, sRPE-Belastung in der Gesamtlast, Coach plant Kraft und Rad zusammen | du trainierst Kraft + Rennrad | P1 | L | Zeile 16 (RPE) hilfreich | Unit-Tests, User-Test | Ready |
+| 24 | Krafttraining (#33) | Übungen/Sätze/Gewicht erfassen, Volumen je Muskelgruppe, 1RM-Verlauf, sRPE-Belastung in der Gesamtlast, Coach plant Kraft und Rad zusammen | du trainierst Kraft + Rennrad | P1 | L | Zeile 16 (RPE) hilfreich | Unit-Tests, User-Test | Done ⚙️ (#56; User-Test #47) |
+| 26 | MyWhoosh-Workouts exportieren (#63) | Coach-Intervalle als Workout-Datei (% FTP), Download im Dashboard; Format vorher offiziell prüfen | strukturiert auf der Rolle trainieren | P1 | M | Zeile 8, 15 | Unit-Tests, User-Test | Ready |
+| 27 | FTP-Test-Assistent (#64) | Ramp-/20-min-Test vorschlagen (TSB > 0), aus FIT auswerten, Verlauf | FTP aktuell halten | P2 | M | Zeile 6, 8 | Unit-Tests, User-Test | Ready |
+| 28 | Bestleistungen-Feed (#65) | neue Rekorde Watt/1RM/Strecke, Woche gegen Vorwoche | Motivation | P2 | S | Zeile 8, 24 | Unit-Tests, User-Test | Ready |
+| 29 | Wetter-Empfehlung (#66) | Open-Meteo, bestes Zeitfenster für draußen | Rennrad draußen planen | P2 | M | Zeile 9 | Unit-Tests, User-Test | Ready |
+| 30 | Dashboard anpassen (#67) | Bereiche je Tab ein-/ausblenden, Reihenfolge | Übersicht am Handy | P1 | S | Zeile 11 | User-Test | In Progress (Haupt-Thread) |
+| 31 | CI prüft Dashboard-Vorschau (#68) | Playwright in Actions: Skriptfehler, Überlauf, fehlende Script-Tags | weniger kaputte Veröffentlichungen | P1 | S | Zeile 11 | CI rot bei kaputtem Abschnitt | Ready |
+| 32 | Schneller laden (#69) | get_dashboard kompakter, KV-Cache, Tabs laden faul | schnelleres Handy-Dashboard | P2 | M | – | Messung vorher/nachher | Ready |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
@@ -58,3 +65,8 @@ Damit 3–4 Threads gleichzeitig ohne Konflikte arbeiten, gehört jedem Thema ei
 | 22 Webhooks | `src/webhooks.ts` (neu), `providers/whoop/` | allen außer 12 (beide in `providers/whoop/`, nur additiv) |
 
 **Oberfläche:** Bis Zeile 11 fertig ist, ändert nur der Haupt-Thread `artifact/`. Danach bringt jedes Thema seinen Abschnitt als eigene Datei `artifact/sections/<thema>.js` mit; der Haupt-Thread trägt ihn ein, pflegt die Werkzeugliste im Artefakt-Manifest und veröffentlicht.
+| 26 Workout-Export | `core/workouts.ts` (neu), Werkzeug `build_workout` | allen |
+| 27 FTP-Test | `core/ftptest.ts` (neu) | allen außer 26 (beide nutzen FTP-Zonen, nur lesend) |
+| 28 Rekorde | `core/records.ts` (neu), `sections/records.js` | allen |
+| 29 Wetter | `core/weather.ts` (neu), KV, Einstellung Ort | allen außer Coach-Regel-Änderungen |
+| 32 Ladezeit | `core/dashboard.ts`, `app/core.js` | nicht parallel zu anderen Änderungen an `dashboard.ts` |
