@@ -9,6 +9,7 @@ import { combineCurves } from "./core/power";
 import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -249,6 +250,74 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         sync: await getSyncState(env.DB, "wahoo"),
       });
     },
+  );
+
+  // --- Auswertungen (core/analytics.ts); Ausgaben sind in docs/ANALYTICS.md beschrieben. ---------
+  const viewDays = (def: number) => ({
+    days: z.number().int().min(7).max(730).optional().describe(`Zeitraum der Ansicht in Tagen bis heute, Standard ${def}`),
+  });
+
+  server.registerTool(
+    "get_training_load",
+    {
+      description:
+        "Trainingslast: Tagesreihe mit Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL), Form (TSB) und Form-Bereich, " +
+        "aktueller Stand mit Anstieg der Fitness in 7 Tagen, ATL/CTL-Verhältnis, Monotonie und die belastendsten Workouts. Schätzungen.",
+      inputSchema: viewDays(90),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(trainingLoadView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 730 }))),
+  );
+
+  server.registerTool(
+    "get_fitness_profile",
+    {
+      description:
+        "Leistungsprofil: FTP (eigene oder geschätzt, mit Methode), W/kg, Leistungszonen (Coggan) und Pulszonen (Friel), " +
+        "Zeit je Zone und Verteilung locker/mittel/hart, Leistungskurve (beste Leistung 5 s … 2 h) für 42/90 Tage und gesamt. Schätzungen.",
+      inputSchema: viewDays(28),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(fitnessProfileView(await analysisContext(env.DB, { days: d ?? 28, maxDays: 730 }))),
+  );
+
+  server.registerTool(
+    "get_health_trends",
+    {
+      description:
+        "Gesundheitstrends je Tag mit persönlichem Normalbereich: HRV, Ruhepuls, Erholung, Schlafdauer, Atemfrequenz, Hauttemperatur, SpO2 " +
+        "(Wert, 7-Tage-Mittel, Basis ± Streuung, Status), HRV-Stabilität und Schlafrhythmus (Einschlaf-/Aufwachzeit, Schlafschuld).",
+      inputSchema: viewDays(60),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(healthTrendsView(await analysisContext(env.DB, { days: d ?? 60, maxDays: 365 }))),
+  );
+
+  server.registerTool(
+    "get_period_summaries",
+    {
+      description:
+        "Zusammenfassungen je Woche, Monat oder Jahr: Workouts, Stunden, Belastung, Distanz, Sportarten, Erholung (grün/gelb/rot), " +
+        "HRV, Ruhepuls, Schlaf und Schlafschuld, Strain, Fitness-Veränderung und Vergleich zum vorigen Zeitraum.",
+      inputSchema: {
+        period: z.enum(["week", "month", "year"]).optional().describe("Standard month"),
+        ...viewDays(180),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ period, days: d }) => json(periodSummariesView(await analysisContext(env.DB, { days: d ?? 180, maxDays: 730 }), period ?? "month")),
+  );
+
+  server.registerTool(
+    "get_strain_recovery",
+    {
+      description:
+        "Strain und Belastung gegen die Erholung am Folgetag: Tagespaare, Mittelwerte je Strain- und Belastungsstufe, Korrelation, " +
+        "letzte 7 gegen 28 Tage und kurze Erkenntnisse. Beobachtungen aus deinen Daten, keine Ursache-Wirkung.",
+      inputSchema: viewDays(90),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(strainRecoveryView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 365 }))),
   );
 
   return server;
