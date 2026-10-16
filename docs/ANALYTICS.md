@@ -12,7 +12,7 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 | `get_period_summaries` | `period` = `week`/`month`/`year` (Std. `month`), `days` (Std. 180) | Zusammenfassungen je Zeitraum |
 | `get_strain_recovery` | `days` (7–365, Std. 90) | Strain/Belastung gegen Erholung am Folgetag |
 
-`get_dashboard` enthält zusätzlich `ftpEstimate` (siehe unten); `settings.origin.ftpW` ist `"data"`, wenn die FTP geschätzt ist.
+`get_dashboard` enthält zusätzlich `ftpEstimate` (siehe unten), `hrZones` (wie `hrZoneTime` unten, für gestapelte Wochenbalken) und je Workout `hrZoneMin` (Minuten je Zone 0–5 oder `null`); `settings.origin.ftpW` ist `"data"`, wenn die FTP geschätzt ist.
 
 ## get_training_load
 - `current`: `{ day, ctl, atl, tsb, formZone, formLabel, rampRate7d, acwr, load7d, load28d }` oder `null`.
@@ -31,7 +31,10 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
   - Eine selbst gesetzte FTP (`update_settings`) geht immer vor.
 - `zones`: `{ power: Zone[7] | null, hr: Zone[5] | null }`, `Zone = { zone, name, min, max }` (`max: null` = offen). Leistung nach Coggan, Puls nach Friel (Schwellenpuls).
 - `zoneDistribution`: `{ power, hr }`, je `{ basis, zones: [...Zone, minutes, sharePct, workouts], totalMinutes, intensity: { easyPct, moderatePct, hardPct } }`. **Näherung:** jede Einheit zählt komplett in die Zone ihres Mittelwerts (bis Sekundendaten bzw. WHOOP-Zonenzeiten da sind, #19).
-- `powerCurve`: `{ last42d, last90d, allTime }`, je `[{ durationS, watts, day, source }]` für die Dauern aus `core/power.ts` (1 s … 2 h). Leer, solange keine FIT-Datei mit Leistung importiert ist.
+- `hrZoneTime` (#19): Zeit je Pulszone nach WHOOP-Schema (Zone 0–5 = < 50 %, 50–60, 60–70, 70–80, 80–90, ≥ 90 % HFmax), gemessen von WHOOP je Workout:
+  `{ scheme: [{ zone, name }], total, weeks: [{ week, ...HrZoneTime }], verdict }`, `HrZoneTime = { minutes: number[6], totalMin, workouts, easyPct, moderatePct, hardPct }`.
+  Locker = Zone 0–3, mittel = 4, hart = 5 (Ziel grob 80 % locker). `verdict` ist ein kurzer deutscher Hinweis ab 3 h Daten, sonst `null`.
+- `powerCurve`: `{ last30d, last90d, last365d, allTime }`, je `[{ durationS, watts, day, source }]` für die Dauern aus `core/power.ts` (1 s … 2 h). Leer, solange keine FIT-Datei mit Leistung importiert ist.
 
 ## get_health_trends
 - `metrics.<key>` für `hrv`, `rhr`, `recovery`, `sleepH`, `respRate`, `skinTemp`, `spo2`: `{ last, lastDay, avg7, baseline, status: "below"|"normal"|"above"|"unknown", band[] }`.
@@ -53,3 +56,14 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.
+
+## get_workout_detail
+Detail einer Fahrt mit Sekundenwerten (FIT-Import), Code `worker/src/core/workout-detail.ts`. Parameter: `source`, `sourceId` (aus `get_workouts`; ohne beide die neueste Fahrt mit Sekundenwerten), `maxPoints` (50–3600, Std. 600).
+- `found`: `false` mit `message`, wenn es keine Sekundenwerte gibt. `available[]`: die letzten 20 Fahrten mit Sekundenwerten (`day, source, source_id, start_time, sport, duration_s, avg_power_w, normalized_power_w`) als Auswahlliste.
+- `workout`: Zeile aus `workouts`. `reference`: `{ ftpW, thresholdHr }`, `ftpOrigin` (`user`/`data`).
+- `stats`: `{ durationS, avgPowerW, normalizedPowerW, maxPowerW, variabilityIndex, intensityFactor, tssEstimate, workKj, avgHr, maxHr, avgCadence }`.
+- `series`: `{ stepS, points: [{ t, power, hr, cadence }] }` – Mittel je Abschnitt von `stepS` Sekunden, `t` = Sekunde ab Start.
+- `zones`: `{ power, hr }`, je `[...Zone, seconds, sharePct]` aus echten Sekundenwerten (oder `null` ohne FTP bzw. Schwellenpuls).
+- `intervals`: `{ thresholdW, basis: "ftp"|"average", intervals: [{ startS, durationS, avgPowerW, pctFtp, avgHr, maxHr, avgCadence }] }` – 30-s-Mittel über 88 % FTP (ohne FTP 115 % des Fahrtdurchschnitts), ab 60 s, Lücken bis 15 s überbrückt.
+- `decoupling`: `{ pct, firstHalf, secondHalf }` (Leistung/Puls je Hälfte) oder `null` (unter 20 min Daten).
+- `powerCurve`: Bestleistungen dieser Fahrt `{"Sekunden": Watt}`.

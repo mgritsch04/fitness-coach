@@ -17,7 +17,7 @@ import {
 import { coachAdvice } from "./coach";
 import { trainingOverview } from "./training";
 import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
-import { estimateFtp, flattenCurves, powerCurve } from "./performance";
+import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -85,6 +85,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     trends,
     days: view,
     weeks,
+    hrZones: hrZoneReport(workouts, viewFrom, today),
     workouts: workouts
       .filter((w) => w.day >= viewFrom)
       .map((w) => ({
@@ -106,6 +107,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
         load: w.load,
         loadMethod: w.method,
         intensity: w.intensity,
+        hrZoneMin: parseZones(w.hr_zone_s)?.map((sec) => Math.round(sec / 60)) ?? null,
       })),
     notes: [
       "Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL) und Form (TSB) sind Schätzungen.",

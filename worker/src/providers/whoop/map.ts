@@ -39,6 +39,14 @@ export interface WhoopSleep {
   };
 }
 
+const ZONE_KEYS = ["zone_zero_milli", "zone_one_milli", "zone_two_milli", "zone_three_milli", "zone_four_milli", "zone_five_milli"] as const;
+
+/** Zeit je Pulszone 0–5 in Sekunden; null, wenn WHOOP keine Zonen liefert. */
+export function mapZones(z: Partial<Record<(typeof ZONE_KEYS)[number], number>> | undefined): number[] | null {
+  if (!z || !ZONE_KEYS.some((k) => typeof z[k] === "number")) return null;
+  return ZONE_KEYS.map((k) => Math.round((z[k] ?? 0) / 1000));
+}
+
 export interface WhoopWorkout {
   id: string;
   start: string;
@@ -46,7 +54,14 @@ export interface WhoopWorkout {
   timezone_offset?: string;
   sport_name?: string;
   score_state: string;
-  score?: { strain?: number; average_heart_rate?: number; max_heart_rate?: number; kilojoule?: number; distance_meter?: number };
+  score?: {
+    strain?: number;
+    average_heart_rate?: number;
+    max_heart_rate?: number;
+    kilojoule?: number;
+    distance_meter?: number;
+    zone_durations?: Partial<Record<(typeof ZONE_KEYS)[number], number>>;
+  };
 }
 
 export interface WhoopBody {
@@ -131,6 +146,7 @@ export function mapWorkout(w: WhoopWorkout): Workout {
     avgPowerW: null,
     normalizedPowerW: null,
     strain: n(s?.strain),
+    hrZoneS: mapZones(s?.zone_durations),
   };
 }
 

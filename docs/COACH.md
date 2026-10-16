@@ -8,7 +8,7 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 - Sportarten: Rennrad (derzeit indoor mit MyWhoosh) **und Krafttraining**. Standard: 2 Krafteinheiten pro Woche.
 - Alles sind Trainingsempfehlungen, keine Diagnosen; Belastung (TSS-Maßstab), Phasen und Zeitbudget sind Schätzungen.
 
-## Tabellen (Migration `0006_coach.sql`)
+## Tabellen (Migration `0007_coach.sql`)
 | Tabelle | Inhalt |
 |---|---|
 | `goals` | Ziele: `kind` (event/fitness/weight/habit/other), `title`, `target_date`, `metric` (ftpW/ctl/weightKg/weeklyHours), `target_value`, `unit`, `priority` A/B/C, `status` active/done/dropped |
@@ -48,3 +48,11 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 2. Wochenplan als 7 Kacheln mit Status-Häkchen aus `thisWeek.comparison.days`, Phase und Fortschritt (`comparison.summary`). Knöpfe „Vorschlag übernehmen“ (`save_plan accept`) und „An Tagesform anpassen“ (Claude erhält `get_coach_context`, gibt geänderte `days` zurück → `save_plan days`).
 3. Ziele mit Countdown (`training.goals`), Formular → `set_goals`.
 4. Coach-Chat: Prompt = `get_coach_context` + Frage; gute Antworten mit `save_coach_note kind=chat` merken. Wochenrückblick sonntags → `kind=weekly_review`.
+
+## Tagebuch (#23, `core/journal.ts`, Migration `0008_journal.sql`, Werkzeuge `src/journal-tools.ts`)
+- Tabelle `journal`: ein Check-in je Tag – `feeling`, `energy`, `motivation` (1 = schlecht … 5 = sehr gut), `soreness`, `stress` (1 = keiner … 5 = stark), `notes`, `tags` (JSON-Liste, klein geschrieben). Tabelle `workout_rpe`: RPE 1–10 je Workout (`source`, `source_id`).
+- Werkzeuge: `get_journal` (`days`, Std. 14; mit `suggestedTags`), `save_journal` (`day` Std. heute, nur übergebene Felder, `null` löscht, `tags` ersetzt, `remove`), `save_workout_rpe` (`source`, `sourceId`, `rpe` oder `null`).
+- Wirkung auf die Tagesempfehlung (`applyJournal`, nur leichter, nie härter): „krank/erkältet/Fieber“ → Ruhe mit Warnung · „verletzt/Schmerzen“, Muskelkater ≥ 4, Energie ≤ 2, Befinden 1, Stress 5 → je eine Stufe leichter · Alkohol → Hinweis. Gründe erscheinen mit `factor: "journal"`.
+- `get_dashboard` → `journal: { today, recent (14 Tage), tagEffects }`; `tagEffects` = Erholung/HRV am Folgetag mit vs. ohne Tag (ab 3 Tagen mit Tag; Beobachtung, keine Ursache). Workouts haben zusätzlich `sourceId`, `rpe`, `sessionRpe` (Dauer × RPE nach Foster, eigene Einheit „AU“, nicht TSS).
+- `get_coach_context` enthält `journal` und RPE der letzten Workouts.
+- UI-Vorschlag: Check-in-Karte oben im Dashboard (5 Regler oder Smileys + Tag-Chips aus `suggestedTags`), RPE-Auswahl 1–10 direkt am Workout.

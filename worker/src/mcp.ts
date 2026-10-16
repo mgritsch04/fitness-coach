@@ -7,6 +7,7 @@ import { wahooConnectLink, wahooCredentials } from "./wahoo";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./core/repository";
 import { combineCurves } from "./core/power";
 import { FitImportError, importFit } from "./providers/mywhoosh/import";
+import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
 import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "./core/analytics";
@@ -126,6 +127,23 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       const workouts = await readPowerCurves(env.DB, fromDay(d ?? 90));
       return json({ best: combineCurves(workouts.map((w) => w.power_curve)), workouts });
     },
+  );
+
+  server.registerTool(
+    "get_workout_detail",
+    {
+      description:
+        "Detail einer Fahrt mit Sekundenwerten (FIT-Import): Verlauf von Leistung/Puls/Trittfrequenz (verkleinert, series.points), " +
+        "Kennzahlen (NP, IF, VI, TSS-Schätzung, Arbeit), Zeit in Leistungs- und Pulszonen, automatisch erkannte Intervalle, " +
+        "Pa:HR-Entkopplung und Bestleistungskurve. Ohne source/sourceId die neueste solche Fahrt; available listet die letzten 20.",
+      inputSchema: {
+        source: z.string().max(20).optional().describe("Quelle aus get_workouts, z. B. mywhoosh"),
+        sourceId: z.string().max(100).optional().describe("source_id aus get_workouts"),
+        maxPoints: z.number().int().min(50).max(3600).optional().describe("Höchstzahl Punkte im Verlauf, Standard 600"),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ source, sourceId, maxPoints }) => json(await loadWorkoutDetail(env.DB, source, sourceId, maxPoints)),
   );
 
   server.registerTool(
@@ -276,7 +294,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     {
       description:
         "Leistungsprofil: FTP (eigene oder geschätzt, mit Methode), W/kg, Leistungszonen (Coggan) und Pulszonen (Friel), " +
-        "Zeit je Zone und Verteilung locker/mittel/hart, Leistungskurve (beste Leistung 5 s … 2 h) für 42/90 Tage und gesamt. Schätzungen.",
+        "Zeit je Zone und Verteilung locker/mittel/hart, Leistungskurve (beste Leistung 1 s … 2 h) für 30/90/365 Tage und gesamt, Zeit je WHOOP-Pulszone je Woche (80/20). Schätzungen.",
       inputSchema: viewDays(28),
       annotations: { readOnlyHint: true },
     },

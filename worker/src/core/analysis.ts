@@ -51,6 +51,8 @@ export interface WorkoutRow {
   strain: number | null;
   avg_cadence_rpm?: number | null;
   tss?: number | null;
+  /** JSON-Array: Sekunden je Pulszone 0–5 (siehe Migration 0006). */
+  hr_zone_s?: string | null;
 }
 
 /** Vom Nutzer gesetzte Werte; fehlende werden aus den Daten geschätzt. */

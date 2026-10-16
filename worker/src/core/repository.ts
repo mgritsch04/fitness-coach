@@ -45,17 +45,17 @@ export function upsertWorkout(db: D1Database, w: Workout): D1PreparedStatement {
   return db
     .prepare(
       `INSERT INTO workouts (source, source_id, day, start_time, end_time, sport, duration_s, distance_m, energy_kj, avg_hr, max_hr,
-         avg_power_w, normalized_power_w, strain, avg_cadence_rpm, tss, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+         avg_power_w, normalized_power_w, strain, avg_cadence_rpm, tss, hr_zone_s, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT (source, source_id) DO UPDATE SET day = excluded.day, start_time = excluded.start_time, end_time = excluded.end_time,
          sport = excluded.sport, duration_s = excluded.duration_s, distance_m = excluded.distance_m, energy_kj = excluded.energy_kj,
          avg_hr = excluded.avg_hr, max_hr = excluded.max_hr, avg_power_w = excluded.avg_power_w,
          normalized_power_w = excluded.normalized_power_w, strain = excluded.strain, avg_cadence_rpm = excluded.avg_cadence_rpm,
-         tss = excluded.tss, updated_at = excluded.updated_at`,
+         tss = excluded.tss, hr_zone_s = COALESCE(excluded.hr_zone_s, workouts.hr_zone_s), updated_at = excluded.updated_at`,
     )
     .bind(
       w.source, w.sourceId, w.day, w.startTime, w.endTime, w.sport, w.durationS, w.distanceM, w.energyKj, w.avgHr, w.maxHr,
-      w.avgPowerW, w.normalizedPowerW, w.strain, w.avgCadenceRpm ?? null, w.tss ?? null,
+      w.avgPowerW, w.normalizedPowerW, w.strain, w.avgCadenceRpm ?? null, w.tss ?? null, w.hrZoneS ? JSON.stringify(w.hrZoneS) : null,
     );
 }
 
@@ -139,7 +139,7 @@ export async function readWorkouts(db: D1Database, fromDay: string) {
   const { results } = await db
     .prepare(
       `SELECT day, source, source_id, start_time, end_time, sport, duration_s, distance_m, energy_kj, avg_hr, max_hr,
-         avg_power_w, normalized_power_w, strain, avg_cadence_rpm, tss
+         avg_power_w, normalized_power_w, strain, avg_cadence_rpm, tss, hr_zone_s
        FROM workouts WHERE day >= ? ORDER BY start_time DESC`,
     )
     .bind(fromDay)
