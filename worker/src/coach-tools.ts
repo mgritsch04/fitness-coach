@@ -3,6 +3,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { addDays, weekStart } from "./core/analysis";
+import { analysisContext, recoveryForecastView } from "./core/analytics";
 import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
 import { normalizePlan } from "./core/plan";
@@ -280,7 +281,11 @@ export function registerCoachTools(server: McpServer, env: Env) {
       annotations: { readOnlyHint: true },
     },
     async ({ days }) => {
-      const dash = await dashboard();
+      // Erholungs-Prognose für morgen (core/forecast.ts, Analyse-Thread) für Fragen wie „heute Abend noch trainieren?“.
+      const [dash, forecast] = await Promise.all([
+        dashboard(),
+        analysisContext(db, { days: 90 }).then((c) => recoveryForecastView(c)).catch(() => null),
+      ]);
       const n = days ?? 14;
       const t = dash.training;
       const trendBrief = Object.fromEntries(
@@ -308,6 +313,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         intensityCheck: t.intensity,
         ftpTest: t.ftpTest,
         fuelingToday: t.fueling.days.find((f) => f.day === dash.today) ?? null,
+        recoveryForecast: forecast,
         strengthWorkouts: t.strengthWorkouts.days.slice(0, 2).map((w) => ({ day: w.day, focus: w.focus, text: w.text })),
         eventProjection: t.projection
           ? { goal: t.projection.goal.title, date: t.projection.goal.targetDate, daysLeft: t.projection.daysLeft, atEvent: t.projection.atEvent, targetTsb: t.projection.targetTsb, verdict: t.projection.verdict, advice: t.projection.advice, weeks: t.projection.weeks }
@@ -322,6 +328,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
           "Schätzungen (Belastung, Fitness/Form, FTP aus Puls) als Schätzungen kennzeichnen. Gründe aus den Daten nennen.",
           "Kraft und Rad zusammen denken: keine schweren Beine vor Intervallen oder der langen Fahrt; harte Tage hart, lockere Tage locker.",
           "Das Tagebuch (Befinden, Muskelkater, Stress, Tags wie krank/Reise/Alkohol) ist so wichtig wie die Messwerte; tagEffects sind Beobachtungen, keine Ursachen.",
+          "recoveryForecast ist eine statistische Schätzung der Erholung von morgen aus deinen eigenen Daten: Spanne (low–high) nennen und nur nutzen, wenn available = true.",
           "Planänderungen mit save_plan speichern, dauerhafte Erkenntnisse mit save_coach_note, Ziele mit set_goals.",
         ],
       });
