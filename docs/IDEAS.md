@@ -46,9 +46,10 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 31 | CI prüft Dashboard-Vorschau (#68) | Playwright in Actions: Skriptfehler, Überlauf, fehlende Script-Tags | weniger kaputte Veröffentlichungen | P1 | S | Zeile 11 | CI rot bei kaputtem Abschnitt | Done ⚙️ (#73) |
 | 32 | Schneller laden (#69) | get_dashboard kompakter, KV-Cache, Tabs laden faul | schnelleres Handy-Dashboard | P2 | M | – | Messung vorher/nachher | Done ⚙️ (#81: 157 → 79 KB, Handy-Start 1 statt 11 Aufrufe; KV-Cache bewusst weggelassen; User-Test #82) |
 | 33 | Wochenrückblick (#76) | Soll/Ist, Belastung, Erholung, Schlaf, Highlights, Text von Claude | dranbleiben, Woche einordnen | P1 | M | Zeile 15 | Unit-Tests, User-Test | Done ⚙️ (#80; im Dashboard v8; User-Test #85) |
-| 34 | Ausdauer-Profil (#92) | Critical Power, W′, Effizienz-Trend (Watt pro Herzschlag) | Fortschritt auf dem Rad sehen | P2 | M | Zeile 8 | Unit-Tests, User-Test | In Progress (Analyse-Thread) |
-| 35 | Erholungs-Prognose (#93) | Erholung morgen aus Belastung, Schlafplan und eigener Historie schätzen | Tag vorher planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Ready |
-| 36 | Coach-Fragen mit Werkzeugen (#100) | Claude holt sich zur Frage Schlaf, Kraft, Plan, Rückblick, Wetter usw. selbst | bessere Antworten im Chat | P1 | S | Zeile 9 | Vorschau, User-Test | In Progress (Haupt-Thread) |
+| 34 | Ausdauer-Profil (#92) | Critical Power, W′, Effizienz-Trend (Watt pro Herzschlag) | Fortschritt auf dem Rad sehen | P2 | M | Zeile 8 | Unit-Tests, User-Test | Done ⚙️ (#96; im Dashboard v10; User-Test #101) |
+| 35 | Erholungs-Prognose (#93) | Erholung morgen aus Belastung, Schlafplan und eigener Historie schätzen | Tag vorher planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | In Progress (Analyse-Thread) |
+| 36 | Coach-Fragen mit Werkzeugen (#100) | Claude holt sich zur Frage Schlaf, Kraft, Plan, Rückblick, Wetter usw. selbst | bessere Antworten im Chat | P1 | S | Zeile 9 | Vorschau, User-Test | Done ⚙️ (#102; im Dashboard v10; User-Test #104) |
+| 37 | FTP-Test im Wochenplan (#98) | Plan schlägt einen passenden Tag für den FTP-Test vor, mit Anleitung | FTP aktuell halten | P2 | S | Zeile 25 | Unit-Tests, User-Test | Done ⚙️ (#99; User-Test #103) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
