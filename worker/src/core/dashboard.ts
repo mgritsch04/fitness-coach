@@ -15,7 +15,8 @@ import {
   type WorkoutRow,
 } from "./analysis";
 import { coachAdvice } from "./coach";
-import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./repository";
+import { estimateFtp, flattenCurves, powerCurve } from "./performance";
+import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
 /** Vorlauf, damit die 42-Tage-Fitness (CTL) am Anfang der Ansicht schon eingeschwungen ist. */
@@ -31,16 +32,20 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const loadFrom = addDays(viewFrom, -LOAD_WARMUP_DAYS);
   const statsFrom = addDays(viewFrom, -BASELINE_DAYS);
 
-  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync] = await Promise.all([
+  const ftpFrom = addDays(today, -89);
+  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync, powerRows] = await Promise.all([
     readDaily(db, statsFrom) as Promise<unknown> as Promise<DailyRow[]>,
     readSleeps(db, statsFrom) as Promise<unknown> as Promise<SleepRow[]>,
     readWorkouts(db, loadFrom) as Promise<unknown> as Promise<WorkoutRow[]>,
     readLatestBody(db) as Promise<{ max_hr: number | null; weight_kg: number | null; height_m: number | null } | null>,
     getSyncState(db, "whoop"),
     getSyncState(db, "wahoo"),
+    readPowerCurves(db, ftpFrom).then(flattenCurves),
   ]);
 
-  const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null);
+  // FTP-Schätzung (performance.ts) gilt nur, solange keine eigene FTP gesetzt ist.
+  const ftpEstimate = estimateFtp(powerCurve(powerRows, ftpFrom), rawWorkouts, ftpFrom);
+  const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null, ftpEstimate?.watts ?? null);
   const workouts = mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) }));
 
   const loadsByDay = new Map<string, number>();
@@ -68,6 +73,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     today,
     range: { from: viewFrom, to: today, days },
     settings,
+    ftpEstimate,
     body: body ? { weightKg: body.weight_kg, heightM: body.height_m } : null,
     coach,
     trends,
@@ -94,6 +100,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
       })),
     notes: [
       "Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL) und Form (TSB) sind Schätzungen.",
+      settings.origin.ftpW === "data" ? `FTP ${settings.ftpW} W ist geschätzt (${ftpEstimate?.note ?? ""}). Trage deine FTP ein, wenn du sie kennst.` : null,
       settings.ftpW ? null : "Ohne FTP wird die Belastung aus dem Puls geschätzt. Trage deine FTP ein, sobald Leistungsdaten (Wahoo/MyWhoosh) vorliegen.",
       unestimated ? `${unestimated} Workouts ohne Puls oder Leistung zählen nicht zur Trainingslast.` : null,
     ].filter(Boolean),

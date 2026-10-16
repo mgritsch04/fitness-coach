@@ -231,7 +231,11 @@ describe("Dashboard aus D1", () => {
     expect(d.today).toBe("2026-03-20");
     expect(d.days).toHaveLength(14);
     expect(d.workouts.every((w) => w.sources.length === 2 && w.sources[0] === "wahoo")).toBe(true);
-    expect(d.workouts[0].loadMethod).toBe("hr"); // ohne FTP über den Puls
+    // Ohne eigene FTP wird sie aus der Leistung der Fahrten geschätzt (performance.ts).
+    expect(d.settings.origin.ftpW).toBe("data");
+    expect(d.ftpEstimate).toMatchObject({ method: "workouts_np", confidence: "low" });
+    expect(d.workouts[0].loadMethod).toBe("power");
+    expect(d.notes.join(" ")).toMatch(/ist geschätzt/);
     expect(d.days.at(-1)!.ctl).toBeGreaterThan(0);
     expect(d.trends.hrv.status).toBe("normal");
     expect(d.coach.reasons.length).toBeGreaterThan(0);
@@ -240,6 +244,7 @@ describe("Dashboard aus D1", () => {
     await writeSettings(db, { ftpW: 250 });
     const withFtp = await buildDashboard(db, { days: 14, now });
     expect(withFtp.workouts[0].loadMethod).toBe("power");
+    expect(withFtp.settings.origin.ftpW).toBe("user");
     expect(withFtp.notes.join(" ")).not.toMatch(/Ohne FTP/);
   });
 });

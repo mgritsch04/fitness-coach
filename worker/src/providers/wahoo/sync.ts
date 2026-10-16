@@ -1,9 +1,9 @@
 // Abgleich Wahoo → gemeinsames Datenmodell. Wahoo liefert Workouts seitenweise, neueste zuerst.
 // Erstabgleich: letzte 30 Tage, danach ab dem letzten Erfolg minus 3 Tage (Zusammenfassungen kommen
 // teils verzögert). Die Sandbox erlaubt nur wenige Anfragen (laut Drittquellen 25 je 5 Minuten),
-// daher höchstens 5 Seiten pro Lauf.
+// daher höchstens 5 Seiten pro Lauf. Fehlt in der Liste die Zusammenfassung, wird sie einzeln nachgeladen.
 import { getSyncState, runBatched, setSyncState, upsertWorkout } from "../../core/repository";
-import { listWorkouts, validAccessToken, type WahooCredentials, type WahooTokenStore } from "./client";
+import { getWorkoutSummary, listWorkouts, validAccessToken, type WahooCredentials, type WahooTokenStore } from "./client";
 import { mapWorkout } from "./map";
 
 const DAY = 86_400_000;
@@ -11,6 +11,8 @@ const INITIAL_DAYS = 30;
 const OVERLAP_DAYS = 3;
 const PER_PAGE = 30;
 const MAX_PAGES = 5;
+/** Höchstens so viele fehlende Zusammenfassungen pro Lauf einzeln nachladen (Sandbox-Limits). */
+const MAX_SUMMARY_FETCHES = 10;
 
 type Fetch = typeof fetch;
 
@@ -39,6 +41,12 @@ export async function syncWahoo(
       const recent = res.workouts.filter((w) => Date.parse(w.starts) >= sinceMs);
       workouts.push(...recent);
       if (res.workouts.length < PER_PAGE || recent.length < res.workouts.length) break;
+    }
+    let fetches = 0;
+    for (const w of workouts) {
+      if (w.workout_summary || fetches >= MAX_SUMMARY_FETCHES) continue;
+      fetches++;
+      w.workout_summary = await getWorkoutSummary(token, w.id, f);
     }
     await runBatched(db, workouts.map((w) => upsertWorkout(db, mapWorkout(w))));
     await setSyncState(db, "wahoo", true, null, at);

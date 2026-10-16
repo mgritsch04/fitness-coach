@@ -78,6 +78,15 @@ export function upsertBody(db: D1Database, b: BodyMeasurement): D1PreparedStatem
     .bind(b.source, b.measuredAt, b.heightM, b.weightKg, b.maxHr);
 }
 
+/** Für Löschmeldungen der Anbieter (z. B. WHOOP-Webhook „workout.deleted“). */
+export function deleteWorkout(db: D1Database, source: Source, sourceId: string): D1PreparedStatement {
+  return db.prepare("DELETE FROM workouts WHERE source = ? AND source_id = ?").bind(source, sourceId);
+}
+
+export function deleteSleep(db: D1Database, source: Source, sourceId: string): D1PreparedStatement {
+  return db.prepare("DELETE FROM sleeps WHERE source = ? AND source_id = ?").bind(source, sourceId);
+}
+
 /** D1 nimmt höchstens 100 Anweisungen pro Batch an. */
 export async function runBatched(db: D1Database, statements: D1PreparedStatement[]): Promise<void> {
   for (let i = 0; i < statements.length; i += 100) await db.batch(statements.slice(i, i + 100));
