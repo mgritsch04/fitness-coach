@@ -4,8 +4,10 @@ _Zuletzt aktualisiert: 2026-10-16 · Workflow: [`DEVELOPMENT_WORKFLOW.md`](DEVEL
 
 ## Aktuell
 - **Phase:** 0 – Organisation. Repository angelegt, Workflow, Labels, Vorlagen und Backlog aus `wohnungsplaner-3d` übernommen und angepasst.
-- **Deine Aufgaben:** Entwickler-Apps für WHOOP und Wahoo anlegen (je ein `[AUFGABE]`-Issue mit Label `user-task`).
-- **Nächster Schritt:** Grundgerüst (IDEAS Zeile 1) und Datenmodell (Zeile 2); Anbieter-Anbindungen, sobald die Apps angelegt sind.
+- **Deine Aufgaben:** #1 Cloudflare-Token (priority: high), #2 WHOOP-App, #3 Wahoo-App (Label `user-task`).
+- **Architektur:** Cloudflare-Worker als Kern + Claude-Artefakt als Oberfläche, Coach über Claude ohne API-Schlüssel (siehe MASTER_PROMPT.md).
+- **Cloudflare-Skills** sind als Projekt-Plugin aktiv (`.claude/settings.json`); der Cloudflare-MCP braucht Browser-Login und wird in Cloud-Sitzungen nicht genutzt, Deploy per Wrangler mit `CLOUDFLARE_API_TOKEN`.
+- **Nächster Schritt:** Machbarkeitstest (IDEAS Zeile 0), sobald #1 erledigt ist.
 
 ## Legende
 `DONE` fertig mit Beleg · `PARTIAL` teilweise · `IN PROGRESS` in Arbeit · `PLANNED` geplant · `BLOCKED` blockiert · `NEEDS USER TEST` braucht deinen Praxistest

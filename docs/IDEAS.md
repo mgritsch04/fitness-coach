@@ -12,11 +12,11 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 
 | # | Titel (Issue) | Beschreibung | Nutzen | Prio | Größe | Abhängigkeiten | Abnahme | Status |
 |---|---|---|---|---|---|---|---|---|
-| 0 | Machbarkeit: Artefakt ruft eigenen Connector auf | Mini-Worker als Remote-MCP mit OAuth, in claude.ai als Connector eintragen, Mini-Artefakt ruft ein Test-Tool auf | trägt die ganze Architektur | P1 | S | Cloudflare-Konto von dir (user-task) | Artefakt zeigt Antwort des Workers | Ready |
+| 0 | Machbarkeit: Artefakt ruft eigenen Connector auf | Mini-Worker als Remote-MCP mit OAuth, in claude.ai als Connector eintragen, Mini-Artefakt ruft ein Test-Tool auf | trägt die ganze Architektur | P1 | S | Cloudflare-Token von dir (#1) | Artefakt zeigt Antwort des Workers | Ready |
 | 1 | Grundgerüst: Worker + D1 + Artefakt + CI | TypeScript-Worker (MCP-Connector, OAuth, Cron), D1-Schema, Artefakt-Oberfläche, Lint/Test/Build, CI-Workflow | Basis für alles | P1 | M | Zeile 0 | CI grün, Deployment erreichbar, Artefakt lädt Daten über den Connector | Ready |
 | 2 | Gemeinsames Datenmodell | Workout, Schlaf, Recovery/Tag, Körperwerte; Quelle + Roh-ID je Datensatz; Duplikat-Abgleich (Startzeit ± Toleranz, Dauer) | eine Sicht auf alle Quellen | P1 | M | Zeile 1 | Unit-Tests mit synthetischen Daten | Ready |
-| 3 | WHOOP anbinden | OAuth (inkl. `offline`), Token-Refresh mit Rotation, Abgleich Recovery/Schlaf/Cycles/Workouts | Recovery & Schlaf | P1 | M | Zeile 1–2; Entwickler-App von dir (user-task) | Login → Daten der letzten 30 Tage sichtbar | Blocked |
-| 4 | Wahoo anbinden | OAuth, Workouts + FIT-Dateien, später Webhook `workout_summary` | Radtraining mit Leistung | P1 | M | Zeile 1–2; Entwickler-App von dir (user-task) | Login → Workouts mit Leistung/Puls sichtbar | Blocked |
+| 3 | WHOOP anbinden | OAuth (inkl. `offline`), Token-Refresh mit Rotation, Abgleich Recovery/Schlaf/Cycles/Workouts | Recovery & Schlaf | P1 | M | Zeile 1–2; WHOOP-App von dir (#2) | Login → Daten der letzten 30 Tage sichtbar | Blocked |
+| 4 | Wahoo anbinden | OAuth, Workouts + FIT-Dateien, später Webhook `workout_summary` | Radtraining mit Leistung | P1 | M | Zeile 1–2; Wahoo-App von dir (#3) | Login → Workouts mit Leistung/Puls sichtbar | Blocked |
 | 5 | MyWhoosh automatisch (inoffizielle API) | Fahrten ohne Handgriff übernehmen; braucht MyWhoosh-Login im Worker, kann bei App-Updates brechen | kein manueller Upload | P3 | M | Zeile 6; ausdrückliche Freigabe von dir | neue MyWhoosh-Fahrt erscheint ohne Duplikat | Blocked |
 | 6 | MyWhoosh per FIT-Upload | FIT aus dem MyWhoosh-Webportal im Dashboard hochladen, parsen ins Datenmodell | MyWhoosh-Fahrten (Standardweg) | P1 | S | Zeile 2 | Beispiel-FIT (synthetisch) wird korrekt importiert | Ready |
 | 7 | Dashboard: Tagesansicht und Verlauf | Recovery, Schlaf, Strain/Belastung heute; Wochen-/Monatsverlauf | Überblick | P1 | L | Zeile 2, eine Quelle | User-Test | Ready |
