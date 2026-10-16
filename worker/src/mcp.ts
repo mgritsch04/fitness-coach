@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -444,6 +444,21 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     async ({ days: d }) => {
       const days = d ?? 90;
       return json(hrvTrendView(await analysisContext(env.DB, { days: days + 67, maxDays: 450 }), days));
+    },
+  );
+
+  server.registerTool(
+    "get_training_timing",
+    {
+      description:
+        "Beste Trainingszeit: je Tageszeit (morgens bis spät) Anzahl Einheiten, Effizienz der Radeinheiten (Watt je Herzschlag), Schlaf der folgenden Nacht " +
+        "und Erholung am nächsten Morgen gegenüber dem eigenen Mittel, dazu Hinweise. Beobachtungen aus den eigenen Daten, keine Ursache-Wirkung.",
+      inputSchema: { days: z.number().int().min(28).max(365).optional().describe("Zeitraum in Tagen, Standard 120") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => {
+      const days = d ?? 120;
+      return json(trainingTimingView(await analysisContext(env.DB, { days, maxDays: 365 }), days));
     },
   );
 
