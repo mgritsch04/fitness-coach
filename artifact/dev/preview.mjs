@@ -77,7 +77,7 @@ const mcp = {
 const sample = async (input, o = {}) => { if (o.tools) { const t = o.tools.find((x) => x.name === "krafttraining"); window.__toolResult = t ? String(await t.execute({ wochen: 4 }, { signal: new AbortController().signal })).length : -1; } const text = "**Heute normales Training.** Deine Erholung ist gelb und die HRV liegt im Normalbereich.\\n- 45–60 min Grundlage auf dem Rad\\n- danach 10 min Mobility"; o.onText?.({ text, delta: text }); return { text, truncated: false }; };
 sample.limits = async () => ({ tools: {} });
 sample.json = async () => ({ hinweis: "Beispielplan.", tage: [{ tag: "2026-03-31", einheit: "Rad locker", dauerMin: 60, intensitaet: "locker", belastung: 45, ziel: "Grundlage" }] });
-const downloads = { async save() {} };
+const downloads = { async save(f) { window.__saved = { filename: f.filename, text: await f.data.text() }; } };
 window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample : n === "downloads" ? downloads : null) };
 </script>`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
@@ -117,12 +117,23 @@ for (const [name, vp, scheme, tab] of shots) {
       await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(300);
       if (await p.evaluate(() => !document.getElementById("sec-whatsnew").hidden)) errors.push(`${name}: Neu im Dashboard nach „Alles gesehen“ noch da`);
     }
+    // Wochenplan als Kalenderdatei (#157): gültiger Aufbau, Zeilen höchstens 75 Byte.
+    const calBtn = await p.$("#agBody .ag-act .ag-cal");
+    if (!calBtn) errors.push(`${name}: Heute dran ohne Kalender-Knopf`);
+    else {
+      await calBtn.click(); await p.waitForTimeout(200);
+      const f = await p.evaluate(() => window.__saved);
+      const lines = f?.text?.split("\r\n") ?? [];
+      const ok = f?.filename?.endsWith(".ics") && lines[0] === "BEGIN:VCALENDAR" && lines.includes("END:VCALENDAR") && lines.some((l) => l.startsWith("DTSTART;VALUE=DATE:")) && lines.every((l) => Buffer.byteLength(l) <= 75);
+      if (!ok) errors.push(`${name}: Kalenderdatei fehlerhaft ${JSON.stringify(f?.text?.slice(0, 300))}`);
+    }
     // „Heute dran“ (#122): Wochenstreifen da, Knopf startet den Gym-Modus mit der Planeinheit.
     const n = await p.$$eval("#agBody .ag-day", (d) => d.length);
     if (n !== 7) errors.push(`${name}: Heute dran zeigt ${n} statt 7 Tage`);
     await p.screenshot({ path: join(out, "phone-heute.png"), fullPage: false });
-    const rpeBtn = await p.$("#agBody .ag-rpe .rpe-pick button:nth-child(7)");
-    if (!rpeBtn) errors.push(`${name}: Heute dran fragt nicht nach der Anstrengung`);
+    await p.evaluate(() => document.querySelector("#agBody .ag-rpe")?.scrollIntoView({ block: "center" }));
+    const rpeBtn = p.locator("#agBody .ag-rpe .rpe-pick button:nth-child(7)");
+    if (!(await rpeBtn.count())) errors.push(`${name}: Heute dran fragt nicht nach der Anstrengung`);
     else { await rpeBtn.click(); await p.waitForTimeout(300); const r = await p.evaluate(() => window.__rpeSaved); if (!(r?.rpe === 7 && r.source && r.sourceId)) errors.push(`${name}: Anstrengung falsch gespeichert ${JSON.stringify(r)}`); }
     const gymBtn = await p.$("#agBody .ag-act .primary");
     if (gymBtn && (await gymBtn.textContent()).includes("Gym")) {
