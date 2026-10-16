@@ -31,6 +31,7 @@ import {
 } from "./performance";
 import { recoveryFactors, strainRecovery } from "./insights";
 import { earlyWarning } from "./warnings";
+import { sleepReport } from "./sleep";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -217,4 +218,16 @@ export function recoveryFactorsView(c: AnalysisContext) {
 
 export function earlyWarningView(c: AnalysisContext) {
   return { today: c.today, ...earlyWarning(c.series, c.today) };
+}
+
+export function sleepReportView(c: AnalysisContext) {
+  return {
+    today: c.today,
+    range: range(c),
+    ...sleepReport(c.sleeps, c.settings.timezone, c.viewFrom, c.today, c.settings.sleepNeedH),
+    notes: [
+      "Nächte nach Tag des Aufwachens; Uhrzeiten in deiner Zeitzone. Schlafbedarf aus den Einstellungen (Standard 8 h).",
+      "Empfohlene Schlafenszeit = übliche Aufwachzeit minus Schlafbedarf minus übliche Wachzeit im Bett (Schätzung).",
+    ],
+  };
 }

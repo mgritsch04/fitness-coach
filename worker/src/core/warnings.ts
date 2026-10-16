@@ -48,6 +48,8 @@ export interface Signal {
   /** Wert liegt außerhalb der Basis in der ungünstigen Richtung. */
   flagged: boolean;
   text: string | null;
+  /** Gesetzt, wenn der Wert vom Vortag stammt, weil heute noch keiner da ist. */
+  fromDay?: string;
 }
 
 export interface EarlyWarning {
@@ -118,7 +120,13 @@ export function earlyWarning(series: readonly DayPoint[], today: string): EarlyW
   if (!day) {
     return { day: null, level: "none", flaggedCount: 0, consecutiveDays: 0, signals: [], headline: "Noch zu wenig Daten für die Frühwarnung", advice: "Die Frühwarnung braucht etwa 2 Wochen Messwerte als persönliche Basis.", disclaimer: DISCLAIMER };
   }
+  // Je Signal der neueste Wert: Atemfrequenz und SpO2 kommen mit dem Schlaf, Ruhepuls und HRV erst mit der
+  // Erholung – fehlt ein Wert heute noch, zählt der von gestern.
   const signals = signalsFor(series, day);
+  if (day === today) {
+    const have = new Set(signals.map((s) => s.key));
+    signals.push(...signalsFor(series, addDays(today, -1)).filter((s) => !have.has(s.key)).map((s) => ({ ...s, fromDay: addDays(today, -1) })));
+  }
   const flaggedCount = signals.filter((s) => s.flagged).length;
   let consecutiveDays = 0;
   for (let d = day; consecutiveDays < 14; d = addDays(d, -1)) {
