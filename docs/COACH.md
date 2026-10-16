@@ -21,8 +21,9 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 - **Wochenbelastung** = Fitness (CTL) × 7 × Faktor (Grundlage 1,05 · Aufbau 1,1 · Spitze 1,0 · Tapering 0,6 · Erholung 0,6). Ohne Lastdaten (CTL < 15) nach Zeit.
 - **Zeitbudget**: `weeklyHours` aus den Vorlieben, sonst Schnitt der letzten 4 Wochen (3–12 h, als Schätzung markiert).
 - **Tage**: 3–6 Trainingstage je nach Zeit, feste Ruhetage bleiben frei, lange Einheit am Langtag (Standard Samstag). Schlüsseleinheiten (Tempo/Schwelle/VO₂max) nie an Nachbartagen von harten Tagen oder dem Langtag; Tag nach Langtag/VO₂max eher Erholung. Watt- und Pulsbereiche aus FTP und Schwellenpuls.
-- **Kraft**: nie am Tag vor Intervallen, Langtag oder Wettkampf; bevorzugt nach einer harten Radeinheit („harte Tage hart“) oder an freien Tagen, mindestens ein Tag zwischen zwei Krafttagen, Beine früh in der Woche. Tapering/Erholung höchstens eine leichte, Wettkampfwoche keine.
-- **Soll/Ist** (`comparePlan`): je Tag `done` (≥ 70 % von Belastung oder Dauer), `partial`, `missed`, `extra` (Training am Ruhetag), `today`, `upcoming`, `rest`; Kraft erledigt, wenn an dem Tag ein Kraft-Workout (WHOOP: weightlifting, bodybuilding, functional …) vorliegt.
+- **Kraft-Gewohnheit**: Ohne Vorgabe übernimmt der Plan Häufigkeit und Dauer der Krafteinheiten aus den letzten 4 Wochen (bis 6× pro Woche, sonst Standard 2 × 45 min). Das Rad-Zeitbudget zählt Kraftminuten nicht mit.
+- **Kraft** (Beine/Ganzkörper; Oberkörper darf auch vor harten Tagen liegen): nie am Tag vor Intervallen, Langtag oder Wettkampf; bevorzugt nach einer harten Radeinheit („harte Tage hart“) oder an freien Tagen, mindestens ein Tag zwischen zwei Krafttagen, Beine früh in der Woche. Tapering/Erholung höchstens eine leichte, Wettkampfwoche keine.
+- **Soll/Ist** (`comparePlan`): je Tag `done` (≥ 70 % von Belastung oder Dauer; harte Einheiten brauchen ≥ 60 % der Belastung und ≥ 50 % der Dauer), `partial`, `missed`, `extra` (Training am Ruhetag), `today`, `upcoming`, `rest`; Kraft erledigt, wenn an dem Tag ein Kraft-Workout (WHOOP: weightlifting, bodybuilding, functional …) vorliegt.
 - **Heute** (`todayCheck`): vergleicht die geplante Einheit mit der Bereitschaft aus der Tagesempfehlung → `ok`, `reduce` (leichter), `swap` (mit einem späteren lockeren Tag tauschen), `rest`.
 
 ## Werkzeuge
@@ -30,7 +31,8 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 |---|---|---|
 | `get_goals` | `status` (active/done/dropped/all) | Ziele |
 | `set_goals` | `goals[]` (ohne `id` = neu, mit `id` = ändern), `delete[]` | speichert, gibt alle aktiven Ziele zurück |
-| `get_training_prefs` / `set_training_prefs` | `weeklyHours`, `restDays` (0 = Mo … 6 = So), `longDay`, `maxWeekdayMin`, `mainSport`, `strengthPerWeek` (`null` = Standard) | Vorlieben |
+| `get_training_prefs` / `set_training_prefs` | `weeklyHours` (Rad/Ausdauer), `restDays` (0 = Mo … 6 = So), `longDay`, `maxWeekdayMin`, `mainSport`, `strengthPerWeek` (0–6), `strengthMin` (`null` = aus den letzten Wochen) | Vorlieben |
+| `get_event_projection` | `goalId` (Std. nächstes Terminziel) | Formprognose, siehe unten |
 | `get_plan` | `week` = current/next/previous/Datum | `{ week, stored, savedAt, plan, phaseLabel, comparison, today, readiness }` |
 | `save_plan` | `week`, `accept` (Vorschlag übernehmen) **oder** `days[]` (angepasster Plan, fehlende Tage = Ruhe) **oder** `reset` | gespeicherter Plan mit Soll/Ist |
 | `save_coach_note` | `kind`, `day` (Std. heute bzw. Montag), `title`, `body`, `data` | Notiz |
@@ -41,7 +43,7 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 `{ weekStart, phase, phaseReason, goalId, targetLoad, targetHours, notes[], source, days[7] }`, je Tag `{ day, type, title, durationMin, targetLoad, intensity, description, key, strength: { durationMin, focus } | null }`. `type`: rest, recovery, endurance, long, tempo, threshold, vo2max, strength, opener, race.
 
 ### `get_dashboard` → `training`
-`{ goals: [{ goal, daysLeft, weeksLeft, current, text }], prefs, thisWeek: (wie get_plan), nextWeek: { week, stored, phase, phaseLabel, phaseReason }, today: { planned, verdict, text }, notes: [letzte Coach-Notizen, 14 Tage], disclaimer }`.
+`{ goals: [{ goal, daysLeft, weeksLeft, current, text }], prefs, thisWeek: (wie get_plan), nextWeek: { week, stored, phase, phaseLabel, phaseReason }, today: { planned, verdict, text }, projection: (wie get_event_projection oder null), notes: [letzte Coach-Notizen, 14 Tage], disclaimer }`.
 
 ## Vorschlag für den Coach-Bereich im Dashboard
 1. Kopf: `coach.headline` + `training.today.text`, Gründe als Chips.
@@ -57,3 +59,18 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 - `get_coach_context` enthält `journal` und RPE der letzten Workouts.
 - Abgrenzung zum Krafttraining (#33, `core/strength.ts`): Dort hat jede Krafteinheit ihre eigene RPE, die die Belastung (sRPE → TSS-Maßstab) bestimmt. `workout_rpe` gilt für jedes Workout (auch Radfahrten), dient der Anzeige und dem Coach und ändert die Belastung nicht.
 - UI-Vorschlag: Check-in-Karte oben im Dashboard (5 Regler oder Smileys + Tag-Chips aus `suggestedTags`), RPE-Auswahl 1–10 direkt am Workout.
+
+## Formprognose (#26, `core/projection.ts`)
+- Schreibt Fitness/Ermüdung/Form ab dem Stand von gestern fort: Rest der laufenden Woche aus ihrem Plan (heute das Größere aus Plan und schon Trainiertem), danach je Woche der Regelplan mit der fortgeschriebenen Fitness. Höchstens 26 Wochen.
+- Ergebnis: `{ goal, daysLeft, weeks: [{ week, phase, phaseLabel, targetLoad, targetHours, ctlEnd }], days: [{ day, load, ctl, atl, tsb }], atEvent: { ctl, atl, tsb, formZone, ctlGain }, targetTsb, verdict, advice[], disclaimer }`.
+- Form am Wettkampfmorgen: Wunschbereich A-Ziel +5 … +25, B/C −5 … +20 (Faustregel). `verdict`: `on_track`, `too_tired` (Tapering früher), `too_fresh` (Tapering kürzer), `short` (unter einer Woche).
+- Anzeige: Prognose-Linie (gestrichelt) im Trainingslast-Diagramm an `days` anhängen.
+
+## Frühwarnung in der Empfehlung (#24)
+- Die Erkennung selbst liegt in `core/warnings.ts` (Analysen, siehe `docs/ANALYTICS.md`); `get_dashboard` → `earlyWarning`.
+- `core/warning-cap.ts` begrenzt die Tagesempfehlung: `caution` → höchstens locker, `alert` → Ruhe; Grund `factor: "warning"` mit dem Rat aus `earlyWarning.advice`. Macht die Empfehlung nie härter. Keine Diagnose.
+- Reihenfolge in `get_dashboard`: Regeln (`coach.ts`) → Kraft-Hinweise (`strength.ts`) → Frühwarnung → Tagebuch.
+
+## Intensitäts-Check und WHOOP-Zonen
+- Pulsangaben im Plan beziehen sich auf die Schwelle (Grundlage 80–89 %). Dahinter steht die passende WHOOP-Zone (Anteil der maximalen Herzfrequenz), damit die Zahlen zum Pulszonen-Diagramm im Dashboard passen.
+- `training.intensity` (`core/training.ts`, `intensityCheck`): Ausdauer-Einheiten der letzten 28 Tage (ab 20 min, mit Puls) gegen den Grundlagenbereich. `below` gilt, wenn ≥ 60 % mehr als 10 Schläge darunter liegen, `above`, wenn ≥ 50 % darüber liegen. Erklärt, warum die gemessene Belastung unter dem Soll bleibt. Hinweis, wenn die Schwelle nur geschätzt ist.

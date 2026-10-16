@@ -24,7 +24,7 @@ function tools() {
 describe("Coach-Werkzeuge", () => {
   it("registriert alle Werkzeuge", () => {
     expect([...tools().handlers.keys()].sort()).toEqual(
-      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_goals", "get_plan", "get_training_prefs", "save_coach_note", "save_plan", "set_goals", "set_training_prefs"].sort(),
+      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_plan", "get_training_prefs", "save_coach_note", "save_plan", "set_goals", "set_training_prefs"].sort(),
     );
   });
 

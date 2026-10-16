@@ -72,7 +72,7 @@ describe("Wochenplan", () => {
       const heavy = (i: number) => i >= 0 && i < 7 && (isHard(plan.days[i].type) || plan.days[i].type === "long");
       plan.days.forEach((d, i) => {
         if (isHard(d.type)) expect(heavy(i - 1) || heavy(i + 1), `${hours} h, Tag ${i}`).toBe(false);
-        if (d.strength) expect(heavy(i + 1), `Kraft vor hartem Tag (${hours} h, Tag ${i})`).toBe(false);
+        if (d.strength && !d.strength.focus.startsWith("Oberkörper")) expect(heavy(i + 1), `Beinkraft vor hartem Tag (${hours} h, Tag ${i})`).toBe(false);
       });
       const strengthDays = plan.days.map((d, i) => (d.strength ? i : -1)).filter((i) => i >= 0);
       expect(strengthDays.length).toBe(2);
@@ -177,9 +177,9 @@ describe("Gedächtnis in D1", () => {
 
   it("speichert Vorlieben, Pläne und Notizen", async () => {
     const db = fakeD1();
-    expect((await readPrefs(db)).strengthPerWeek).toBe(2);
-    const p = await writePrefs(db, { weeklyHours: 8, restDays: [0] });
-    expect(p).toMatchObject({ weeklyHours: 8, restDays: [0], strengthPerWeek: 2 });
+    expect((await readPrefs(db)).strengthPerWeek).toBeNull();
+    const p = await writePrefs(db, { weeklyHours: 8, restDays: [0], strengthPerWeek: 3 });
+    expect(p).toMatchObject({ weeklyHours: 8, restDays: [0], strengthPerWeek: 3 });
     expect((await writePrefs(db, { weeklyHours: null })).weeklyHours).toBeNull();
 
     const plan = buildWeekPlan(input());
@@ -215,5 +215,50 @@ describe("Tapering", () => {
     const i = plan.days.findIndex((d) => d.type === "opener");
     expect(i).toBeGreaterThanOrEqual(1);
     expect(i).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("Kraft-Gewohnheit", () => {
+  const strengthWeeks = [1, 2, 3, 4].map((i) =>
+    week(addDays(MONDAY, -7 * i), { trainingH: 9, bySport: { bodybuilding: { count: 6, minutes: 210 }, spin: { count: 5, minutes: 330 } } }),
+  );
+  it("übernimmt Häufigkeit und Dauer aus den letzten Wochen und rechnet Kraft nicht ins Rad-Zeitbudget", () => {
+    const plan = buildWeekPlan(input({ prefs: { ...DEFAULT_PREFS }, weeks: strengthWeeks, ctl: 0 }));
+    const s = plan.days.filter((d) => d.strength);
+    expect(s).toHaveLength(6);
+    expect(s[0].strength!.durationMin).toBe(35);
+    expect(plan.notes.join(" ")).toContain("5.5 h geschätzt");
+    // Beine nie am Tag vor einer harten Einheit oder der langen Fahrt.
+    const heavy = (i: number) => i < 7 && (isHard(plan.days[i].type) || plan.days[i].type === "long");
+    plan.days.forEach((d, i) => {
+      if (d.strength && /Beine|Ganzkörper/.test(d.strength.focus)) expect(heavy(i + 1)).toBe(false);
+    });
+  });
+  it("Vorgabe geht vor", () => {
+    const plan = buildWeekPlan(input({ prefs: { ...DEFAULT_PREFS, strengthPerWeek: 1, strengthMin: 60 }, weeks: strengthWeeks }));
+    expect(plan.days.filter((d) => d.strength).map((d) => d.strength!.durationMin)).toEqual([60]);
+  });
+});
+
+describe("Soll/Ist bei harten Einheiten", () => {
+  it("zählt lockeres Fahren nicht als erledigte Intervalle", () => {
+    const plan = normalizePlan(MONDAY, { days: [{ day: MONDAY, type: "threshold", durationMin: 60, targetLoad: 80 }] });
+    const easy = comparePlan(plan, [{ day: MONDAY, load: 25, minutes: 90, sports: ["spin"], strength: false }], addDays(MONDAY, 1));
+    expect(easy.days[0].status).toBe("partial");
+    const hard = comparePlan(plan, [{ day: MONDAY, load: 70, minutes: 60, sports: ["cycling"], strength: false }], addDays(MONDAY, 1));
+    expect(hard.days[0].status).toBe("done");
+  });
+});
+
+describe("WHOOP-Zonen im Plan", () => {
+  it("rechnet Puls in WHOOP-Zonen (Anteil HFmax) um", async () => {
+    const { whoopZone, whoopZoneText } = await import("../src/core/plan");
+    expect(whoopZone(117, 195)).toBe(2);
+    expect(whoopZone(136, 195)).toBe(2);
+    expect(whoopZone(137, 195)).toBe(3);
+    expect(whoopZone(90, 195)).toBe(0);
+    expect(whoopZone(200, 195)).toBe(5);
+    expect(whoopZoneText(138, 154, 195)).toBe("WHOOP-Zone 3");
+    expect(whoopZoneText(150, 165, 195)).toBe("WHOOP-Zone 3–4");
   });
 });
