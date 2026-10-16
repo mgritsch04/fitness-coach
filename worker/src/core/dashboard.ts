@@ -15,7 +15,8 @@ import {
   type WorkoutRow,
 } from "./analysis";
 import { coachAdvice } from "./coach";
-import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./repository";
+import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
+import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 import { applyStrengthLoads, exerciseProgress, readStrengthSessions, strengthCoachNotes, weeklyVolume } from "./strength";
 
@@ -32,17 +33,21 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const loadFrom = addDays(viewFrom, -LOAD_WARMUP_DAYS);
   const statsFrom = addDays(viewFrom, -BASELINE_DAYS);
 
-  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync, strengthSessions] = await Promise.all([
+  const ftpFrom = addDays(today, -89);
+  const [daily, sleeps, rawWorkouts, body, whoopSync, wahooSync, powerRows, strengthSessions] = await Promise.all([
     readDaily(db, statsFrom) as Promise<unknown> as Promise<DailyRow[]>,
     readSleeps(db, statsFrom) as Promise<unknown> as Promise<SleepRow[]>,
     readWorkouts(db, loadFrom) as Promise<unknown> as Promise<WorkoutRow[]>,
     readLatestBody(db) as Promise<{ max_hr: number | null; weight_kg: number | null; height_m: number | null } | null>,
     getSyncState(db, "whoop"),
     getSyncState(db, "wahoo"),
+    readPowerCurves(db, ftpFrom).then(flattenCurves),
     readStrengthSessions(db, loadFrom),
   ]);
 
-  const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null);
+  // FTP-Schätzung (performance.ts) gilt nur, solange keine eigene FTP gesetzt ist.
+  const ftpEstimate = estimateFtp(powerCurve(powerRows, ftpFrom), rawWorkouts, ftpFrom);
+  const settings = effectiveSettings(userSettings, daily, rawWorkouts, body?.max_hr ?? null, ftpEstimate?.watts ?? null);
   // Krafteinheiten: Belastung aus Session-RPE statt Puls, Einheiten ohne Workout kommen dazu.
   const workouts = applyStrengthLoads(
     mergeWorkouts(rawWorkouts).map((w) => ({ ...w, ...workoutLoad(w, settings) })),
@@ -78,11 +83,13 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     today,
     range: { from: viewFrom, to: today, days },
     settings,
+    ftpEstimate,
     body: body ? { weightKg: body.weight_kg, heightM: body.height_m } : null,
     coach,
     trends,
     days: view,
     weeks,
+    hrZones: hrZoneReport(workouts, viewFrom, today),
     workouts: workouts
       .filter((w) => w.day >= viewFrom)
       .map((w) => ({
@@ -101,9 +108,11 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
         load: w.load,
         loadMethod: w.method,
         intensity: w.intensity,
+        hrZoneMin: parseZones(w.hr_zone_s)?.map((sec) => Math.round(sec / 60)) ?? null,
       })),
     notes: [
       "Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL) und Form (TSB) sind Schätzungen.",
+      settings.origin.ftpW === "data" ? `FTP ${settings.ftpW} W ist geschätzt (${ftpEstimate?.note ?? ""}). Trage deine FTP ein, wenn du sie kennst.` : null,
       settings.ftpW ? null : "Ohne FTP wird die Belastung aus dem Puls geschätzt. Trage deine FTP ein, sobald Leistungsdaten (Wahoo/MyWhoosh) vorliegen.",
       workouts.some((w) => w.method === "srpe") ? "Krafteinheiten zählen mit Dauer × Anstrengung (Session-RPE), geschätztes 1RM nach Epley." : null,
       unestimated ? `${unestimated} Workouts ohne Puls oder Leistung zählen nicht zur Trainingslast.` : null,

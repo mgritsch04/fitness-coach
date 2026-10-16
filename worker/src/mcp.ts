@@ -7,8 +7,10 @@ import { wahooConnectLink, wahooCredentials } from "./wahoo";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./core/repository";
 import { combineCurves } from "./core/power";
 import { FitImportError, importFit } from "./providers/mywhoosh/import";
+import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 
@@ -124,6 +126,23 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       const workouts = await readPowerCurves(env.DB, fromDay(d ?? 90));
       return json({ best: combineCurves(workouts.map((w) => w.power_curve)), workouts });
     },
+  );
+
+  server.registerTool(
+    "get_workout_detail",
+    {
+      description:
+        "Detail einer Fahrt mit Sekundenwerten (FIT-Import): Verlauf von Leistung/Puls/Trittfrequenz (verkleinert, series.points), " +
+        "Kennzahlen (NP, IF, VI, TSS-Schätzung, Arbeit), Zeit in Leistungs- und Pulszonen, automatisch erkannte Intervalle, " +
+        "Pa:HR-Entkopplung und Bestleistungskurve. Ohne source/sourceId die neueste solche Fahrt; available listet die letzten 20.",
+      inputSchema: {
+        source: z.string().max(20).optional().describe("Quelle aus get_workouts, z. B. mywhoosh"),
+        sourceId: z.string().max(100).optional().describe("source_id aus get_workouts"),
+        maxPoints: z.number().int().min(50).max(3600).optional().describe("Höchstzahl Punkte im Verlauf, Standard 600"),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ source, sourceId, maxPoints }) => json(await loadWorkoutDetail(env.DB, source, sourceId, maxPoints)),
   );
 
   server.registerTool(
@@ -250,6 +269,74 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         sync: await getSyncState(env.DB, "wahoo"),
       });
     },
+  );
+
+  // --- Auswertungen (core/analytics.ts); Ausgaben sind in docs/ANALYTICS.md beschrieben. ---------
+  const viewDays = (def: number) => ({
+    days: z.number().int().min(7).max(730).optional().describe(`Zeitraum der Ansicht in Tagen bis heute, Standard ${def}`),
+  });
+
+  server.registerTool(
+    "get_training_load",
+    {
+      description:
+        "Trainingslast: Tagesreihe mit Belastung (TSS-Maßstab), Fitness (CTL), Ermüdung (ATL), Form (TSB) und Form-Bereich, " +
+        "aktueller Stand mit Anstieg der Fitness in 7 Tagen, ATL/CTL-Verhältnis, Monotonie und die belastendsten Workouts. Schätzungen.",
+      inputSchema: viewDays(90),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(trainingLoadView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 730 }))),
+  );
+
+  server.registerTool(
+    "get_fitness_profile",
+    {
+      description:
+        "Leistungsprofil: FTP (eigene oder geschätzt, mit Methode), W/kg, Leistungszonen (Coggan) und Pulszonen (Friel), " +
+        "Zeit je Zone und Verteilung locker/mittel/hart, Leistungskurve (beste Leistung 1 s … 2 h) für 30/90/365 Tage und gesamt, Zeit je WHOOP-Pulszone je Woche (80/20). Schätzungen.",
+      inputSchema: viewDays(28),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(fitnessProfileView(await analysisContext(env.DB, { days: d ?? 28, maxDays: 730 }))),
+  );
+
+  server.registerTool(
+    "get_health_trends",
+    {
+      description:
+        "Gesundheitstrends je Tag mit persönlichem Normalbereich: HRV, Ruhepuls, Erholung, Schlafdauer, Atemfrequenz, Hauttemperatur, SpO2 " +
+        "(Wert, 7-Tage-Mittel, Basis ± Streuung, Status), HRV-Stabilität und Schlafrhythmus (Einschlaf-/Aufwachzeit, Schlafschuld).",
+      inputSchema: viewDays(60),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(healthTrendsView(await analysisContext(env.DB, { days: d ?? 60, maxDays: 365 }))),
+  );
+
+  server.registerTool(
+    "get_period_summaries",
+    {
+      description:
+        "Zusammenfassungen je Woche, Monat oder Jahr: Workouts, Stunden, Belastung, Distanz, Sportarten, Erholung (grün/gelb/rot), " +
+        "HRV, Ruhepuls, Schlaf und Schlafschuld, Strain, Fitness-Veränderung und Vergleich zum vorigen Zeitraum.",
+      inputSchema: {
+        period: z.enum(["week", "month", "year"]).optional().describe("Standard month"),
+        ...viewDays(180),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ period, days: d }) => json(periodSummariesView(await analysisContext(env.DB, { days: d ?? 180, maxDays: 730 }), period ?? "month")),
+  );
+
+  server.registerTool(
+    "get_strain_recovery",
+    {
+      description:
+        "Strain und Belastung gegen die Erholung am Folgetag: Tagespaare, Mittelwerte je Strain- und Belastungsstufe, Korrelation, " +
+        "letzte 7 gegen 28 Tage und kurze Erkenntnisse. Beobachtungen aus deinen Daten, keine Ursache-Wirkung.",
+      inputSchema: viewDays(90),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(strainRecoveryView(await analysisContext(env.DB, { days: d ?? 90, maxDays: 365 }))),
   );
 
   registerStrengthTools(server, env);
