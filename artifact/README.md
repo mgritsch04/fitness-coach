@@ -1,14 +1,17 @@
 # Dashboard-Artefakt
 
-`dashboard.html` ist die Oberfläche des Fitness Coach als Claude-Artefakt:
+Die Oberfläche des Fitness Coach als Claude-Artefakt:
 **https://claude.ai/artifact/2uTpv443yDNX6UMiGEDhep** (privat).
 
-- Holt alle Daten über den Connector **„Fitness Coach“** (`get_dashboard`, `sync_now`, `update_settings`, `wahoo_status`, `wahoo_connect`).
-- Der Coach (Erklären, Wochenplan, Rückblick, Fragen) läuft über Claude im Artefakt (`sample`), ohne API-Schlüssel.
+- `dashboard.html`: Shell mit CSS (Tokens hell/dunkel, Handy-Tab-Leiste ≤ 640 px) und Skript-Reihenfolge.
+- `app/core.js`: `window.FC` – Daten (`get_dashboard`), Diagramme, Tabs, Connector-Aufrufe, Abschnitts-Registry.
+- `sections/<thema>.js`: je Bereich eine Datei mit `FC.section({ id, tab, order, css?, mount, render, rerender?, ready? })`. Tabs: heute, coach, verlauf, training, mehr.
+- Connector **„Fitness Coach“**, Werkzeuge: `get_dashboard`, `sync_now`, `update_settings`, `wahoo_status`, `wahoo_connect`, `import_fit`, `get_fitness_profile`, `get_health_trends`, `get_strain_recovery`, `get_period_summaries`.
+- Coach und Morgen-Briefing laufen über Claude im Artefakt (`sample`), ohne API-Schlüssel.
 - Keine Messwerte im Seiten-Code; alles kommt zur Laufzeit vom Worker.
 
 ## Veröffentlichen
-Mit dem Artifact-Werkzeug dieselbe Datei auf dieselbe URL veröffentlichen. Kommt ein neues Connector-Werkzeug dazu, die `capabilities` vollständig neu angeben (Liste der Werkzeuge erweitern).
+Mit dem Artifact-Werkzeug `dashboard.html` auf dieselbe URL veröffentlichen, `root` = `artifact/`, und in `files` `app/core.js` sowie jede Datei unter `sections/` angeben (neue Abschnitte nicht vergessen). Kommt ein neues Connector-Werkzeug dazu, die `capabilities` vollständig neu angeben (Liste der Werkzeuge erweitern).
 
 ## Vorschau mit synthetischen Daten
 ```bash

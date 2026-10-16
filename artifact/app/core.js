@@ -38,7 +38,7 @@
   /**
    * Zeitreihen-Diagramm über Tage.
    * opts: { days: [{day, ...}], series: [{label, color, kind: "line"|"bar"|"stack", value(p), barColor?(p), fmt?, width?, dots?, dash?}],
-   *         yMin?, yMax?, band?: {lo, hi}, ref?: {value}, zones?: [{from, to, color}], zero?, height?, extraTip?: [series-like], aria? }
+   *         yMin?, yMax?, band?: {lo, hi}, bandFn?: (p) → {lo, hi} | null, ref?: {value}, zones?: [{from, to, color}], zero?, height?, extraTip?: [series-like], aria? }
    * kind "stack": gestapelte Balken; alle stack-Serien werden in Reihenfolge übereinander gelegt.
    */
   function chart(container, opts) {
@@ -57,20 +57,29 @@
     const vals = series.filter((s) => s.kind !== "stack").flatMap((s) => days.map((p) => s.value(p)).filter((v) => v != null));
     if (stacks.length) vals.push(...days.map(stackTop));
     if (opts.band) vals.push(opts.band.lo, opts.band.hi);
+    if (opts.bandFn) for (const p of days) { const b = opts.bandFn(p); if (b && b.lo != null && b.hi != null) vals.push(b.lo, b.hi); }
     if (opts.ref) vals.push(opts.ref.value);
     if (opts.zero) vals.push(0);
     const ticks = niceTicks(opts.yMin ?? Math.min(...vals), opts.yMax ?? Math.max(...vals));
     const y0 = ticks[0], y1 = ticks.at(-1);
+    const tStep = ticks.length > 1 ? ticks[1] - ticks[0] : 1, tickDec = tStep >= 1 ? 0 : tStep >= 0.1 ? 1 : 2;
     const x = (i) => m.l + step * (i + 0.5), y = (v) => m.t + ih - ((v - y0) / (y1 - y0)) * ih;
     const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": opts.aria ?? "" });
     for (const z of opts.zones ?? []) svg.append(sv("rect", { x: m.l, width: iw, y: y(Math.min(z.to, y1)), height: Math.max(0, y(Math.max(z.from, y0)) - y(Math.min(z.to, y1))), fill: z.color }));
     for (const t of ticks) {
       svg.append(sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), class: t === 0 && opts.zero ? "zero" : "gridl" }));
-      const tx = sv("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" }); tx.textContent = opts.yFmt ? opts.yFmt(t) : de(t, Math.abs(t) < 10 && t % 1 ? 1 : 0); svg.append(tx);
+      const tx = sv("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" }); tx.textContent = opts.yFmt ? opts.yFmt(t) : de(t, tickDec); svg.append(tx);
     }
     const labelEvery = Math.ceil(n / Math.max(2, Math.floor(iw / 70)));
     days.forEach((p, i) => { if ((n - 1 - i) % labelEvery === 0) { const tx = sv("text", { x: x(i), y: H - 6, "text-anchor": "middle" }); tx.textContent = opts.xFmt ? opts.xFmt(p) : fmtDay(p.day); svg.append(tx); } });
     if (opts.band) svg.append(sv("rect", { x: m.l, width: iw, y: y(opts.band.hi), height: Math.max(0, y(opts.band.lo) - y(opts.band.hi)), fill: cssVar("--band") }));
+    if (opts.bandFn) {
+      // Band, das sich je Tag ändert (z. B. gleitender Normalbereich); Lücken trennen die Flächen.
+      let seg = [];
+      const flush = () => { if (seg.length > 1) svg.append(sv("path", { d: `M${seg.map((q) => `${x(q.i)},${y(q.hi)}`).join("L")}L${seg.reverse().map((q) => `${x(q.i)},${y(q.lo)}`).join("L")}Z`, fill: cssVar("--band") })); seg = []; };
+      days.forEach((p, i) => { const b = opts.bandFn(p); if (b && b.lo != null && b.hi != null) seg.push({ i, lo: b.lo, hi: b.hi }); else flush(); });
+      flush();
+    }
     if (opts.ref) svg.append(sv("line", { x1: m.l, x2: W - m.r, y1: y(opts.ref.value), y2: y(opts.ref.value), stroke: cssVar("--ink-3"), "stroke-dasharray": "5 4", "stroke-width": 1.5 }));
     const bw = Math.max(1, Math.min(opts.maxBar ?? 18, step - 2));
     if (stacks.length) {

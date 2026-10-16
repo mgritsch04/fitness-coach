@@ -51,7 +51,7 @@ process.stdout.write(JSON.stringify({
   get_dashboard: await buildDashboard(db, { days: 180, now }),
   get_power_curve: { best: combineCurves(curves.map((w) => w.power_curve)), workouts: curves },
   get_fitness_profile: fitnessProfileView(await ctx(28)),
-  get_training_load: trainingLoadView(await ctx(90)),
+  get_training_load: trainingLoadView(await ctx(365)),
   get_health_trends: healthTrendsView(await ctx(60)),
   get_strain_recovery: strainRecoveryView(await ctx(90)),
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
