@@ -1,7 +1,7 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
 import { readPowerCurves } from "../src/core/repository";
@@ -69,5 +69,6 @@ process.stdout.write(JSON.stringify({
   get_body_history: { today: "2026-03-31", range: { from: addDays("2026-03-31", -179), to: "2026-03-31", days: 180 },
     ...bodyReport(await readBodyHistory(db, addDays("2026-03-31", -300)), addDays("2026-03-31", -179), "2026-03-31", { watts: 250, origin: "estimate" },
       { title: "Gewicht (Beispiel)", targetValue: 74, targetDate: "2026-06-30" }) },
+  get_records: await recordsView(db, await ctx(14), 30),
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
 }));
