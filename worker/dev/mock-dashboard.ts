@@ -19,6 +19,7 @@ import { bestWindow, parseForecast, rideAdvice } from "../src/core/weather";
 import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 import { durabilityReport } from "../src/core/durability";
 import { aerobicReport } from "../src/core/aerobic";
+import { intervalReport } from "../src/core/intervals";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -115,6 +116,19 @@ process.stdout.write(JSON.stringify({
       heartRate: Array.from({ length: len }, (_, t) => Math.round(128 * (1 + drift * (t / len)))),
     };
   }), "2026-03-31", 120),
+  // Synthetische Intervalltrainings: abwechselnd 5 × 4 min VO2max und 3 × 12 min Schwelle, Leistung steigt über die Wochen.
+  get_interval_quality: intervalReport(Array.from({ length: 8 }, (_, k) => {
+    const vo2 = k % 2 === 0, reps = vo2 ? 5 : 3, work = vo2 ? 240 : 720, rest = vo2 ? 180 : 300;
+    const target = (vo2 ? 300 : 265) * (1 + k * 0.006), fade = k === 6 ? 0.025 : 0.004;
+    const power: number[] = [], heartRate: number[] = [];
+    for (let t = 0; t < 900; t++) { power.push(160); heartRate.push(125); }
+    for (let r = 0; r < reps; r++) {
+      for (let t = 0; t < work; t++) { power.push(Math.round(target * (1 - fade * r))); heartRate.push(160 + r * 2 + Math.round(t / 60)); }
+      for (let t = 0; t < rest; t++) { power.push(120); heartRate.push(130); }
+    }
+    for (let t = 0; t < 600; t++) { power.push(150); heartRate.push(122); }
+    return { day: addDays("2026-03-31", -5 * (7 - k) - 1), source: "mywhoosh", sourceId: `i${k}`, power, heartRate, cadence: null };
+  }), 285, "2026-03-31", 90),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];

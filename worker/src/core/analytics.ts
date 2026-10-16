@@ -39,6 +39,7 @@ import { hrvTrend } from "./hrv-trend";
 import { timingReport } from "./timing";
 import { durabilityReport, readRideStreams } from "./durability";
 import { aerobicReport, readHrRideStreams } from "./aerobic";
+import { intervalReport, readIntervalRides } from "./intervals";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -279,6 +280,12 @@ export async function durabilityView(db: D1Database, days: number, now?: number)
   const settings = await readSettings(db);
   const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
   return durabilityReport(await readRideStreams(db, addDays(today, -(days - 1))), today, days);
+}
+
+/** Intervall-Qualität (#155): Abfall je Serie und Verlauf je Intervallart, mit wirksamer FTP. */
+export async function intervalQualityView(db: D1Database, days: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  return intervalReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days);
 }
 
 /** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
