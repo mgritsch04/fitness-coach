@@ -2,6 +2,8 @@
 
 _Stand 2026-10-16 · Recherche aus öffentlichen Doku-/Forenquellen, vor der Umsetzung je Anbieter noch einmal gegen die offizielle Doku prüfen._
 
+Architektur (Vorschlag 2026-10-16): Dashboard und Coach als Claude-Artefakt; WHOOP und Wahoo über einen kleinen Cloudflare-Worker, der als eigener claude.ai-Connector „Fitness“ eingetragen wird und die Secrets hält. Offen: ob ein Artefakt eigene Connectoren aufrufen darf (zuerst testen).
+
 Grundregel: Client-Secrets und Tokens nur serverseitig (`.env` lokal bzw. Umgebungs-Secrets), nie im Chat, Browser-Code oder Repository. Variablennamen: [`../.env.example`](../.env.example).
 
 ## WHOOP – offizielle API (OAuth 2.0)
@@ -19,12 +21,11 @@ Grundregel: Client-Secrets und Tokens nur serverseitig (`.env` lokal bzw. Umgebu
 - Neue Apps starten in einer Sandbox; der Wechsel in Produktion läuft über ein Freigabeverfahren (Wahoo API Agreement). Ob die Sandbox für den eigenen Account dauerhaft reicht, ist **ungeprüft** – beim Anlegen der App nachsehen.
 
 ## MyWhoosh – keine öffentliche API
-Keine offizielle Entwickler-API gefunden. Optionen:
-1. **Über Strava (Standard):** In der MyWhoosh-App Strava verbinden (automatischer Upload jeder Fahrt). Wir lesen Strava über die offizielle API. Dafür braucht der Nutzer eine eigene Strava-API-App ([strava.com/settings/api](https://www.strava.com/settings/api), sofort verfügbar, Client-ID/Secret; „Authorization Callback Domain“ `localhost`). Hinweis: Die Strava-API-Bedingungen schränken die Weitergabe und die Nutzung für KI-Modelle ein – nur eigene Daten, nur für den Nutzer selbst anzeigen; vor dem Coach-Ausbau prüfen.
-2. **FIT-Import:** Fahrten im MyWhoosh-Webportal (Profil › Aktivitäten) als FIT herunterladen und in einen Import-Ordner legen bzw. im Dashboard hochladen. Laut Forenberichten liefern manche App-Versionen GPX statt FIT (Leistungsdaten können fehlen).
-3. **Inoffizielle API** (z. B. Community-Tools): nur mit ausdrücklicher Freigabe des Nutzers, nicht Standard.
+Keine offizielle Entwickler-API gefunden. Strava wird **nicht** genutzt (Entscheidung des Nutzers, 2026-10-16). Optionen:
+1. **FIT-Upload (Standard):** Fahrten im MyWhoosh-Webportal (Profil › Aktivitäten) als FIT herunterladen und im Dashboard hochladen; Parsing im Dashboard bzw. Worker. Laut Forenberichten liefern manche App-Versionen GPX statt FIT (Leistungsdaten können fehlen).
+2. **Inoffizielle MyWhoosh-API** (wie Community-Tools): automatisch, braucht aber die MyWhoosh-Logindaten im Worker und kann bei App-Updates brechen – nur mit ausdrücklicher Freigabe des Nutzers.
 
-Duplikate: Dieselbe Fahrt kann über Strava, Wahoo (wenn ein KICKR-Workout dort landet) und WHOOP (als Workout) kommen → Abgleich über Startzeit ± Toleranz und Dauer.
+Duplikate: Dieselbe Fahrt kann über MyWhoosh-FIT, Wahoo (wenn ein KICKR-Workout dort landet) und WHOOP (als Workout) kommen → Abgleich über Startzeit ± Toleranz und Dauer.
 
 ## Quellen
 - https://developer.whoop.com/docs/developing/getting-started

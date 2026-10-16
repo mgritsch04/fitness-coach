@@ -6,7 +6,7 @@ _Stand 2026-10-16 · vom Nutzer im Projekt „Fitness“ formuliert, von Claude 
 Ein persönlicher Fitness- und Gesundheits-Tracker mit Trainingscoach, der alle Daten an einem Ort sammelt:
 - **WHOOP:** Recovery, HRV, Ruhepuls, Schlaf, Strain, Workouts, Körperwerte.
 - **Wahoo:** Outdoor-/Indoor-Workouts (ELEMNT, KICKR …) inkl. FIT-Dateien (Leistung, Puls, Trittfrequenz).
-- **MyWhoosh:** virtuelle Radeinheiten. Keine offizielle API → Umweg über Strava oder FIT-Import (siehe [`INTEGRATIONS.md`](INTEGRATIONS.md)).
+- **MyWhoosh:** virtuelle Radeinheiten. Keine offizielle API → FIT-Upload; kein Strava (siehe [`INTEGRATIONS.md`](INTEGRATIONS.md)).
 
 ## Bausteine
 1. **Datenanbindung:** OAuth je Anbieter, regelmäßiger Abgleich (Webhooks wo möglich), Rohdaten lokal speichern, Duplikate erkennen (dieselbe Einheit kann über Wahoo, Strava und WHOOP kommen).
@@ -19,7 +19,8 @@ Ein persönlicher Fitness- und Gesundheits-Tracker mit Trainingscoach, der alle 
 - **Zugriffsschutz:** Cloudflare Access (nur der Nutzer), da Gesundheitsdaten.
 - **Entwicklung:** lokal mit `wrangler dev` (Redirect-URLs zusätzlich `http://localhost:8787/...`).
 - Stand der Entscheidung: von Claude empfohlen am 2026-10-16, Bestätigung durch den Nutzer offen.
-- **MyWhoosh:** über Strava (automatischer Upload aus MyWhoosh) statt inoffizieller API.
+- **MyWhoosh:** FIT-Upload; inoffizielle API nur mit Freigabe. Strava wird nicht genutzt.
+- **Architektur-Vorschlag:** Dashboard/Coach als Claude-Artefakt, WHOOP/Wahoo über Cloudflare-Worker als eigener Connector – Entscheidung offen (siehe INTEGRATIONS.md).
 
 ## Grenzen
 - Keine medizinischen Diagnosen; Gesundheitsdaten bleiben privat (siehe [`../CLAUDE.md`](../CLAUDE.md)).

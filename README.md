@@ -1,6 +1,6 @@
 # Fitness Coach
 
-Persönlicher Fitness- und Gesundheits-Tracker mit Dashboard und Trainingscoach. Sammelt Daten aus **WHOOP**, **Wahoo** und **MyWhoosh** (über Strava bzw. FIT-Import).
+Persönlicher Fitness- und Gesundheits-Tracker mit Dashboard und Trainingscoach. Sammelt Daten aus **WHOOP**, **Wahoo** und **MyWhoosh** (per FIT-Upload).
 
 - Auftrag: [`docs/MASTER_PROMPT.md`](docs/MASTER_PROMPT.md)
 - Stand: [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) · Backlog: [`docs/IDEAS.md`](docs/IDEAS.md)
