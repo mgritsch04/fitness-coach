@@ -4,7 +4,7 @@ _Stand 2026-10-16 · Recherche aus öffentlichen Doku-/Forenquellen, vor der Ums
 
 Architektur (entschieden 2026-10-16, Details in MASTER_PROMPT.md): Dashboard und Coach als Claude-Artefakt; WHOOP und Wahoo über einen kleinen Cloudflare-Worker, der als eigener claude.ai-Connector „Fitness“ eingetragen wird und die Secrets hält. Zuerst zu prüfen: ob ein Artefakt eigene Connectoren aufrufen darf (IDEAS Zeile 0). Redirect-URLs zeigen später auf den Worker (`https://<worker>.workers.dev/auth/<anbieter>/callback`); bis die Adresse feststeht, reicht die localhost-URL, weitere URLs lassen sich nachtragen.
 
-Grundregel: Client-Secrets und Tokens nur serverseitig (`.env` lokal bzw. Umgebungs-Secrets), nie im Chat, Browser-Code oder Repository. Variablennamen: [`../.env.example`](../.env.example).
+Grundregel: Secrets nie im Chat, Browser-Code oder Repository. **Cloudflare-API-Token:** als Network secret der Claude-Cloud-Umgebung (Host `api.cloudflare.com`, Bearer), dazu Umgebungsvariablen `CLOUDFLARE_ACCOUNT_ID` und `CLOUDFLARE_API_TOKEN=via-proxy` (Platzhalter). **WHOOP-/Wahoo-Client-Secrets:** nur als Worker-Secrets im Cloudflare-Dashboard (Worker › Settings › Variables and Secrets). Lokal (`wrangler dev`) in `.dev.vars`, Namen in [`../.env.example`](../.env.example).
 
 ## WHOOP – offizielle API (OAuth 2.0)
 - **Nutzer:** App im [WHOOP Developer Dashboard](https://developer.whoop.com/docs/developing/getting-started) anlegen (mit dem eigenen WHOOP-Konto) → liefert Client-ID und Client-Secret.
