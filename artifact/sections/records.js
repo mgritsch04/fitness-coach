@@ -14,7 +14,7 @@ FC.section({
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-records">Diese Woche und Bestleistungen</h2><span class="muted" id="rcRange"></span></div>
       <div class="grid2">
-        <div class="panel"><h3>Diese Woche gegen letzte Woche</h3><div class="rc-week" id="rcWeek"></div><p class="chart-cap" id="rcWeekCap"></p></div>
+        <div class="panel"><h3>Diese Woche gegen letzte Woche</h3><div class="rc-week" id="rcWeek"><span class="muted">Lädt …</span></div><p class="chart-cap" id="rcWeekCap"></p></div>
         <div class="panel"><h3>Neue Bestleistungen (30 Tage)</h3><ul class="rc-feed" id="rcFeed"></ul></div>
       </div>`;
   },

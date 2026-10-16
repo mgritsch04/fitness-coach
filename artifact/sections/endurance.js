@@ -13,7 +13,7 @@ FC.section({
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-endurance">Ausdauer-Profil</h2><span class="muted">Critical Power und Effizienz</span></div>
       <div class="grid2">
-        <div class="panel"><h3>Critical Power</h3><div class="en-stats" id="enStats"></div><p class="chart-cap" id="enNote"></p>
+        <div class="panel"><h3>Critical Power</h3><div class="en-stats" id="enStats"><span class="muted">Lädt …</span></div><p class="chart-cap" id="enNote"></p>
           <table class="en-hold"><thead><tr><th>Leistung</th><th>etwa haltbar</th></tr></thead><tbody id="enHold"></tbody></table></div>
         <div class="panel"><h3>Effizienz (Watt je Herzschlag)</h3><p id="enVerdict"></p><div class="chart" id="cEf"></div>
           <p class="chart-cap">Normierte Leistung geteilt durch den mittleren Puls lockerer Fahrten ab 30 min, Wochenmittel. Höher ist besser.</p></div>
