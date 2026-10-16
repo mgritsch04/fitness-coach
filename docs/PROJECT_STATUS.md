@@ -10,7 +10,7 @@ _Zuletzt aktualisiert: 2026-10-16 (abends) · Workflow: [`DEVELOPMENT_WORKFLOW.m
 - **Worker live:** https://fitness-coach.fitness-coach-worker.workers.dev. Deploy: `cd worker && npm ci && CLOUDFLARE_API_TOKEN=via-proxy npx wrangler deploy`; Migrationen `npx wrangler d1 migrations apply fitness-coach --remote`.
 - **Connector „Fitness Coach“:** Anmeldung über WHOOP (nur dein Konto). Werkzeuge: `get_dashboard`, `get_daily`, `get_sleep`, `get_workouts`, `get_body`, `get_settings`, `update_settings`, `sync_now`, `whoop_status`, `whoop_recovery`, `wahoo_connect`, `wahoo_status`, `ping`, `import_fit`, `get_power_curve`, `get_training_load`, `get_fitness_profile`, `get_health_trends`, `get_period_summaries`, `get_strain_recovery` (siehe `docs/ANALYTICS.md`).
 - **Deine Aufgaben:** #3 Wahoo-App (wartet auf Wahoo).
-- **Nächster Schritt:** User-Tests #17, #35, #39, #40, #44; im Dashboard Gesundheitstrends mit Normalbereich, Monats-/Jahresübersicht, Strain vs. Erholung, Morgen-Briefing (#28).
+- **Nächster Schritt:** User-Tests #17, #35, #39, #40, #44, #45, #50, #51, #52; Wochenplan/Ziele und Tagebuch im Dashboard, Frühwarnung (#24), Formprognose (#26), Körperwerte und Export (#30).
 
 ## Legende
 `DONE` fertig mit Beleg · `PARTIAL` teilweise · `IN PROGRESS` in Arbeit · `PLANNED` geplant · `BLOCKED` blockiert · `NEEDS USER TEST` braucht deinen Praxistest
@@ -28,4 +28,7 @@ Prüfstufen: **Impl.** Code vorhanden · **Auto** automatischer Test/Build grün
 | Auswertung, Trainingslast, Tagesempfehlung | ✅ `core/analysis.ts`, `core/coach.ts` (#11, Issue #12) | ✅ CI, 19 Tests | über Dashboard-Test |
 | Fitness-Dashboard (Artefakt) | ✅ `artifact/` (Issue #13, PR #18) | ✅ Vorschau mit synthetischen Daten | 🧪 User-Test #17 |
 | Dashboard modular + Handy-Ansicht | ✅ `artifact/app/`, `artifact/sections/` (#31, #37) | ✅ Vorschau Handy 5 Tabs ohne Überlauf | 🧪 User-Test #44 |
+| Morgen-Briefing, Körpersignale, Belastung vs. Erholung, Monate, Jahresübersicht | ✅ `sections/briefing.js`, `health.js`, `strain.js`, `periods.js`, `year.js` (#28, #25, PR #49) | ✅ Vorschau | 🧪 User-Test #50 |
+| Einflussfaktoren, Pulszonen im Dashboard | ✅ `sections/insights.js`, `hrzones.js` (#21, #19, PR #55) | ✅ Vorschau | 🧪 User-Test #45 |
+| Coach mit Gedächtnis, Tagebuch (Worker) | ✅ `core/goals`, `journal` (#22, #23, PR #41) | ✅ CI | 🧪 User-Tests #51, #52 |
 | MyWhoosh-FIT-Upload im Dashboard, Leistungskurve, Zonen | ✅ `sections/fit.js` (#14, #32) | ✅ Vorschau mit Upload | 🧪 User-Tests #35, #40 |
