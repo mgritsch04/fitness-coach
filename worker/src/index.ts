@@ -4,6 +4,7 @@ import privacyMarkdown from "../../docs/PRIVACY.md";
 import { handleAuthorize, handleWhoopCallback } from "./auth";
 import { html, markdownToHtml } from "./html";
 import { createServer } from "./mcp";
+import { handleWahooCallback } from "./wahoo";
 import type { AuthProps, Env } from "./env";
 
 const WORKER_URL = "https://fitness-coach.fitness-coach-worker.workers.dev";
@@ -13,7 +14,8 @@ const WORKER_URL = "https://fitness-coach.fitness-coach-worker.workers.dev";
 const mcpApi: ExportedHandler<Env> = {
   fetch(request, env, ctx) {
     const props = (ctx as ExecutionContext & { props: AuthProps }).props;
-    return createMcpHandler(() => createServer(env, props))(request, env, ctx);
+    const origin = new URL(request.url).origin;
+    return createMcpHandler(() => createServer(env, props, origin))(request, env, ctx);
   },
 };
 
@@ -22,6 +24,7 @@ const site: ExportedHandler<Env> = {
     const { pathname } = new URL(request.url);
     if (pathname === "/authorize") return handleAuthorize(request, env);
     if (pathname === "/auth/whoop/callback") return handleWhoopCallback(request, env);
+    if (pathname === "/auth/wahoo/callback") return handleWahooCallback(request, env);
     if (pathname === "/privacy") return html("Privacy Policy – Fitness Coach", markdownToHtml(privacyMarkdown));
     if (pathname === "/") return html("Fitness Coach", '<h1>Fitness Coach</h1><p>Private application. <a href="/privacy">Privacy Policy</a></p>');
     return new Response("Not found", { status: 404 });
