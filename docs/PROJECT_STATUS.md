@@ -4,7 +4,7 @@ _Zuletzt aktualisiert: 2026-10-16 · Workflow: [`DEVELOPMENT_WORKFLOW.md`](DEVEL
 
 ## Aktuell
 - **Phase:** 0 – Organisation. Repository angelegt, Workflow, Labels, Vorlagen und Backlog aus `wohnungsplaner-3d` übernommen und angepasst.
-- **Deine Aufgaben:** Entwickler-Apps für WHOOP, Wahoo und Strava anlegen (je ein `[AUFGABE]`-Issue mit Label `user-task`).
+- **Deine Aufgaben:** Entwickler-Apps für WHOOP und Wahoo anlegen (je ein `[AUFGABE]`-Issue mit Label `user-task`).
 - **Nächster Schritt:** Grundgerüst (IDEAS Zeile 1) und Datenmodell (Zeile 2); Anbieter-Anbindungen, sobald die Apps angelegt sind.
 
 ## Legende

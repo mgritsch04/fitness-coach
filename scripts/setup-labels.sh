@@ -21,6 +21,6 @@ label "info"           "1d76db" "Erledigt, enthält wichtige Info – Nutzer sch
 label "blocked"        "000000" "Blockiert"
 label "area: whoop"    "f9d0c4" "WHOOP-Anbindung"
 label "area: wahoo"    "f9d0c4" "Wahoo-Anbindung"
-label "area: mywhoosh" "f9d0c4" "MyWhoosh/Strava/FIT"
+label "area: mywhoosh" "f9d0c4" "MyWhoosh (FIT-Upload)"
 label "area: dashboard" "f9d0c4" "Dashboard"
 label "area: coach"    "f9d0c4" "Trainingscoach"

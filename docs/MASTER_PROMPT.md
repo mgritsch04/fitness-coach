@@ -9,7 +9,7 @@ Ein persönlicher Fitness- und Gesundheits-Tracker mit Trainingscoach, der alle 
 - **MyWhoosh:** virtuelle Radeinheiten. Keine offizielle API → FIT-Upload; kein Strava (siehe [`INTEGRATIONS.md`](INTEGRATIONS.md)).
 
 ## Bausteine
-1. **Datenanbindung:** OAuth je Anbieter, regelmäßiger Abgleich (Webhooks wo möglich), Rohdaten lokal speichern, Duplikate erkennen (dieselbe Einheit kann über Wahoo, Strava und WHOOP kommen).
+1. **Datenanbindung:** OAuth je Anbieter, regelmäßiger Abgleich (Webhooks wo möglich), Rohdaten lokal speichern, Duplikate erkennen (dieselbe Einheit kann über Wahoo, MyWhoosh-FIT und WHOOP kommen).
 2. **Gemeinsames Datenmodell:** Workout, Schlaf, Recovery/Tageszustand, Körperwerte; Anbieter nur als Quelle.
 3. **Dashboard:** Tagesansicht (Recovery, Schlaf, Belastung), Trainingslast über Zeit (z. B. CTL/ATL/TSB), Leistungskurven, Wochen-/Monatsübersicht.
 4. **Trainingscoach:** Tagesempfehlung aus Recovery + Trainingslast, Wochenplanung, Rückblick; Erklärungen statt Blackbox.
