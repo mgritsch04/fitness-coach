@@ -23,6 +23,10 @@ const payloads = {
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
   update_settings: (i) => i,
+  save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
+  set_goals: () => ({ saved: [], deleted: [], goals: [] }),
+  save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
+  save_workout_rpe: (i) => ({ saved: i }),
   import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.get_dashboard.today, startTime: window.__MOCK__.get_dashboard.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
 };
 const mcp = {

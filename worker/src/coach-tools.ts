@@ -6,7 +6,7 @@ import { addDays, weekStart } from "./core/analysis";
 import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
 import { normalizePlan } from "./core/plan";
-import { proposePlan, todayCheck, weekView } from "./core/training";
+import { eventProjection, proposePlan, todayCheck, weekView } from "./core/training";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -82,7 +82,8 @@ export function registerCoachTools(server: McpServer, env: Env) {
     longDay: z.number().int().min(0).max(6).nullable().optional().describe("Tag der langen Einheit, 0 = Montag … 6 = Sonntag"),
     maxWeekdayMin: z.number().int().min(20).max(300).nullable().optional().describe("längste Einheit Montag–Freitag (min)"),
     mainSport: z.string().max(40).nullable().optional().describe("Hauptsportart, z. B. cycling oder running"),
-    strengthPerWeek: z.number().int().min(0).max(3).nullable().optional().describe("Krafteinheiten pro Woche (Standard 2)"),
+    strengthPerWeek: z.number().int().min(0).max(6).nullable().optional().describe("Krafteinheiten pro Woche (null = wie in den letzten Wochen)"),
+    strengthMin: z.number().int().min(15).max(120).nullable().optional().describe("Dauer einer Krafteinheit in min (null = wie in den letzten Wochen)"),
   };
 
   server.registerTool(
@@ -171,6 +172,23 @@ export function registerCoachTools(server: McpServer, env: Env) {
   );
 
   server.registerTool(
+    "get_event_projection",
+    {
+      description:
+        "Formprognose bis zum Ziel-Termin: Fitness (CTL), Ermüdung (ATL) und Form (TSB) je Tag bis zum Termin, wenn der Plan so trainiert wird; Phasen je Woche " +
+        "(Aufbau, Spitze, Tapering …), Form am Wettkampftag mit Wunschbereich und Hinweisen. Ohne goalId das nächste aktive Terminziel. Schätzung.",
+      inputSchema: { goalId: z.number().int().optional() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ goalId }) => {
+      const dash = await dashboard();
+      const [goals, prefs] = await Promise.all([readGoals(db), readPrefs(db)]);
+      const p = eventProjection(dash, goals, prefs, dash.training.thisWeek.plan, goalId);
+      return p ? json(p) : fail("no_event", "Kein aktives Ziel mit Datum in der Zukunft. Lege eines mit set_goals an (kind=event, targetDate).");
+    },
+  );
+
+  server.registerTool(
     "save_coach_note",
     {
       description:
@@ -236,6 +254,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
       return json({
         today: dash.today,
         readiness: dash.coach,
+        earlyWarning: dash.warning,
         planToday: t.today,
         trends: trendBrief,
         recentDays: dash.days.slice(-n).map((d) => ({
@@ -251,6 +270,9 @@ export function registerCoachTools(server: McpServer, env: Env) {
           days: t.thisWeek.comparison.days.map((d) => ({ day: d.day, type: d.type, title: d.title, durationMin: d.durationMin, targetLoad: d.targetLoad, strength: d.strength, status: d.status, actualMin: d.actualMin, actualLoad: d.actualLoad })),
         },
         nextWeek: t.nextWeek,
+        eventProjection: t.projection
+          ? { goal: t.projection.goal.title, date: t.projection.goal.targetDate, daysLeft: t.projection.daysLeft, atEvent: t.projection.atEvent, targetTsb: t.projection.targetTsb, verdict: t.projection.verdict, advice: t.projection.advice, weeks: t.projection.weeks }
+          : null,
         settings: { ftpW: dash.settings.ftpW, maxHr: dash.settings.maxHr, restingHr: dash.settings.restingHr, thresholdHr: dash.settings.thresholdHr, sleepNeedH: dash.settings.sleepNeedH, origin: dash.settings.origin },
         journal: { today: dash.journal.today, recent: dash.journal.recent.slice(0, 7), tagEffects: dash.journal.tagEffects.slice(0, 5) },
         coachNotes: t.notes.slice(0, 5).map((nn) => ({ kind: nn.kind, day: nn.day, title: nn.title, body: nn.body.slice(0, 600) })),
