@@ -66,6 +66,13 @@ describe("Wochenplan", () => {
     expect(plan.days.some((d) => d.type === "threshold")).toBe(true);
   });
 
+  it("lässt auch bei täglicher Kraft-Gewohnheit einen Tag ganz frei", () => {
+    for (const hours of [4, 6, 9]) {
+      const plan = buildWeekPlan(input({ prefs: { ...DEFAULT_PREFS, weeklyHours: hours, strengthPerWeek: 6, strengthMin: 40 } }));
+      expect(plan.days.filter((d) => d.type === "rest").length, `${hours} h`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it("legt harte Einheiten nicht auf Nachbartage und Kraft nie vor harte Tage", () => {
     for (const hours of [4, 6, 8, 10]) {
       const plan = buildWeekPlan(input({ goals: [goal({ targetDate: addDays(MONDAY, 50) })], prefs: { ...DEFAULT_PREFS, weeklyHours: hours, strengthPerWeek: 2 } }));
