@@ -121,6 +121,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
         start: w.start_time,
         sport: w.sport,
         sources: w.sources,
+        source: w.source,
         durationMin: Math.round((w.duration_s ?? 0) / 60),
         sourceId: w.source_id,
         rpe: rpeBy.get(`${w.source}:${w.source_id}`) ?? null,
