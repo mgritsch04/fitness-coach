@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -484,6 +484,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await aerobicView(env.DB, d ?? 120)),
+  );
+
+  server.registerTool(
+    "get_interval_quality",
+    {
+      description:
+        "Intervall-Qualität: Hauptserie je Intervalltraining (aus FIT-Sekundenwerten erkannt), Leistungsabfall von der ersten zur letzten Wiederholung, " +
+        "Gleichmäßigkeit, Pulsanstieg, Verlauf je Intervallart (kurz, VO2max, Schwelle, lang) und Hinweise. Trainingshinweise, keine Diagnose.",
+      inputSchema: { days: z.number().int().min(14).max(365).optional().describe("Zeitraum in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await intervalQualityView(env.DB, d ?? 90)),
   );
 
   server.registerTool(

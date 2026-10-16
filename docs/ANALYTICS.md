@@ -198,3 +198,12 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `current`: Median der letzten 4 Fahrten und der 4 davor; `trend` ab 1 Prozentpunkt Unterschied besser oder schlechter.
 - `longestGood`: längste Fahrt mit unter 5 %; `skipped`: zu kurze bzw. ungleichmäßige Fahrten.
 - Dashboard: `sections/aerobic.js`, Reiter Training. Schätzung; Hitze auf der Rolle und wenig Trinken erhöhen die Entkopplung.
+
+## Intervall-Qualität (`get_interval_quality`, #155)
+
+`core/intervals.ts` erkennt in jeder Fahrt mit Sekundenwerten die Intervalle wie das Workout-Detail (`detectIntervals`, mit wirksamer FTP). Die Hauptserie ist die Dauerklasse mit den meisten Wiederholungen (kurz unter 2,5 min, VO2max bis 8 min, Schwelle bis 30 min, lang), ab 3 Wiederholungen.
+
+- `sessions[]` (neueste zuerst, höchstens 12): Serie, Ø-Leistung und % FTP, Leistung je Wiederholung, Abfall (erste gegen letzte Wiederholungen, ab 4 je zwei), CV, Pulsanstieg und Einordnung (`even` bis 3 %, `slight` bis 8 %, `strong` darüber, `building` bei Anstieg über 3 %).
+- `classes[]`: je Intervallart Anzahl, letzte und beste Einheit, Veränderung seit der ersten Einheit im Zeitraum, mittlerer Abfall.
+- `hints[]`: zu hart angegangen (2 der letzten 3 stark nachgelassen), Steigerung möglich (letzte gleichmäßig), Pulsanstieg ab 10 Schlägen, Veränderung je Art ab 3 %.
+- Dashboard: `sections/intervals.js`, Reiter Training. Trainingshinweise, keine Diagnose.
