@@ -58,6 +58,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 43 | Gym-Modus: letztes Mal und Bestwert (#127) | je Übung „Letztes Mal“, Hinweis bei neuem geschätztem 1RM | Motivation, Orientierung im Gym | P2 | S | Zeile 38 | Vorschau, User-Test | Done ⚙️ (#129; im Dashboard v14; User-Test mit #116) |
 | 44 | HRV-Trend nach Plews (#125) | 7-Tage-Mittel und Schwankung (CV) der HRV gegen den eigenen Normalbereich, Einordnung | Ermüdung früh erkennen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#128; User-Test #130) |
 | 45 | Anstrengung je Workout im Dashboard (#134) | RPE 1–10 in der Workout-Liste und als Frage unter „Heute dran“ | bessere Belastungsschätzung beim Krafttraining | P2 | S | Zeile 16 | Unit-Test, Vorschau, User-Test | In Progress (Haupt-Thread) |
+| 46 | Beste Trainingszeit (#131) | Tageszeit des Trainings gegen Schlaf, Erholung und Leistung | Training günstig legen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#135; User-Test #138) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
