@@ -85,3 +85,14 @@ export async function consumeWahooLinkState(db: D1Database, state: string, now =
     .first<{ whoop_user_id: string; expires_at: number }>();
   return row && row.expires_at >= now ? row.whoop_user_id : null;
 }
+
+/** Besitzer (WHOOP-ID), mit dem ein Wahoo-Konto verbunden ist, oder null. */
+export async function ownerForWahooUser(db: D1Database, wahooUserId: string): Promise<string | null> {
+  const row = await db.prepare("SELECT whoop_user_id FROM wahoo_tokens WHERE wahoo_user_id = ?").bind(wahooUserId).first<{ whoop_user_id: string }>();
+  return row?.whoop_user_id ?? null;
+}
+
+export async function ownerWhoopUserId(db: D1Database): Promise<string | null> {
+  const row = await db.prepare("SELECT whoop_user_id FROM app_owner WHERE id = 1").first<{ whoop_user_id: string }>();
+  return row?.whoop_user_id ?? null;
+}
