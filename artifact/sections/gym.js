@@ -67,7 +67,9 @@ FC.section({
   drawStart() {
     const { $, el, fmtDayLong } = FC, body = $("gyBody"), d = this.data;
     if (!d) { body.replaceChildren(el("div", { class: "empty", text: this.err ?? "Lädt …" })); return; }
+    const today = FC.state.data?.today, planned = (FC.state.data?.training?.strengthWorkouts?.days ?? []).filter((w) => w.day >= today).slice(0, 3);
     const sel = el("select", { id: "gySrc" },
+      planned.length ? el("optgroup", { label: "Aus dem Wochenplan" }, ...planned.map((w) => el("option", { value: `p:${w.day}`, text: `${w.day === today ? "Heute" : fmtDayLong(w.day)}: ${w.focus}` }))) : null,
       d.templates.length ? el("optgroup", { label: "Vorlage (mit Gewichtsvorschlag)" }, ...d.templates.map((t) => el("option", { value: `t:${t.name}`, text: t.name }))) : null,
       d.sessions.length ? el("optgroup", { label: "Wie eine letzte Einheit" }, ...d.sessions.slice(0, 6).map((s) => el("option", { value: `s:${s.id}`, text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }))) : null,
       el("option", { value: "", text: "Leer starten" }));
@@ -81,7 +83,12 @@ FC.section({
     btn.disabled = true; this.msg("");
     try {
       let list = [], name = null;
-      if (src.startsWith("t:")) {
+      if (src.startsWith("p:")) {
+        const w = FC.state.data.training.strengthWorkouts.days.find((x) => x.day === src.slice(2));
+        name = w?.focus ?? null;
+        list = (w?.exercises ?? []).map((x) => ({ name: x.name, unit: x.unit, sets: Array.from({ length: x.sets }, () => ({ reps: x.reps, kg: x.weightKg })) }));
+        if (w?.exercises.some((x) => x.weightKg == null && x.unit !== "s")) this.msg("Wo kein Gewicht steht: eines wählen, bei dem noch 2 Wiederholungen Reserve bleiben.");
+      } else if (src.startsWith("t:")) {
         name = src.slice(2);
         const s = await FC.call("suggest_strength_session", { template: name });
         list = s.exercises.map((x) => ({ name: x.name, sets: Array.from({ length: x.sets }, () => ({ reps: x.reps, kg: x.weightKg ?? 0 })) }));
@@ -95,7 +102,7 @@ FC.section({
         list = [...by.values()];
       }
       this.st = { startedAt: new Date().toISOString(), name, cur: 0, restEnd: null, rpe: null, finishing: false,
-        exercises: list.map((x) => ({ name: x.name, rest: this.restFor(x.name), sets: x.sets.map((y) => ({ ...y, done: false })) })) };
+        exercises: list.map((x) => ({ name: x.name, unit: x.unit === "s" ? "s" : undefined, rest: this.restFor(x.name), sets: x.sets.map((y) => ({ ...y, done: false })) })) };
       if (!this.st.exercises.length) this.st.exercises.push({ name: "", rest: 90, sets: [{ reps: 8, kg: 0, done: false }] });
       this.persist(); this.draw();
     } catch (err) { this.msg(err?.code === "tool_error" ? `Vorschlag nicht verfügbar: ${String(err.message).slice(0, 160)}` : FC.errText(err)); }
@@ -133,10 +140,10 @@ FC.section({
     const title = x.name ? el("h3", { text: x.name }) : (() => { const inp = el("input", { type: "text", list: "stEx", maxlength: 80, placeholder: "Übung", "aria-label": "Name der Übung" }); inp.onchange = () => { x.name = inp.value.trim(); x.rest = this.restFor(x.name); this.persist(); }; return inp; })();
     const card = el("div", { class: `gy-ex${i === st.cur ? " cur" : ""}${doneSets === x.sets.length ? " done" : ""}` },
       el("div", { class: "gy-exh" }, title, el("span", { class: "muted" }, `${doneSets}/${x.sets.length} Sätze · `, restBtn)),
-      el("div", { class: "gy-head", "aria-hidden": "true" }, el("span", { text: "Satz" }), el("span", { text: "Wdh" }), el("span", { text: "kg" }), el("span", { text: "" })));
+      el("div", { class: "gy-head", "aria-hidden": "true" }, el("span", { text: "Satz" }), el("span", { text: x.unit === "s" ? "Sekunden" : "Wdh" }), el("span", { text: "kg" }), el("span", { text: "" })));
     const kgs = [];
     x.sets.forEach((s, j) => {
-      const reps = el("input", { type: "number", min: 1, max: 100, step: 1, inputmode: "numeric", "aria-label": `${x.name} Satz ${j + 1} Wiederholungen` });
+      const reps = el("input", { type: "number", min: 1, max: 100, step: 1, inputmode: "numeric", "aria-label": `${x.name} Satz ${j + 1} ${x.unit === "s" ? "Sekunden" : "Wiederholungen"}` });
       const kg = el("input", { type: "number", min: 0, max: 500, step: 0.5, inputmode: "decimal", "aria-label": `${x.name} Satz ${j + 1} Gewicht in kg` });
       reps.value = s.reps ?? ""; kg.value = s.kg ?? ""; kgs[j] = kg;
       const num = (v) => { const n = Number(String(v).replace(",", ".")); return v === "" || !Number.isFinite(n) ? null : n; };

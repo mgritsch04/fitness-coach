@@ -95,7 +95,9 @@ for (const [name, vp, scheme, tab] of shots) {
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "training") {
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
-    await p.selectOption("#gySrc", { index: 1 }); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
+    const plan = await p.$eval("#gySrc", (s) => s.value);
+    if (!plan.startsWith("p:")) errors.push(`${name}: Gym-Modus bietet die Krafteinheit aus dem Wochenplan nicht an (${plan})`);
+    await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     await p.click("#gyBody .gy-set .ok"); await p.waitForTimeout(100);
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
