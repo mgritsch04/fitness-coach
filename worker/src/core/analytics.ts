@@ -41,6 +41,8 @@ import { durabilityReport, readRideStreams } from "./durability";
 import { aerobicReport, readHrRideStreams } from "./aerobic";
 import { intervalReport, readIntervalRides } from "./intervals";
 import { cadenceReport } from "./cadence";
+import { riderProfile } from "./rider-profile";
+import { combineCurves } from "./power";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -293,6 +295,16 @@ export async function intervalQualityView(db: D1Database, days: number, now?: nu
 export async function cadenceView(db: D1Database, days: number, now?: number) {
   const c = await analysisContext(db, { days: 7, now });
   return cadenceReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days);
+}
+
+/** Fahrertyp (#164): 5 s, 1 min, 5 min im Verhältnis zur FTP gegen Coggans typische Verhältnisse. */
+export async function riderProfileView(db: D1Database, days: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  const from = addDays(c.today, -(days - 1)), prevFrom = addDays(from, -days);
+  const rows = await readPowerCurves(db, prevFrom);
+  const curve = combineCurves(rows.filter((r) => r.day >= from && r.day <= c.today).map((r) => r.power_curve));
+  const previousCurve = combineCurves(rows.filter((r) => r.day < from).map((r) => r.power_curve));
+  return riderProfile({ curve, previousCurve, ftpW: c.settings.ftpW, ftpOrigin: c.settings.origin.ftpW ?? null, weightKg: c.weightKg }, c.today, days);
 }
 
 /** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
