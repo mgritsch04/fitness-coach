@@ -24,7 +24,7 @@ function tools() {
 describe("Coach-Werkzeuge", () => {
   it("registriert alle Werkzeuge", () => {
     expect([...tools().handlers.keys()].sort()).toEqual(
-      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_plan", "get_training_prefs", "save_coach_note", "save_plan", "set_goals", "set_training_prefs"].sort(),
+      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_week_review", "get_plan", "get_training_prefs", "save_coach_note", "save_plan", "set_goals", "set_training_prefs"].sort(),
     );
   });
 
@@ -58,5 +58,16 @@ describe("Coach-Werkzeuge", () => {
     expect(ctx.value.goals[0].goal.title).toBe("Radmarathon");
     expect(ctx.value.coachNotes[0].body).toBe("Heute locker.");
     expect(ctx.value.guidance.join(" ")).toContain("keine medizinischen Diagnosen");
+  });
+});
+
+describe("get_week_review", () => {
+  it("liefert den Rückblick der Vorwoche und lehnt Zukunft ab", async () => {
+    const { call } = tools();
+    const r = await call("get_week_review");
+    expect(r.error).toBe(false);
+    expect(r.value.complete).toBe(true);
+    expect(r.value.nextWeek.length).toBeGreaterThan(0);
+    expect((await call("get_week_review", { week: "next" })).error).toBe(true);
   });
 });
