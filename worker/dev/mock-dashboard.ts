@@ -1,7 +1,6 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
@@ -11,6 +10,7 @@ import { setSyncState } from "../src/core/repository";
 import { fakeD1 } from "../test/fake-d1";
 import { saveGoal } from "../src/core/goals";
 import { saveJournal } from "../src/core/journal";
+import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -47,17 +47,14 @@ for (let i = 0; i < 182; i++) {
   }
 }
 stmts.push(upsertBody(db, { source: "whoop", measuredAt: "2026-03-31", heightM: 1.8, weightKg: 75, maxHr: 188 }));
-// Gewichtsverlauf (#30): synthetische Werte, leicht fallend, jeder fünfte Tag als eigener Eintrag.
-for (let i = 0; i < 120; i += 2) {
-  const kg = Number((78 - i * 0.025 + (rnd() - 0.5) * 1.2).toFixed(1));
-  if (i % 10) stmts.push(upsertBody(db, { source: "whoop", measuredAt: addDays("2026-03-31", i - 120), heightM: 1.8, weightKg: kg, maxHr: 188 }));
-  else await saveManualWeight(db, addDays("2026-03-31", i - 120), kg);
-}
 await runBatched(db, stmts);
 await setSyncState(db, "whoop", true, null, new Date(now - 20 * 60_000).toISOString());
 const curves = await readPowerCurves(db, addDays("2026-03-31", -364));
 // Coach: Beispielziel und Check-in für die Abschnitte Wochenplan und Tagebuch.
 await saveGoal(db, { kind: "event", title: "Radmarathon (Beispiel)", targetDate: "2026-05-24", priority: "A" });
+// Körperwerte: synthetische eigene Gewichtseinträge (leicht fallend) und ein Gewichtsziel.
+for (let i = 0; i < 182; i += 2 + (i % 3)) await saveManualWeight(db, addDays(start, i), Number((78.5 - i * 0.018 + (rnd() - 0.5) * 1.2).toFixed(1)));
+await saveGoal(db, { kind: "weight", title: "Gewicht (Beispiel)", metric: "weightKg", targetValue: 74, unit: "kg", targetDate: "2026-06-30" });
 await saveJournal(db, { day: "2026-03-31", feeling: 4, energy: 3, soreness: 3, stress: 2, motivation: 4, tags: ["reise"] });
 const ctx = (days: number) => analysisContext(db, { days, now });
 process.stdout.write(JSON.stringify({
@@ -69,7 +66,9 @@ process.stdout.write(JSON.stringify({
   get_strain_recovery: strainRecoveryView(await ctx(90)),
   get_recovery_factors: recoveryFactorsView(await ctx(90)),
   get_sleep_report: sleepReportView(await ctx(30)),
-  get_body_history: await (async () => { const c = await ctx(30); return { today: c.today, ...bodyReport(await readBodyHistory(db, "2025-01-01"), addDays(c.today, -89), c.today, { watts: c.settings.ftpW, origin: c.settings.origin.ftpW }) }; })(),
+  get_body_history: { today: "2026-03-31", range: { from: addDays("2026-03-31", -179), to: "2026-03-31", days: 180 },
+    ...bodyReport(await readBodyHistory(db, addDays("2026-03-31", -300)), addDays("2026-03-31", -179), "2026-03-31", { watts: 250, origin: "estimate" },
+      { title: "Gewicht (Beispiel)", targetValue: 74, targetDate: "2026-06-30" }) },
   get_records: await recordsView(db, await ctx(14), 30),
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
 }));

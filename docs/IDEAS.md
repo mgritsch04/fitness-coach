@@ -27,23 +27,23 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 12 | Pulszonen und Intensitätsverteilung (#19) | WHOOP `zone_durations` speichern, Zeit in Zonen je Workout/Woche, 80/20-Verteilung, gestapelte Wochenbalken | Training richtig dosieren | P1 | M | Zeile 3 | Unit-Tests, User-Test | Done ⚙️ (#42; im Dashboard #55; User-Test #45) |
 | 13 | Schlaf-Detail (#20) | Phasen gestapelt, Schlafenszeiten-Streifen, Konsistenz, Schlafschuld-Verlauf, Nickerchen | Schlaf verstehen | P1 | M | Zeile 3 | User-Test | In Progress (Schlafrhythmus im Dashboard #49) |
 | 14 | Einflussfaktoren (#21) | `core/insights.ts`: Erholung/HRV vs. Schlaf, Vortagsbelastung, späte Workouts, Wochentag, Tagebuch; Claude deutet | „Was hilft mir?“ | P1 | L | Zeile 3; besser mit Zeile 16 | Unit-Tests mit eingebautem Zusammenhang, User-Test | Done ⚙️ (#48; im Dashboard #55) |
-| 15 | Coach mit Gedächtnis (#22) | Ziele + Wochenpläne in D1, Plan-Ist-Abgleich, Anpassung nach Tagesform | Coach, der dranbleibt | P1 | L | Zeile 9 | Unit-Tests, User-Test | Done ⚙️ (#41; User-Test #51; Dashboard-Abschnitt folgt) |
-| 16 | Tagebuch (#23) | täglicher Check-in (Befinden, Muskelkater, Stress, Tags), RPE je Workout, Notizen | subjektive Daten für Coach | P1 | M | – | Unit-Tests, User-Test | Done ⚙️ (#41; User-Test #52; Dashboard-Abschnitt folgt) |
-| 17 | Frühwarnung Überlastung/Infekt (#24) | mehrere Signale außerhalb der Basis → „heute schonen“ (keine Diagnose) | Schutz vor Überlastung | P2 | S | Zeile 7 | Unit-Tests | In Progress (Coach-Thread) |
+| 15 | Coach mit Gedächtnis (#22) | Ziele + Wochenpläne in D1, Plan-Ist-Abgleich, Anpassung nach Tagesform | Coach, der dranbleibt | P1 | L | Zeile 9 | Unit-Tests, User-Test | Done ⚙️ (#41; Wochenplan und Ziele im Dashboard #73; User-Test #51) |
+| 16 | Tagebuch (#23) | täglicher Check-in (Befinden, Muskelkater, Stress, Tags), RPE je Workout, Notizen | subjektive Daten für Coach | P1 | M | – | Unit-Tests, User-Test | Done ⚙️ (#41; Check-in im Dashboard #73; User-Test #52) |
+| 17 | Frühwarnung Überlastung/Infekt (#24) | mehrere Signale außerhalb der Basis → „heute schonen“ (keine Diagnose) | Schutz vor Überlastung | P2 | S | Zeile 7 | Unit-Tests | Done ⚙️ (#54; im Dashboard #73; User-Test #57) |
 | 18 | Jahresübersicht (#25) | Kalender-Heatmap, Serien, Rekorde, Zeitraumvergleich | Motivation, Überblick | P2 | M | Zeile 11 | User-Test | Done ⚙️ (#49; User-Test #50) |
-| 19 | Event-Planung (#26) | Ziel-Rennen, CTL/TSB-Projektion, Tapering | auf ein Ziel hin trainieren | P2 | M | Zeile 15 | Unit-Tests, User-Test | In Progress (Formprognose, Coach-Thread) |
+| 19 | Event-Planung (#26) | Ziel-Rennen, CTL/TSB-Projektion, Tapering | auf ein Ziel hin trainieren | P2 | M | Zeile 15 | Unit-Tests, User-Test | Done ⚙️ (Formprognose #72/#74, im Fitness-Diagramm; User-Test #62) |
 | 20 | Workout-Detail aus FIT (#27) | Zeitreihen, Intervalle, Entkopplung, Leistungszonen, Claude-Kommentar | Einheiten auswerten | P2 | L | Zeile 6 | User-Test | Blocked (Zeile 6) |
 | 21 | Morgen-Briefing (#28) | 3–4 Sätze von Claude beim ersten Öffnen am Tag, Verlauf gespeichert | schneller Start in den Tag | P1 | S | Zeile 11 | User-Test | Done ⚙️ (#49; User-Test #50) |
 | 22 | WHOOP-Webhooks (#29) | `/webhooks/whoop` mit Signaturprüfung, betroffene Daten sofort nachladen | Daten ohne Wartezeit | P2 | M | Zeile 3 | Unit-Tests | Done ⚙️ (#36; User-Test #39) |
-| 23 | Körperwerte und Export (#30) | Gewichtsverlauf, manuelle Eingabe, W/kg, CSV-Export | vollständiges Bild | P3 | S | Zeile 11 | User-Test | Ready |
+| 23 | Körperwerte und Export (#30) | Gewichtsverlauf, manuelle Eingabe, W/kg, CSV-Export | vollständiges Bild | P3 | S | Zeile 11 | User-Test | Done ⚙️ (#74; im Dashboard #78; User-Test #77) |
 | 25 | Handy-Version (#37) | Tab-Leiste unten, Tabellen als Karten, große Zahlen | Dashboard am Handy | P1 | S | Zeile 11 | User-Test | Done ⚙️ (#18; User-Test #44) |
 | 24 | Krafttraining (#33) | Übungen/Sätze/Gewicht erfassen, Volumen je Muskelgruppe, 1RM-Verlauf, sRPE-Belastung in der Gesamtlast, Coach plant Kraft und Rad zusammen | du trainierst Kraft + Rennrad | P1 | L | Zeile 16 (RPE) hilfreich | Unit-Tests, User-Test | Done ⚙️ (#56; User-Test #47) |
 | 26 | MyWhoosh-Workouts exportieren (#63) | Coach-Intervalle als Workout-Datei (% FTP), Download im Dashboard; Format vorher offiziell prüfen | strukturiert auf der Rolle trainieren | P1 | M | Zeile 8, 15 | Unit-Tests, User-Test | Ready |
 | 27 | FTP-Test-Assistent (#64) | Ramp-/20-min-Test vorschlagen (TSB > 0), aus FIT auswerten, Verlauf | FTP aktuell halten | P2 | M | Zeile 6, 8 | Unit-Tests, User-Test | Ready |
 | 28 | Bestleistungen-Feed (#65) | neue Rekorde Watt/1RM/Strecke, Woche gegen Vorwoche | Motivation | P2 | S | Zeile 8, 24 | Unit-Tests, User-Test | Ready |
 | 29 | Wetter-Empfehlung (#66) | Open-Meteo, bestes Zeitfenster für draußen | Rennrad draußen planen | P2 | M | Zeile 9 | Unit-Tests, User-Test | Ready |
-| 30 | Dashboard anpassen (#67) | Bereiche je Tab ein-/ausblenden, Reihenfolge | Übersicht am Handy | P1 | S | Zeile 11 | User-Test | In Progress (Haupt-Thread) |
-| 31 | CI prüft Dashboard-Vorschau (#68) | Playwright in Actions: Skriptfehler, Überlauf, fehlende Script-Tags | weniger kaputte Veröffentlichungen | P1 | S | Zeile 11 | CI rot bei kaputtem Abschnitt | Ready |
+| 30 | Dashboard anpassen (#67) | Bereiche je Tab ein-/ausblenden, Reihenfolge | Übersicht am Handy | P1 | S | Zeile 11 | User-Test | Done ⚙️ (#73) |
+| 31 | CI prüft Dashboard-Vorschau (#68) | Playwright in Actions: Skriptfehler, Überlauf, fehlende Script-Tags | weniger kaputte Veröffentlichungen | P1 | S | Zeile 11 | CI rot bei kaputtem Abschnitt | Done ⚙️ (#73) |
 | 32 | Schneller laden (#69) | get_dashboard kompakter, KV-Cache, Tabs laden faul | schnelleres Handy-Dashboard | P2 | M | – | Messung vorher/nachher | Ready |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
