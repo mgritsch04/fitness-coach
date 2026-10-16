@@ -36,6 +36,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 21 | Morgen-Briefing (#28) | 3–4 Sätze von Claude beim ersten Öffnen am Tag, Verlauf gespeichert | schneller Start in den Tag | P1 | S | Zeile 11 | User-Test | Ready |
 | 22 | WHOOP-Webhooks (#29) | `/webhooks/whoop` mit Signaturprüfung, betroffene Daten sofort nachladen | Daten ohne Wartezeit | P2 | M | Zeile 3 | Unit-Tests | Ready |
 | 23 | Körperwerte und Export (#30) | Gewichtsverlauf, manuelle Eingabe, W/kg, CSV-Export | vollständiges Bild | P3 | S | Zeile 11 | User-Test | Ready |
+| 24 | Krafttraining (#33) | Übungen/Sätze/Gewicht erfassen, Volumen je Muskelgruppe, 1RM-Verlauf, sRPE-Belastung in der Gesamtlast, Coach plant Kraft und Rad zusammen | du trainierst Kraft + Rennrad | P1 | L | Zeile 16 (RPE) hilfreich | Unit-Tests, User-Test | Ready |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
@@ -52,6 +53,7 @@ Damit 3–4 Threads gleichzeitig ohne Konflikte arbeiten, gehört jedem Thema ei
 | 15 Coach mit Gedächtnis | `core/goals.ts`/`plans.ts` (neu), Migration, Werkzeuge | 12–14, 16, 17, 22 |
 | 16 Tagebuch | `core/journal.ts` (neu), Migration, Werkzeuge | 12–15, 17, 22 |
 | 17 Frühwarnung | Erweiterung in `core/coach.ts` | allen außer anderen Coach-Regel-Änderungen |
+| 24 Krafttraining | `core/strength.ts` (neu), Migration, Werkzeuge | 12–14, 17, 22 (mit 16: RPE-Feld abstimmen) |
 | 22 Webhooks | `src/webhooks.ts` (neu), `providers/whoop/` | allen außer 12 (beide in `providers/whoop/`, nur additiv) |
 
 **Oberfläche:** Bis Zeile 11 fertig ist, ändert nur der Haupt-Thread `artifact/`. Danach bringt jedes Thema seinen Abschnitt als eigene Datei `artifact/sections/<thema>.js` mit; der Haupt-Thread trägt ihn ein, pflegt die Werkzeugliste im Artefakt-Manifest und veröffentlicht.
