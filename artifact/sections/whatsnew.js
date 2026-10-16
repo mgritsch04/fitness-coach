@@ -5,6 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 20, id: "cadence", title: "Trittfrequenz", text: "Welche Kadenz du fährst, je Leistungszone und im Verlauf." },
     { n: 19, id: "intervals", title: "Intervall-Qualität", text: "Wie stark die Leistung innerhalb einer Intervall-Serie abfällt, je Intervallart im Verlauf." },
     { n: 18, id: "agenda", title: "Wochenplan in den Kalender", text: "Unter „Heute dran“: die restliche Woche als Kalenderdatei (.ics) speichern." },
     { n: 17, id: "aerobic", title: "Aerobe Basis", text: "Wie stabil dein Puls bei lockeren Fahrten zur Leistung bleibt (Entkopplung) im Verlauf." },
