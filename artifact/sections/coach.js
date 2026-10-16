@@ -93,6 +93,45 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
       else { if (e?.text) richText(out, e.text); else out.textContent = ""; out.append(el("p", { class: "muted", text: sampleErrText(e) })); if (["not_granted", "sampling_disabled"].includes(e?.code)) this.root.hidden = true; }
     } finally { this.busy(false); }
   },
+  async canUseTools() {
+    if (this.toolsOk === undefined) { try { this.toolsOk = !!(await FC.state.sample.limits?.())?.tools; } catch { this.toolsOk = false; } }
+    return this.toolsOk;
+  },
+  /** Lesende Werkzeuge für den Chat: rufen Connector-Werkzeuge auf, Ergebnis gekürzt (max. 32 KB je Aufruf). */
+  tools(out) {
+    const { el } = FC;
+    const clamp = (n, lo, hi, d) => { const x = Math.round(Number(n)); return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : d; };
+    const cut = (v) => { const t = JSON.stringify(v); return t.length > 24_000 ? `${t.slice(0, 24_000)} … (gekürzt)` : t; };
+    const note = (label) => { const p = el("p", { class: "muted coach-tool", text: `Hole ${label} …` }); out.before(p); return p; };
+    const via = (name, label, description, inputSchema, tool, args) => ({ name, description, inputSchema,
+      async execute(input, ctx) {
+        const p = note(label);
+        try { const r = await FC.state.mcp.callTool(FC.SERVER, tool, args(input), { cache: { staleTime: 300_000, gcTime: 3_600_000 }, signal: ctx.signal }); p.textContent = `${label} geholt.`; return cut(r.payload); }
+        catch (e) { p.textContent = `${label} nicht verfügbar.`; throw new Error(FC.errText(e)); }
+      } });
+    const days = (def, max) => ({ type: "object", properties: { tage: { type: "integer", description: `Zeitraum in Tagen (Standard ${def}, höchstens ${max})` } } });
+    const week = { type: "object", properties: { woche: { type: "string", description: "current, previous, next oder ein Datum JJJJ-MM-TT in der Woche" } } };
+    const wk = (i) => (/^(current|previous|next|\d{4}-\d{2}-\d{2})$/.test(String(i.woche ?? "")) ? { week: String(i.woche) } : {});
+    return [
+      via("schlafbericht", "Schlafbericht", "Schlaf je Nacht (Dauer, Phasen, Leistung, Zeiten), Schlafschuld, Rhythmus und Nickerchen.", days(30, 365), "get_sleep_report", (i) => ({ days: clamp(i.tage, 7, 365, 30) })),
+      via("krafttraining", "Krafttraining", "Krafteinheiten mit Sätzen, Volumen je Muskel und Woche, geschätztes 1RM und Fortschritt je Übung.", { type: "object", properties: { wochen: { type: "integer", description: "Zeitraum in Wochen (Standard 8, höchstens 52)" } } }, "get_strength", (i) => ({ weeks: clamp(i.wochen, 1, 52, 8) })),
+      via("erholungsfaktoren", "Einflussfaktoren", "Was mit besserer oder schlechterer Erholung/HRV zusammenhängt (Schlaf, Vortagsbelastung, späte Workouts, Wochentag, Tagebuch).", days(90, 365), "get_recovery_factors", (i) => ({ days: clamp(i.tage, 30, 365, 90) })),
+      via("bestleistungen", "Bestleistungen", "Neue Bestwerte (Watt-Dauern, 1RM, Strecke) und Woche gegen Vorwoche.", days(30, 365), "get_records", (i) => ({ days: clamp(i.tage, 7, 365, 30) })),
+      via("wochenplan", "Wochenplan", "Geplante Einheiten einer Woche mit Phase und Soll/Ist-Abgleich.", week, "get_plan", wk),
+      via("wochenrueckblick", "Wochenrückblick", "Kennzahlen einer Woche: Umfang, Belastung, Erholung, Schlaf, Highlights, Soll/Ist.", week, "get_week_review", wk),
+      via("zeitraeume", "Monate/Jahre", "Summen je Woche, Monat oder Jahr: Trainingsstunden nach Sport, Belastung, Fitness, Erholung, Schlaf.", { type: "object", properties: { zeitraum: { type: "string", enum: ["week", "month", "year"] }, tage: { type: "integer", description: "Rückblick in Tagen (höchstens 730)" } } }, "get_period_summaries", (i) => ({ period: ["week", "month", "year"].includes(i.zeitraum) ? i.zeitraum : "month", days: clamp(i.tage, 28, 730, 365) })),
+      via("leistungsprofil", "Leistungsprofil", "Leistungskurve (Bestwerte je Dauer), FTP-Schätzung, Leistungs- und Pulszonen.", days(42, 730), "get_fitness_profile", (i) => ({ days: clamp(i.tage, 7, 730, 42) })),
+      via("koerperwerte", "Körperwerte", "Gewichtsverlauf mit 7-Tage-Mittel, Trend, BMI, W/kg und Gewichtsziel.", days(180, 730), "get_body_history", (i) => ({ days: clamp(i.tage, 7, 730, 180) })),
+      via("radwetter", "Radwetter", "Wetter für heute und morgen am eingestellten Ort mit bestem Zeitfenster und Empfehlung draußen oder Rolle.", undefined, "get_ride_weather", () => ({})),
+      { name: "workouts", description: "Workouts eines Zeitraums aus den geladenen Daten (Sport, Dauer, Puls, Leistung, Belastung, Strain, RPE).",
+        inputSchema: { type: "object", properties: { von: { type: "string", description: "JJJJ-MM-TT" }, bis: { type: "string", description: "JJJJ-MM-TT" } } },
+        execute(i) {
+          const d = FC.state.data, from = /^\d{4}-\d{2}-\d{2}$/.test(String(i.von)) ? String(i.von) : d.range.from, to = /^\d{4}-\d{2}-\d{2}$/.test(String(i.bis)) ? String(i.bis) : d.today;
+          const list = d.workouts.filter((w) => w.day >= from && w.day <= to).slice(0, 120);
+          return cut({ von: from, bis: to, geladenAb: d.range.from, workouts: list.map((w) => ({ tag: w.day, sport: FC.sport(w.sport), min: w.durationMin, km: w.distanceKm, pulsAvg: w.avgHr, wattAvg: w.avgPowerW, np: w.normalizedPowerW, belastung: w.load, strain: w.strain, rpe: w.rpe, zonenMin: w.hrZoneMin })) });
+        } },
+    ].map((t) => (t.inputSchema ? t : (({ inputSchema, ...rest }) => rest)(t)));
+  },
   async ask() {
     const { $, el, richText, sampleErrText, state } = FC;
     const q = $("askInput").value.trim(); if (!q || !state.sample || !state.data) return;
@@ -103,7 +142,11 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
     this.chat.push({ role: "user", content: q });
     this.ctl = new AbortController(); this.busy(true);
     try {
-      const { text } = await state.sample([{ role: "user", content: `${this.rules}\n\nBeantworte die folgenden Fragen der Person zu ihren Daten.\n\nDaten:\n${this.data()}` }, ...this.chat.slice(-10)], { cache: false, signal: this.ctl.signal, onText: ({ text }) => richText(a, text) });
+      // Mit Werkzeugen holt sich Claude zur Frage passende Daten selbst (#100); ohne bleibt es bei der Übersicht.
+      const tools = (await this.canUseTools()) ? this.tools(a) : null;
+      const hint = tools ? "\nWenn die Übersicht für die Frage nicht reicht, hol dir mit den Werkzeugen gezielt mehr Daten (sparsam, höchstens drei Abrufe). Nenne kurz, worauf sich die Antwort stützt." : "";
+      const { text } = await state.sample([{ role: "user", content: `${this.rules}\n\nBeantworte die folgenden Fragen der Person zu ihren Daten.${hint}\n\nDaten (Übersicht):\n${this.data()}` }, ...this.chat.slice(-10)],
+        { cache: false, signal: this.ctl.signal, onText: ({ text }) => richText(a, text), ...(tools ? { tools } : {}) });
       this.chat.push({ role: "assistant", content: text });
     } catch (err) {
       this.chat.pop();
