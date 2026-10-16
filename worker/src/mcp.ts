@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -508,6 +508,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await cadenceView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_rider_profile",
+    {
+      description:
+        "Fahrertyp aus der Leistungskurve: beste 5 s, 1 min und 5 min im Verhältnis zur FTP gegen die typischen Verhältnisse aus Coggans Leistungsprofil, " +
+        "Stärken, Schwächen, Veränderung zum Vorzeitraum und Trainingsvorschlag für die Schwäche. Schätzung.",
+      inputSchema: { days: z.number().int().min(28).max(365).optional().describe("Zeitraum in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await riderProfileView(env.DB, d ?? 90)),
   );
 
   server.registerTool(
