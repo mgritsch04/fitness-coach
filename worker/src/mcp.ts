@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { validAccessToken, whoopGet, WhoopAuthError } from "./providers/whoop/client";
+import { compactDashboard } from "./core/compact";
 import { syncAll } from "./sync";
 import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
 import { wahooConnectLink, wahooCredentials } from "./wahoo";
@@ -174,10 +175,16 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         "Alles für das Dashboard in einem Aufruf: Tagesreihe (Erholung, HRV, Ruhepuls, Schlaf, Strain, Belastung, Fitness/Ermüdung/Form), " +
         "Trends gegen die persönliche Basis, Wochenübersicht, Workouts mit geschätzter Belastung (Duplikate aus mehreren Quellen zusammengeführt) " +
         "und die regelbasierte Tagesempfehlung des Coachs. Belastungswerte sind Schätzungen.",
-      inputSchema: { days: z.number().int().min(7).max(365).optional().describe("Zeitraum der Ansicht in Tagen, Standard 90") },
+      inputSchema: {
+        days: z.number().int().min(7).max(365).optional().describe("Zeitraum der Ansicht in Tagen, Standard 90"),
+        compact: z.boolean().optional().describe("true: days und workouts als {keys, rows} statt Objektliste (halbe Größe, für das Dashboard-Artefakt)"),
+      },
       annotations: { readOnlyHint: true },
     },
-    async ({ days: d }) => json(await buildDashboard(env.DB, { days: d })),
+    async ({ days: d, compact }) => {
+      const dash = await buildDashboard(env.DB, { days: d });
+      return json(compact ? compactDashboard(dash) : dash);
+    },
   );
 
   const settingsShape = {
