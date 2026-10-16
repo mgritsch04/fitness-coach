@@ -2,7 +2,7 @@
 
 _Stand 2026-10-16 · Recherche aus öffentlichen Doku-/Forenquellen, vor der Umsetzung je Anbieter noch einmal gegen die offizielle Doku prüfen._
 
-Architektur (Vorschlag 2026-10-16): Dashboard und Coach als Claude-Artefakt; WHOOP und Wahoo über einen kleinen Cloudflare-Worker, der als eigener claude.ai-Connector „Fitness“ eingetragen wird und die Secrets hält. Offen: ob ein Artefakt eigene Connectoren aufrufen darf (zuerst testen).
+Architektur (entschieden 2026-10-16, Details in MASTER_PROMPT.md): Dashboard und Coach als Claude-Artefakt; WHOOP und Wahoo über einen kleinen Cloudflare-Worker, der als eigener claude.ai-Connector „Fitness“ eingetragen wird und die Secrets hält. Zuerst zu prüfen: ob ein Artefakt eigene Connectoren aufrufen darf (IDEAS Zeile 0). Redirect-URLs zeigen später auf den Worker (`https://<worker>.workers.dev/auth/<anbieter>/callback`); bis die Adresse feststeht, reicht die localhost-URL, weitere URLs lassen sich nachtragen.
 
 Grundregel: Client-Secrets und Tokens nur serverseitig (`.env` lokal bzw. Umgebungs-Secrets), nie im Chat, Browser-Code oder Repository. Variablennamen: [`../.env.example`](../.env.example).
 

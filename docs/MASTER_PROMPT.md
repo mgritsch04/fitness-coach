@@ -14,13 +14,14 @@ Ein persönlicher Fitness- und Gesundheits-Tracker mit Trainingscoach, der alle 
 3. **Dashboard:** Tagesansicht (Recovery, Schlaf, Belastung), Trainingslast über Zeit (z. B. CTL/ATL/TSB), Leistungskurven, Wochen-/Monatsübersicht.
 4. **Trainingscoach:** Tagesempfehlung aus Recovery + Trainingslast, Wochenplanung, Rückblick; Erklärungen statt Blackbox.
 
-## Offene Entscheidungen (Standard, bis der Nutzer anders entscheidet)
-- **Technik:** TypeScript auf **Cloudflare Workers** (OAuth-Callbacks, Token-Refresh, Webhooks, geplanter Abgleich per Cron) + Web-Dashboard, **D1** (SQLite) als Speicher, Secrets als Worker-Secrets. Grund: läuft auch ohne eingeschalteten PC, vom Handy erreichbar, feste HTTPS-Adresse; Client-Secrets und Refresh-Tokens bleiben serverseitig.
-- **Zugriffsschutz:** Cloudflare Access (nur der Nutzer), da Gesundheitsdaten.
-- **Entwicklung:** lokal mit `wrangler dev` (Redirect-URLs zusätzlich `http://localhost:8787/...`).
-- Stand der Entscheidung: von Claude empfohlen am 2026-10-16, Bestätigung durch den Nutzer offen.
+## Entscheidungen
+- **Architektur (vom Nutzer entschieden 2026-10-16):** Ein **Cloudflare-Worker** ist der Kern: OAuth für WHOOP und Wahoo, Token-Refresh, Abgleich per Cron und Webhooks, Speicher in **D1**, Auswertung (Trainingslast). Er ist als eigener claude.ai-Connector („Fitness“, Remote-MCP mit OAuth) eingetragen. Die **Oberfläche ist ein Claude-Artefakt**, das den Worker über diesen Connector abfragt; Rohdaten liegen nur im Worker.
+- **Coach über Claude im Artefakt** (`sample`-Capability, läuft über das Abo des Nutzers). **Kein eigener Anthropic-API-Schlüssel** – der Nutzer will dafür nicht extra zahlen.
+- Eine eigene Web-App mit Push auf demselben Worker ist später möglich, aber nicht geplant.
+- **Risiko zuerst prüfen:** ob ein Artefakt eigene Connectoren aufrufen darf.
+- **Zugriffsschutz:** Worker-Endpunkte nur mit OAuth des Connectors; Secrets als Worker-Secrets.
+- **Entwicklung:** lokal mit `wrangler dev`.
 - **MyWhoosh:** FIT-Upload; inoffizielle API nur mit Freigabe. Strava wird nicht genutzt.
-- **Architektur-Vorschlag:** Dashboard/Coach als Claude-Artefakt, WHOOP/Wahoo über Cloudflare-Worker als eigener Connector – Entscheidung offen (siehe INTEGRATIONS.md).
 
 ## Grenzen
 - Keine medizinischen Diagnosen; Gesundheitsdaten bleiben privat (siehe [`../CLAUDE.md`](../CLAUDE.md)).
