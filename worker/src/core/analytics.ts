@@ -17,6 +17,7 @@ import {
   coefficientOfVariation,
   estimateFtp,
   healthBand,
+  hrZoneReport,
   periodSummaries,
   powerCurve,
   sleepTiming,
@@ -118,9 +119,11 @@ export function fitnessProfileView(c: AnalysisContext) {
       power: zones.power ? zoneDistribution(inView, zones.power, "power") : null,
       hr: zones.hr ? zoneDistribution(inView, zones.hr, "hr") : null,
     },
+    hrZoneTime: hrZoneReport(c.workouts, c.viewFrom, c.today),
     powerCurve: {
-      last42d: c.curveRecent.length ? powerCurveFrom(c, 42) : [],
+      last30d: powerCurveFrom(c, 30),
       last90d: c.curveRecent,
+      last365d: powerCurveFrom(c, 365),
       allTime: powerCurve(c.powerRows),
     },
     notes: [

@@ -61,6 +61,8 @@ export interface Workout extends Base {
   avgCadenceRpm?: number | null;
   /** Training Stress Score, wie ihn die Quelle selbst berechnet hat (mit ihrer FTP). */
   tss?: number | null;
+  /** Sekunden je Pulszone 0–5 (Anteile der max. Herzfrequenz, WHOOP-Schema), falls die Quelle sie liefert. */
+  hrZoneS?: number[] | null;
 }
 
 /** Sekundenreihen eines Workouts (Index = Sekunde ab startTime, null = kein Wert). */
