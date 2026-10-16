@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -429,6 +429,21 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     async ({ days: d }) => {
       const days = d ?? 180;
       return json(await interferenceView(env.DB, await analysisContext(env.DB, { days, maxDays: 365 }), days));
+    },
+  );
+
+  server.registerTool(
+    "get_hrv_trend",
+    {
+      description:
+        "HRV-Trend nach Plews: Tageswerte, 7-Tage-Mittel der logarithmierten HRV, Normalband (60-Tage-Mittel ± 0,5 SD) und Schwankung von Tag zu Tag (CV). " +
+        "Dazu eine Deutung (stabil, über dem Normalbereich, unruhig, Ermüdung baut sich auf, niedrig und gleichförmig, unter dem Normalbereich) mit Trainingshinweis. Keine Diagnose.",
+      inputSchema: { days: z.number().int().min(28).max(365).optional().describe("Zeitraum für den Verlauf in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => {
+      const days = d ?? 90;
+      return json(hrvTrendView(await analysisContext(env.DB, { days: days + 67, maxDays: 450 }), days));
     },
   );
 
