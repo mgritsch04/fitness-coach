@@ -23,6 +23,7 @@ const payloads = {
   get_strain_recovery: () => window.__MOCK__.get_strain_recovery,
   get_recovery_factors: () => window.__MOCK__.get_recovery_factors,
   get_sleep_report: () => window.__MOCK__.get_sleep_report,
+  get_records: () => window.__MOCK__.get_records,
   get_period_summaries: (i) => window.__MOCK__.get_period_summaries[i.period ?? "month"],
   get_body_history: () => window.__MOCK__.get_body_history,
   get_bike_workout: () => window.__MOCK__.get_bike_workout,

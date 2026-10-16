@@ -1,7 +1,7 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
 import { readPowerCurves } from "../src/core/repository";
@@ -76,5 +76,6 @@ process.stdout.write(JSON.stringify({
       workout: { ...w, steps: w.steps.map((s) => ({ ...s, watts: wt(s.power), wattsLow: wt(s.powerLow), wattsHigh: wt(s.powerHigh), onWatts: wt(s.onPower), offWatts: wt(s.offPower) })) },
       fileName: zwoFileName(w, "2026-03-31"), zwo: toZwo(w), howTo: [] };
   })(),
+  get_records: await recordsView(db, await ctx(14), 30),
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
 }));
