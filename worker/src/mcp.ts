@@ -17,6 +17,7 @@ import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
 import { registerJournalTools } from "./journal-tools";
 import { registerBodyTools } from "./body-tools";
+import { registerFtpTools } from "./ftp-tools";
 import { registerBikeWorkoutTools } from "./bike-workout-tools";
 import { registerWeatherTools } from "./weather-tools";
 
@@ -403,6 +404,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
   registerCoachTools(server, env);
   registerJournalTools(server, env);
   registerBodyTools(server, env);
+  registerFtpTools(server, env);
   registerBikeWorkoutTools(server, env);
   registerWeatherTools(server, env);
 

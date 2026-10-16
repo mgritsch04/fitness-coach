@@ -102,6 +102,16 @@ Messwerte von heute (oder gestern, falls heute noch keine da sind; fehlt heute n
   - `change` vergleicht diese Woche bis heute mit denselben Wochentagen der Vorwoche.
 - Abschnitt: `artifact/sections/records.js` (Tab heute, order 15).
 
+## FTP-Tests (#64, `core/ftp-test.ts`, `ftp-tools.ts`)
+
+- `analyze_ftp_test {source?, sourceId?, protocol?: auto|ramp|20min}` gibt `{workout{source, sourceId, day, sport, durationS}, result{protocol, detection: auto|manual|none, label, basisW, basisStartS, factor, ftpW, message}}` zurück. Ohne Angabe wird die neueste Fahrt mit Sekundenwerten genommen. Das Werkzeug speichert nichts.
+  - Ramp-Test: 75 % der besten Minute. Erkannt wird er, wenn die 1-min-Mittel mindestens 8 Minuten lang steigen und danach die Leistung einbricht oder die Fahrt endet.
+  - 20-min-Test: 95 % der besten 20 min. Erkannt wird er, wenn das Fenster gleichmäßig ist (Variationskoeffizient unter 0,15) und mindestens 20 % über dem Rest der Fahrt liegt.
+- `save_ftp_test {source, sourceId, protocol?, apply?}` speichert den Test in der Tabelle `ftp_tests` mit dem Gewicht vom Testtag. Mit `apply: true` wird die FTP auch in die Einstellungen übernommen.
+- `delete_ftp_test {source, sourceId}` entfernt einen Test aus dem Verlauf.
+- `get_ftp_tests` gibt `{today, current{ftpW, origin, estimate}, tests[{day, protocol, label, basisW, ftpW, weightKg, wattsPerKg, changeW, applied}], suggestion{suggest, reason, daysSinceLastTest, tsb, howTo[]}}` zurück. Ein Test wird vorgeschlagen, wenn die Form (TSB) bei mindestens 0 liegt und der letzte Test mindestens 42 Tage her ist. Die Funktion `ftpTestSuggestion` kann auch der Coach nutzen.
+- Abschnitt: `artifact/sections/ftp.js` (Tab training, order 46).
+
 ## Leistungskurve: Datenquelle
 Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.
 
