@@ -1,7 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { validAccessToken, whoopGet, WhoopAuthError } from "./providers/whoop/client";
-import { d1WhoopTokenStore } from "./store";
+import { listWorkouts, toWorkout, validAccessToken as validWahooToken, WahooAuthError } from "./providers/wahoo/client";
+import { d1WahooTokenStore, d1WhoopTokenStore } from "./store";
+import { wahooConnectLink, wahooCredentials } from "./wahoo";
 import { getSyncState, readDaily, readLatestBody, readSleeps, readWorkouts } from "./core/repository";
 import { syncWhoop } from "./providers/whoop/sync";
 import type { AuthProps, Env } from "./env";
@@ -18,7 +20,7 @@ interface WhoopRecoveryPage {
 }
 
 // Werkzeuge des Connectors. Jeder Aufruf kommt nur nach erfolgreicher Anmeldung hier an (OAuthProvider).
-export function createServer(env: Env, props: AuthProps) {
+export function createServer(env: Env, props: AuthProps, origin: string) {
   const server = new McpServer({ name: "fitness-coach", version: "0.1.0" });
   const creds = { clientId: env.WHOOP_CLIENT_ID, clientSecret: env.WHOOP_CLIENT_SECRET };
   const store = d1WhoopTokenStore(env.DB);
@@ -127,6 +129,60 @@ export function createServer(env: Env, props: AuthProps) {
         );
       } catch (err) {
         if (err instanceof WhoopAuthError) return { ...json({ error: "whoop_not_connected", message: err.message }), isError: true };
+        throw err;
+      }
+    },
+  );
+
+  const wahooStore = d1WahooTokenStore(env.DB);
+  const wahooNotConfigured = () => ({
+    ...json({ error: "wahoo_not_configured", message: "Die Wahoo-App ist im Worker noch nicht eingerichtet (WAHOO_CLIENT_ID/SECRET fehlen)." }),
+    isError: true,
+  });
+
+  server.registerTool(
+    "wahoo_connect",
+    {
+      description:
+        "Erzeugt einen Einmal-Link (15 Minuten gültig), über den sich der Nutzer bei Wahoo anmeldet und Wahoo mit dem Fitness Coach verbindet. Den Link dem Nutzer zum Öffnen geben.",
+      annotations: { readOnlyHint: false },
+    },
+    async () => {
+      const url = await wahooConnectLink(env, origin, props.whoopUserId);
+      return url ? json({ url, expiresInMinutes: 15 }) : wahooNotConfigured();
+    },
+  );
+
+  server.registerTool(
+    "wahoo_status",
+    { description: "Ob Wahoo verbunden ist und bis wann das aktuelle Token gilt.", annotations: { readOnlyHint: true } },
+    async () => {
+      const tokens = await wahooStore.get(props.whoopUserId);
+      return json({
+        configured: Boolean(wahooCredentials(env)),
+        connected: Boolean(tokens),
+        tokenExpiresAt: tokens ? new Date(tokens.expiresAt).toISOString() : null,
+      });
+    },
+  );
+
+  server.registerTool(
+    "wahoo_workouts",
+    {
+      description:
+        "Letzte Wahoo-Workouts mit Zusammenfassung (Dauer, Distanz, Puls, Leistung, TSS), neueste zuerst. Direkt von Wahoo gelesen, noch ohne Speicherung. Einheiten: Sekunden, Meter, Watt, m/s.",
+      inputSchema: { limit: z.number().int().min(1).max(30).optional(), page: z.number().int().min(1).optional() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ limit, page }) => {
+      const wahooCreds = wahooCredentials(env);
+      if (!wahooCreds) return wahooNotConfigured();
+      try {
+        const token = await validWahooToken(wahooCreds, wahooStore, props.whoopUserId);
+        const result = await listWorkouts(token, page ?? 1, limit ?? 10);
+        return json({ total: result.total ?? null, page: result.page ?? page ?? 1, workouts: result.workouts.map(toWorkout) });
+      } catch (err) {
+        if (err instanceof WahooAuthError) return { ...json({ error: "wahoo_not_connected", message: err.message }), isError: true };
         throw err;
       }
     },

@@ -8,7 +8,7 @@ import { mapCycle, mapRecovery, mapSleep } from "../src/providers/whoop/map";
 // Kleiner D1-Ersatz auf node:sqlite, damit die echten SQL-Anweisungen gegen das echte Schema laufen.
 function fakeD1(): D1Database {
   const sql = new DatabaseSync(":memory:");
-  for (const f of ["0001_init.sql", "0002_datamodel.sql"]) sql.exec(String(readFileSync(fileURLToPath(new URL(`../migrations/${f}`, import.meta.url).href), "utf8")));
+  for (const f of ["0001_init.sql", "0002_wahoo.sql", "0003_datamodel.sql"]) sql.exec(String(readFileSync(fileURLToPath(new URL(`../migrations/${f}`, import.meta.url).href), "utf8")));
   const prepare = (query: string) => {
     let args: unknown[] = [];
     const stmt = {
