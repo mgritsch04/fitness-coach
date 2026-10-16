@@ -92,3 +92,6 @@ Für jeden Plantag ab heute mit Kraft liefert `training.strengthWorkouts` passen
 
 ## Erholungs-Prognose im Coach-Kontext (#114)
 `get_coach_context` enthält `recoveryForecast`: die Erholung von morgen mit Spanne und Szenarien, berechnet von `recoveryForecastView` aus `core/analytics.ts` (Analyse-Thread, #93). Sie dient für Fragen wie „heute Abend noch trainieren?“. Bei `available = false` steht nur der Grund dabei.
+
+## HRV-Trend in der Tagesempfehlung (#132, `core/hrv-cap.ts`)
+Die Deutung des HRV-Trends aus `core/hrv-trend.ts` (Analyse-Thread, 7-Tage-Mittel gegen den 60-Tage-Normalbereich) dämpft die Tagesempfehlung. Bei „Ermüdung“ oder „Sättigung“ gilt höchstens locker, bei „unter dem Normalbereich“ höchstens normal. Ein Trend „über dem Normalbereich“ erscheint nur als Begründung. Die Empfehlung wird dadurch nie härter. Für den Trend liest das Dashboard die HRV der letzten 70 Tage, unabhängig vom gewählten Zeitraum. `get_dashboard` gibt das Ergebnis als `hrvTrend` aus ({pattern, label, advice} oder null).

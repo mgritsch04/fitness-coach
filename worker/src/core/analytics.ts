@@ -36,6 +36,7 @@ import { recordsReport } from "./records";
 import { lateTrainingDays, recoveryForecast, type ForecastInput } from "./forecast";
 import { interferenceReport } from "./interference";
 import { hrvTrend } from "./hrv-trend";
+import { timingReport } from "./timing";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -264,4 +265,9 @@ export async function interferenceView(db: D1Database, c: AnalysisContext, days:
 /** HRV-Trend nach Plews (#125). Der Kontext braucht 67 Tage Vorlauf für Normalband und 7-Tage-Mittel. */
 export function hrvTrendView(c: AnalysisContext, days: number) {
   return hrvTrend(c.series, c.today, days);
+}
+
+/** Beste Trainingszeit (#131): Tageszeit gegen Effizienz, Schlaf der Nacht danach und Erholung. */
+export function trainingTimingView(c: AnalysisContext, days: number) {
+  return timingReport(c.series, c.workouts, c.settings.timezone, c.today, days);
 }
