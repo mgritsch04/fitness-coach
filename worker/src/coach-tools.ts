@@ -6,7 +6,9 @@ import { addDays, weekStart } from "./core/analysis";
 import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
 import { normalizePlan } from "./core/plan";
+import { weekReview } from "./core/review";
 import { eventProjection, proposePlan, todayCheck, weekView } from "./core/training";
+import { readJournal } from "./core/journal";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -185,6 +187,39 @@ export function registerCoachTools(server: McpServer, env: Env) {
       const [goals, prefs] = await Promise.all([readGoals(db), readPrefs(db)]);
       const p = eventProjection(dash, goals, prefs, dash.training.thisWeek.plan, goalId);
       return p ? json(p) : fail("no_event", "Kein aktives Ziel mit Datum in der Zukunft. Lege eines mit set_goals an (kind=event, targetDate).");
+    },
+  );
+
+  server.registerTool(
+    "get_week_review",
+    {
+      description:
+        "Wochenrückblick: Stunden, Belastung, Fitnessänderung, Zeit je Sport, Pulszonen-Verteilung, Erholung/HRV/Ruhepuls/Schlaf gegen die Vorwoche, Plan-Soll/Ist, " +
+        "Highlights, Tagebuch und 2–3 Punkte für die nächste Woche. Standard: letzte abgeschlossene Woche. Den Text dazu mit save_coach_note (kind=weekly_review, day=Montag) speichern. Schätzung.",
+      inputSchema: { week: WEEK.describe("previous (Standard), current oder ein Datum in der Woche") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ week }) => {
+      const dash = await dashboard();
+      const ws = resolveWeek(dash.today, week ?? "previous");
+      if (ws > weekStart(dash.today)) return fail("future_week", "Für eine zukünftige Woche gibt es noch keinen Rückblick.");
+      if (ws < addDays(weekStart(dash.today), -7 * 6)) return fail("too_old", "Rückblick nur für die letzten 6 Wochen.");
+      const view = await weekView(db, dash, ws);
+      const notes = await readNotes(db, { kind: "weekly_review", fromDay: ws, limit: 10 });
+      return json({
+        ...weekReview({
+          week: ws,
+          today: dash.today,
+          days: dash.days,
+          weeks: dash.weeks,
+          workouts: dash.workouts,
+          comparison: view.comparison,
+          journal: await readJournal(db, addDays(ws, -7), addDays(ws, 6)),
+          strengthSessions: dash.strength.sessions,
+        }),
+        planSource: view.stored ? "gespeichert" : "Vorschlag",
+        savedReview: notes.find((n) => n.day === ws) ?? null,
+      });
     },
   );
 
