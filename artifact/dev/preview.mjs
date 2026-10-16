@@ -51,7 +51,7 @@ const payloads = {
       coachNotes: [{ effect: "down", text: "Schwere Beineinheit heute: morgen eher locker radeln, keine Intervalle." }],
       note: "1RM und Belastung sind Schätzungen." }; },
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
-  log_strength_session: () => ({ id: "s3", newBest: [] }),
+  log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   save_strength_template: (i) => i,
   update_settings: (i) => i,
   save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
@@ -95,6 +95,19 @@ for (const [name, vp, scheme, tab] of shots) {
   await p.waitForTimeout(800);
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
+  if (tab === "training") {
+    // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
+    const plan = await p.$eval("#gySrc", (s) => s.value);
+    if (!plan.startsWith("p:")) errors.push(`${name}: Gym-Modus bietet die Krafteinheit aus dem Wochenplan nicht an (${plan})`);
+    await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
+    await p.click("#gyBody .gy-set .ok"); await p.waitForTimeout(100);
+    const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
+    if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
+    await p.screenshot({ path: join(out, "phone-gym.png") });
+    await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(7)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
+    const saved = await p.evaluate(() => window.__gymSaved);
+    if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
+  }
   if (name === "desktop-light") {
     const stuck = await p.evaluate(() => [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.innerText.includes("Lädt …")).map((s) => s.id));
     if (stuck.length) errors.push(`${name}: noch „Lädt …“ in ${stuck.join(", ")}`);

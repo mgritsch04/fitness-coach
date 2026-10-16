@@ -58,6 +58,9 @@ describe("Coach-Werkzeuge", () => {
     expect(ctx.value.goals[0].goal.title).toBe("Radmarathon");
     expect(ctx.value.coachNotes[0].body).toBe("Heute locker.");
     expect(ctx.value.guidance.join(" ")).toContain("keine medizinischen Diagnosen");
+    // Erholungs-Prognose immer als Objekt (ohne genug Daten mit Grund statt Wert).
+    expect(typeof ctx.value.recoveryForecast.available).toBe("boolean");
+    if (!ctx.value.recoveryForecast.available) expect(ctx.value.recoveryForecast.reason).toBeTruthy();
   });
 });
 
