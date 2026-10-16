@@ -1,11 +1,11 @@
 // Vorschau des Dashboards mit synthetischen Daten und einem nachgebauten window.claude.
 //   node artifact/dev/preview.mjs [out-dir]   → schreibt preview.html und Screenshots (Playwright/Chromium)
 import { readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const out = process.argv[2] ?? join(here, "out");
+const out = resolve(process.argv[2] ?? join(here, "out"));
 mkdirSync(out, { recursive: true });
 const page = readFileSync(join(here, "..", "dashboard.html"), "utf8");
 const mock = readFileSync(join(here, "mock-dashboard.json"), "utf8");
