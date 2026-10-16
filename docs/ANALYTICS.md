@@ -31,7 +31,7 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
   - Eine selbst gesetzte FTP (`update_settings`) geht immer vor.
 - `zones`: `{ power: Zone[7] | null, hr: Zone[5] | null }`, `Zone = { zone, name, min, max }` (`max: null` = offen). Leistung nach Coggan, Puls nach Friel (Schwellenpuls).
 - `zoneDistribution`: `{ power, hr }`, je `{ basis, zones: [...Zone, minutes, sharePct, workouts], totalMinutes, intensity: { easyPct, moderatePct, hardPct } }`. **Näherung:** jede Einheit zählt komplett in die Zone ihres Mittelwerts (bis Sekundendaten bzw. WHOOP-Zonenzeiten da sind, #19).
-- `powerCurve`: `{ last42d, last90d, allTime }`, je `[{ durationS, watts, day, source }]` für 5 s, 15 s, 30 s, 1, 2, 5, 10, 20, 30, 60, 90, 120 min. Leer, solange keine Sekundenwerte importiert sind.
+- `powerCurve`: `{ last42d, last90d, allTime }`, je `[{ durationS, watts, day, source }]` für die Dauern aus `core/power.ts` (1 s … 2 h). Leer, solange keine FIT-Datei mit Leistung importiert ist.
 
 ## get_health_trends
 - `metrics.<key>` für `hrv`, `rhr`, `recovery`, `sleepH`, `respRate`, `skinTemp`, `spo2`: `{ last, lastDay, avg7, baseline, status: "below"|"normal"|"above"|"unknown", band[] }`.
@@ -51,11 +51,5 @@ Alle Werkzeuge sind nur lesend, nehmen `days` (Zeitraum der Ansicht bis heute) u
 - `balance`: `{ strain7d, strain28d, recovery7d, recovery28d }`.
 - `insights[]`: kurze deutsche Sätze (Beobachtungen, keine Ursache-Wirkung).
 
-## Leistungskurve befüllen (für FIT-Import und Wahoo)
-Aus den Sekundenwerten der Leistung einer Fahrt:
-```ts
-import { bestEfforts } from "./core/performance";
-import { runBatched, upsertPowerBests } from "./core/repository";
-await runBatched(db, upsertPowerBests(db, { source, sourceId, day }, bestEfforts(watts, sampleRateS)));
-```
-Tabelle `power_bests` (Migration `0005_power_bests.sql`), ein Wert je Fahrt und Dauer.
+## Leistungskurve: Datenquelle
+Die Bestwerte je Fahrt speichert der FIT-Import (`providers/mywhoosh/import.ts`, `core/power.ts` → `workout_streams.power_curve`). `get_fitness_profile` liest sie über `readPowerCurves` und ergänzt Tag und Quelle je Bestwert; das reine Kurven-Werkzeug ist `get_power_curve`.

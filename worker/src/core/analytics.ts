@@ -25,10 +25,10 @@ import {
   zonesFor,
   type HealthKey,
   type Period,
-  type PowerBestRow,
+  flattenCurves,
 } from "./performance";
 import { strainRecovery } from "./insights";
-import { readDaily, readLatestBody, readPowerBests, readSleeps, readWorkouts } from "./repository";
+import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
 /** Vorlauf, damit die 42-Tage-Fitness (CTL) am Anfang der Ansicht eingeschwungen ist. */
@@ -63,7 +63,7 @@ export async function analysisContext(db: D1Database, opts: ContextOptions = {})
     readSleeps(db, statsFrom) as Promise<unknown> as Promise<SleepRow[]>,
     readWorkouts(db, earliest) as Promise<unknown> as Promise<WorkoutRow[]>,
     readLatestBody(db) as Promise<{ max_hr: number | null; weight_kg: number | null } | null>,
-    readPowerBests(db, "0000-00-00") as Promise<unknown> as Promise<PowerBestRow[]>,
+    readPowerCurves(db, "0000-00-00").then(flattenCurves),
   ]);
 
   const curveRecent = powerCurve(powerRows, ftpFrom);

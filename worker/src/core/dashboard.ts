@@ -15,8 +15,8 @@ import {
   type WorkoutRow,
 } from "./analysis";
 import { coachAdvice } from "./coach";
-import { estimateFtp, powerCurve, type PowerBestRow } from "./performance";
-import { getSyncState, readDaily, readLatestBody, readPowerBests, readSleeps, readWorkouts } from "./repository";
+import { estimateFtp, flattenCurves, powerCurve } from "./performance";
+import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
 /** Vorlauf, damit die 42-Tage-Fitness (CTL) am Anfang der Ansicht schon eingeschwungen ist. */
@@ -40,7 +40,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     readLatestBody(db) as Promise<{ max_hr: number | null; weight_kg: number | null; height_m: number | null } | null>,
     getSyncState(db, "whoop"),
     getSyncState(db, "wahoo"),
-    readPowerBests(db, ftpFrom) as Promise<unknown> as Promise<PowerBestRow[]>,
+    readPowerCurves(db, ftpFrom).then(flattenCurves),
   ]);
 
   // FTP-Schätzung (performance.ts) gilt nur, solange keine eigene FTP gesetzt ist.

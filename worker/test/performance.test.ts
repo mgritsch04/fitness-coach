@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { addDays, effectiveSettings, type DayPoint, type MergedWorkout, type SleepRow, type WorkoutLoad, type WorkoutRow } from "../src/core/analysis";
 import {
-  bestEfforts,
   estimateFtp,
+  flattenCurves,
   formZone,
   healthBand,
   hrZones,
@@ -17,7 +17,7 @@ import {
 } from "../src/core/performance";
 import { pearson, strainRecovery } from "../src/core/insights";
 import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
-import { runBatched, upsertDaily, upsertPowerBests, upsertSleep, upsertWorkout, updateRecovery } from "../src/core/repository";
+import { runBatched, upsertDaily, upsertSleep, upsertWorkout, upsertWorkoutStream, updateRecovery } from "../src/core/repository";
 import { writeSettings } from "../src/core/settings";
 import { fakeD1 } from "./fake-d1";
 
@@ -42,25 +42,11 @@ const point = (day: string, o: Partial<DayPoint> = {}): DayPoint => ({
 const days = (from: string, n: number, f: (i: number) => Partial<DayPoint>) => Array.from({ length: n }, (_, i) => point(addDays(from, i), f(i)));
 
 describe("Leistungskurve", () => {
-  it("findet die beste Durchschnittsleistung je Dauer", () => {
-    // 10 min 150 W, 5 min 300 W, 10 min 150 W; darin 5 s Sprint 900 W.
-    const watts = [...Array(600).fill(150), ...Array(300).fill(300), ...Array(600).fill(150)];
-    for (let i = 700; i < 705; i++) watts[i] = 900;
-    const e = bestEfforts(watts);
-    const at = (d: number) => e.find((x) => x.durationS === d)?.watts;
-    expect(at(5)).toBe(900);
-    expect(at(300)).toBe(Math.round((295 * 300 + 5 * 900) / 300));
-    expect(at(1200)).toBeGreaterThan(150);
-    expect(at(1800)).toBeUndefined(); // Fahrt nur 25 min
-  });
-
-  it("ignoriert Lücken und Messfehler", () => {
-    expect(bestEfforts([null, 200, 5000, -3, 200], 1).find((x) => x.durationS === 5)?.watts).toBe(80);
-    expect(bestEfforts([])).toEqual([]);
-  });
-
-  it("rechnet mit anderer Abtastrate", () => {
-    expect(bestEfforts(Array(12).fill(250), 5).find((x) => x.durationS === 60)?.watts).toBe(250);
+  it("zerlegt die Kurven je Workout", () => {
+    expect(flattenCurves([{ day: "2026-03-01", source: "mywhoosh", source_id: "a", power_curve: { "5": 800, "1200": 260 } }])).toEqual([
+      { source: "mywhoosh", source_id: "a", day: "2026-03-01", duration_s: 5, watts: 800 },
+      { source: "mywhoosh", source_id: "a", day: "2026-03-01", duration_s: 1200, watts: 260 },
+    ]);
   });
 
   it("nimmt je Dauer den besten Wert im Zeitraum", () => {
@@ -238,7 +224,9 @@ describe("Werkzeuge gegen D1", () => {
       if (i % 2 === 0)
         stmts.push(upsertWorkout(db, { source: "wahoo", sourceId: `r${i}`, day, startTime: `${day}T16:00:00.000Z`, endTime: `${day}T17:30:00.000Z`, sport: "cycling", durationS: 5400, distanceM: 45000, energyKj: 1000, avgHr: 140, maxHr: 170, avgPowerW: 200, normalizedPowerW: 215, strain: null }));
     }
-    stmts.push(...upsertPowerBests(db, { source: "mywhoosh", sourceId: "fit1", day: "2026-03-20" }, [{ durationS: 1200, watts: 280 }, { durationS: 300, watts: 330 }]));
+    // Eine importierte FIT-Fahrt mit Bestleistungskurve (wie vom MyWhoosh-Import gespeichert).
+    stmts.push(upsertWorkout(db, { source: "mywhoosh", sourceId: "fit1", day: "2026-03-20", startTime: "2026-03-20T07:00:00.000Z", endTime: "2026-03-20T07:30:00.000Z", sport: "cycling", durationS: 1800, distanceM: 15000, energyKj: 450, avgHr: null, maxHr: null, avgPowerW: 240, normalizedPowerW: 255, strain: null }));
+    stmts.push(upsertWorkoutStream(db, { source: "mywhoosh", sourceId: "fit1", startTime: "2026-03-20T07:00:00.000Z", power: null, heartRate: null, cadence: null, powerCurve: { "300": 330, "1200": 280 } }));
     await runBatched(db, stmts);
 
     const c = await analysisContext(db, { days: 28, now });
@@ -248,12 +236,12 @@ describe("Werkzeuge gegen D1", () => {
     const profile = fitnessProfileView(c);
     expect(profile.ftp).toMatchObject({ watts: 266, origin: "data", estimate: { method: "curve_20min" } });
     expect(profile.zones.power).toHaveLength(7);
-    expect(profile.zoneDistribution.power?.totalMinutes).toBe(14 * 90);
+    expect(profile.zoneDistribution.power?.totalMinutes).toBe(14 * 90 + 30);
     expect(profile.powerCurve.allTime.map((p) => p.durationS)).toEqual([300, 1200]);
 
     const load = trainingLoadView(c);
     expect(load.days).toHaveLength(28);
-    expect(load.methods.power).toBe(14);
+    expect(load.methods.power).toBe(15);
     expect(load.current!.ctl).toBeGreaterThan(20);
 
     const health = healthTrendsView(c);

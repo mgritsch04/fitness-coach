@@ -18,45 +18,23 @@ type LoadedWorkout = MergedWorkout & WorkoutLoad;
 
 // --- Leistungskurve -----------------------------------------------------------------------------
 
-/** Dauern der Leistungskurve in Sekunden (5 s bis 2 h). */
-export const CURVE_DURATIONS_S = [5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 5400, 7200] as const;
 /** Werte darüber gelten als Messfehler des Leistungsmessers. */
 const MAX_PLAUSIBLE_W = 2500;
 
-export interface Effort {
-  durationS: number;
-  watts: number;
-}
-
-/**
- * Beste Durchschnittsleistung je Dauer aus einer Leistungsreihe (z. B. Sekundenwerte einer FIT-Datei).
- * Lücken, negative und unplausible Werte zählen als 0 W. Dauern länger als die Fahrt fehlen.
- */
-export function bestEfforts(watts: readonly (number | null | undefined)[], sampleRateS = 1): Effort[] {
-  const n = watts.length;
-  if (!n || !(sampleRateS > 0)) return [];
-  const prefix = new Float64Array(n + 1);
-  for (let i = 0; i < n; i++) {
-    const w = watts[i];
-    prefix[i + 1] = prefix[i] + (typeof w === "number" && w > 0 && w <= MAX_PLAUSIBLE_W ? w : 0);
-  }
-  const out: Effort[] = [];
-  for (const d of CURVE_DURATIONS_S) {
-    const k = Math.round(d / sampleRateS);
-    if (k < 1 || k > n) continue;
-    let best = 0;
-    for (let i = k; i <= n; i++) best = Math.max(best, prefix[i] - prefix[i - k]);
-    if (best > 0) out.push({ durationS: d, watts: Math.round(best / k) });
-  }
-  return out;
-}
-
+/** Ein Bestwert einer Fahrt (aus workout_streams.power_curve, berechnet von power.ts beim FIT-Import). */
 export interface PowerBestRow {
   source: string;
   source_id: string;
   day: string;
   duration_s: number;
   watts: number;
+}
+
+/** Kurven je Workout (readPowerCurves) in einzelne Bestwerte zerlegen. */
+export function flattenCurves(rows: readonly { day: string; source: string; source_id: string; power_curve: Record<string, number> }[]): PowerBestRow[] {
+  return rows.flatMap((r) =>
+    Object.entries(r.power_curve).map(([d, w]) => ({ source: r.source, source_id: r.source_id, day: r.day, duration_s: Number(d), watts: w })),
+  );
 }
 
 export interface CurvePoint {
