@@ -5,6 +5,7 @@ FC.section({
   tab: "coach",
   order: 20,
   mount(root) {
+    FC.state.coach = this; // Regeln und Datenauszug auch für andere Abschnitte (Morgen-Briefing)
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-coach">Coach</h2><span class="muted">Antworten schreibt Claude aus deinen Daten. Das zählt zu deinem Claude-Kontingent.</span></div>
       <div class="panel" style="display:grid; gap:14px;">

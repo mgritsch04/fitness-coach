@@ -16,7 +16,7 @@ import {
   zoneOf,
 } from "../src/core/performance";
 import { pearson, strainRecovery } from "../src/core/insights";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { runBatched, upsertDaily, upsertSleep, upsertWorkout, upsertWorkoutStream, updateRecovery } from "../src/core/repository";
 import { writeSettings } from "../src/core/settings";
 import { fakeD1 } from "./fake-d1";
@@ -255,6 +255,10 @@ describe("Werkzeuge gegen D1", () => {
     const sr = strainRecoveryView(c);
     expect(sr.correlation.n).toBe(27);
     expect(sr.byStrain.find((b) => b.key === "high")?.avgNextRecovery).toBe(45);
+
+    const factors = recoveryFactorsView(c);
+    expect(factors.days).toBe(28);
+    expect(factors.factors.length).toBeGreaterThan(10);
 
     await writeSettings(db, { ftpW: 300 });
     const own = await analysisContext(db, { days: 28, now });

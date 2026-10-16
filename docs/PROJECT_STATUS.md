@@ -4,12 +4,13 @@ _Zuletzt aktualisiert: 2026-10-16 (abends) · Workflow: [`DEVELOPMENT_WORKFLOW.m
 
 ## Aktuell
 - **Phase:** 1 – Daten, Auswertung, Dashboard. WHOOP-Daten liegen in D1 und werden stündlich abgeglichen; Wahoo ist fertig gebaut und wartet auf die Freigabe der Wahoo-App (#3).
-- **Fitness-Dashboard (Artefakt):** https://claude.ai/artifact/2uTpv443yDNX6UMiGEDhep – Quelle `artifact/dashboard.html`, Vorschau mit synthetischen Daten `artifact/dev/` (siehe `artifact/README.md`).
+- **Fitness-Dashboard (Artefakt):** https://claude.ai/artifact/2uTpv443yDNX6UMiGEDhep – Shell `artifact/dashboard.html`, Kern `artifact/app/core.js`, je Bereich `artifact/sections/<thema>.js`; am Handy Tab-Leiste (Heute, Coach, Verlauf, Training, Mehr). Vorschau mit synthetischen Antworten aller Werkzeuge `artifact/dev/` (siehe `artifact/README.md`).
+- **MyWhoosh:** FIT-Datei im Dashboard hochladen (Training › Rolle und Leistung), danach Leistungskurve, FTP-Schätzung und Zeit je Zone.
 - **Auswertung im Worker (#12):** `get_dashboard` liefert Tagesreihe, Trends gegen die persönliche Basis, Trainingslast (CTL/ATL/TSB, Belastung aus Leistung oder Puls geschätzt), Wochen, Workouts (Duplikate zusammengeführt) und eine regelbasierte Tagesempfehlung. Einstellungen über `update_settings`.
 - **Worker live:** https://fitness-coach.fitness-coach-worker.workers.dev. Deploy: `cd worker && npm ci && CLOUDFLARE_API_TOKEN=via-proxy npx wrangler deploy`; Migrationen `npx wrangler d1 migrations apply fitness-coach --remote`.
-- **Connector „Fitness Coach“:** Anmeldung über WHOOP (nur dein Konto). Werkzeuge: `get_dashboard`, `get_daily`, `get_sleep`, `get_workouts`, `get_body`, `get_settings`, `update_settings`, `sync_now`, `whoop_status`, `whoop_recovery`, `wahoo_connect`, `wahoo_status`, `ping`.
+- **Connector „Fitness Coach“:** Anmeldung über WHOOP (nur dein Konto). Werkzeuge: `get_dashboard`, `get_daily`, `get_sleep`, `get_workouts`, `get_body`, `get_settings`, `update_settings`, `sync_now`, `whoop_status`, `whoop_recovery`, `wahoo_connect`, `wahoo_status`, `ping`, `import_fit`, `get_power_curve`, `get_training_load`, `get_fitness_profile`, `get_health_trends`, `get_period_summaries`, `get_strain_recovery` (siehe `docs/ANALYTICS.md`).
 - **Deine Aufgaben:** #3 Wahoo-App (wartet auf Wahoo).
-- **Nächster Schritt:** Dashboard-User-Test, MyWhoosh-FIT-Upload mit Leistungskurve (#14), Coach im Dashboard (#15).
+- **Nächster Schritt:** User-Tests #17, #35, #39, #40, #44, #45, #50, #51, #52; Wochenplan/Ziele und Tagebuch im Dashboard, Frühwarnung (#24), Formprognose (#26), Körperwerte und Export (#30).
 
 ## Legende
 `DONE` fertig mit Beleg · `PARTIAL` teilweise · `IN PROGRESS` in Arbeit · `PLANNED` geplant · `BLOCKED` blockiert · `NEEDS USER TEST` braucht deinen Praxistest
@@ -25,4 +26,9 @@ Prüfstufen: **Impl.** Code vorhanden · **Auto** automatischer Test/Build grün
 | Gemeinsames Datenmodell, WHOOP-Abgleich stündlich | ✅ `worker/src/core/`, `providers/whoop/sync.ts` (#8) | ✅ CI | ⚙️ |
 | Wahoo-Anbindung | ✅ `providers/wahoo/` (#7, #9) | ✅ CI | blockiert: Wahoo-App (#3) |
 | Auswertung, Trainingslast, Tagesempfehlung | ✅ `core/analysis.ts`, `core/coach.ts` (#11, Issue #12) | ✅ CI, 19 Tests | über Dashboard-Test |
-| Fitness-Dashboard (Artefakt) | ✅ `artifact/dashboard.html` (Issue #13) | ✅ Vorschau mit synthetischen Daten | 🧪 User-Test offen |
+| Fitness-Dashboard (Artefakt) | ✅ `artifact/` (Issue #13, PR #18) | ✅ Vorschau mit synthetischen Daten | 🧪 User-Test #17 |
+| Dashboard modular + Handy-Ansicht | ✅ `artifact/app/`, `artifact/sections/` (#31, #37) | ✅ Vorschau Handy 5 Tabs ohne Überlauf | 🧪 User-Test #44 |
+| Morgen-Briefing, Körpersignale, Belastung vs. Erholung, Monate, Jahresübersicht | ✅ `sections/briefing.js`, `health.js`, `strain.js`, `periods.js`, `year.js` (#28, #25, PR #49) | ✅ Vorschau | 🧪 User-Test #50 |
+| Einflussfaktoren, Pulszonen im Dashboard | ✅ `sections/insights.js`, `hrzones.js` (#21, #19, PR #55) | ✅ Vorschau | 🧪 User-Test #45 |
+| Coach mit Gedächtnis, Tagebuch (Worker) | ✅ `core/goals`, `journal` (#22, #23, PR #41) | ✅ CI | 🧪 User-Tests #51, #52 |
+| MyWhoosh-FIT-Upload im Dashboard, Leistungskurve, Zonen | ✅ `sections/fit.js` (#14, #32) | ✅ Vorschau mit Upload | 🧪 User-Tests #35, #40 |

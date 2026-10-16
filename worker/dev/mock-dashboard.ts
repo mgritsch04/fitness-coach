@@ -1,7 +1,7 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
 import { readPowerCurves } from "../src/core/repository";
@@ -34,7 +34,8 @@ for (let i = 0; i < 182; i++) {
   if (i % 2 === 0) {
     const dur = 1800 + Math.round(rnd() * 3600);
     stmts.push(upsertWorkout(db, { source: "whoop", sourceId: `r${i}`, day, startTime: `${day}T16:00:00.000Z`, endTime: new Date(Date.parse(`${day}T16:00:00.000Z`) + dur * 1000).toISOString(), sport: i % 4 ? "spin" : "cycling", durationS: dur,
-      distanceM: null, energyKj: 600, avgHr: 115 + Math.round(rnd() * 25), maxHr: 160, avgPowerW: null, normalizedPowerW: null, strain: 9 }));
+      distanceM: null, energyKj: 600, avgHr: 115 + Math.round(rnd() * 25), maxHr: 160, avgPowerW: null, normalizedPowerW: null, strain: 9,
+      hrZoneS: [0.05, 0.2, 0.45, 0.2, 0.08, 0.02].map((f) => Math.round(f * dur * (0.7 + rnd() * 0.6))) }));
     if (i % 6 === 0) stmts.push(upsertWorkout(db, { source: "mywhoosh", sourceId: `m${i}`, day, startTime: `${day}T16:01:00.000Z`, endTime: new Date(Date.parse(`${day}T16:01:00.000Z`) + dur * 1000).toISOString(), sport: "cycling", durationS: dur,
       distanceM: 25000, energyKj: 650, avgHr: null, maxHr: null, avgPowerW: 180, normalizedPowerW: 195, strain: null }));
     if (i % 6 === 0) {
@@ -56,8 +57,9 @@ process.stdout.write(JSON.stringify({
   get_dashboard: await buildDashboard(db, { days: 180, now }),
   get_power_curve: { best: combineCurves(curves.map((w) => w.power_curve)), workouts: curves },
   get_fitness_profile: fitnessProfileView(await ctx(28)),
-  get_training_load: trainingLoadView(await ctx(90)),
+  get_training_load: trainingLoadView(await ctx(365)),
   get_health_trends: healthTrendsView(await ctx(60)),
   get_strain_recovery: strainRecoveryView(await ctx(90)),
+  get_recovery_factors: recoveryFactorsView(await ctx(90)),
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
 }));

@@ -64,9 +64,11 @@ FC.section({
     $("planAdapt").onclick = () => this.adapt();
     $("goalForm").addEventListener("submit", (e) => { e.preventDefault(); this.addGoal(); });
     // Coach-Bereich bekommt Plan, Ziele und Tagebuch als zusätzliche Daten für Claude.
+    const prevExtras = FC.state.coachExtras;
     FC.state.coachExtras = () => {
       const t = FC.state.data?.training, j = FC.state.data?.journal;
       return {
+        ...(prevExtras ? prevExtras() : {}),
         ...(t ? {
           wochenplan: { phase: t.thisWeek.phaseLabel, grund: t.thisWeek.plan.phaseReason, stand: t.thisWeek.comparison.summary, heute: t.today.text,
             tage: t.thisWeek.comparison.days.map((x) => ({ tag: x.day, einheit: x.title, typ: x.type, min: x.durationMin, belastung: x.targetLoad, kraft: x.strength?.focus ?? null, status: x.status })) },
