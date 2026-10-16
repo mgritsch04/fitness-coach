@@ -4,6 +4,7 @@
 import { addDays, daysBetween, weekStart, type DayPoint, type EffectiveSettings, type WeekSummary } from "./analysis";
 import type { CoachAdvice, Readiness } from "./coach";
 import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goals";
+import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
 import { projectEvent, type EventProjection } from "./projection";
 import {
@@ -166,6 +167,8 @@ export interface TrainingOverview {
   notes: CoachNote[];
   /** Liegen die Ausdauer-Einheiten im geplanten Pulsbereich? (null ohne Pulsdaten) */
   intensity: IntensityCheck | null;
+  /** FTP-Test fällig? Mit vorgeschlagenem Tag aus dem Plan (null, wenn kein Test nötig). */
+  ftpTest: FtpTestPlan | null;
   /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
   fueling: { days: Fueling[]; note: string };
   disclaimer: string;
@@ -179,6 +182,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
   const next = nextStored ?? proposePlan(inp, nextWs, goals, prefs);
   const planned = thisWeek.plan.days.find((d) => d.day === inp.today) ?? null;
   const projection = eventProjection(inp, goals, prefs, thisWeek.plan);
+  const tests = await readFtpTests(db).catch(() => []);
   return {
     goals: goalProgress(goals, inp),
     prefs,
@@ -188,6 +192,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     projection,
     notes,
     intensity: intensityCheck(inp),
+    ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null),
     fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null), note: FUELING_NOTE },
     disclaimer: "Trainingsplan und Belastungen sind Schätzungen nach Faustregeln, keine medizinische Beratung. Bei Schmerzen oder Krankheit pausieren.",
   };
@@ -258,4 +263,42 @@ export function intensityCheck(inp: TrainingInputs): IntensityCheck | null {
     text = `Deine Ausdauer-Einheiten liegen oft über dem Grundlagenbereich (Schnitt ${avgHr} S/min, Plan ${zone2.min}–${zone2.max}). Grundlage ruhiger fahren, damit harte Tage wirklich hart sein können.${est}`;
   }
   return { rides: rides.length, avgHr, zone2, below, inRange, above, verdict, text };
+}
+
+export interface FtpTestPlan {
+  due: boolean;
+  /** Ausgeruht genug für einen Test (Form ≥ 0)? */
+  rested: boolean;
+  reason: string;
+  /** Vorgeschlagener Testtag in dieser Woche (ab heute) und welche Einheit er ersetzt. */
+  day: string | null;
+  replaces: string | null;
+  text: string;
+  howTo: string[];
+}
+
+/**
+ * FTP-Test einplanen: fällig ohne Test oder nach ≥ 6 Wochen (ftp-test.ts). Der Testtag ersetzt eine
+ * Tempo-/Schwellen-/VO2max- oder Grundlageneinheit ab heute, die nicht direkt nach der langen Fahrt,
+ * einer harten Einheit oder Beinkraft liegt. Die Form wird am Tag selbst geprüft (Tagesempfehlung).
+ */
+export function ftpTestPlan(inp: TrainingInputs, plan: WeekPlan, lastTestDay: string | null): FtpTestPlan | null {
+  const t = inp.days.find((d) => d.day === inp.today) ?? inp.days.at(-1);
+  const s = ftpTestSuggestion(t?.tsb ?? null, lastTestDay, inp.today);
+  const due = s.daysSinceLastTest == null || s.daysSinceLastTest >= 42;
+  if (!due) return null;
+  const ok = (i: number) => {
+    const d = plan.days[i];
+    if (d.day < inp.today || !["tempo", "threshold", "vo2max", "endurance"].includes(d.type)) return false;
+    const prev = plan.days[i - 1];
+    if (prev && (prev.type === "long" || prev.type === "race" || isHard(prev.type) || (prev.strength && !/^Oberkörper/.test(prev.strength.focus)))) return false;
+    return true;
+  };
+  const order = plan.days.map((_, i) => i).filter(ok).sort((a, b) => Number(isHard(plan.days[b].type)) - Number(isHard(plan.days[a].type)) || a - b);
+  const pick = order.length ? plan.days[order[0]] : null;
+  const noFtp = inp.settings.ftpW == null ? " Ohne FTP rechnet der Plan nur mit Puls; mit einem Test bekommst du Wattbereiche für die Rolle." : "";
+  const text = pick
+    ? `FTP-Test einplanen: ${weekdayName(pick.day)} statt „${pick.title}“ (Ramp-Test in MyWhoosh, ca. 30–45 min mit Ein- und Ausfahren). Nur testen, wenn du dich an dem Tag frisch fühlst.${noFtp}`
+    : `FTP-Test ist fällig; diese Woche passt kein Tag mehr gut. Nächste Woche an einem frischen Tag statt einer Tempo- oder Schwelleneinheit testen.${noFtp}`;
+  return { due, rested: s.tsb != null && s.tsb >= 0, reason: s.reason, day: pick?.day ?? null, replaces: pick?.title ?? null, text, howTo: s.howTo };
 }
