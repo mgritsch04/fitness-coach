@@ -146,3 +146,13 @@ Detail einer Fahrt mit Sekundenwerten (FIT-Import), Code `worker/src/core/workou
 - **Volumen:** Arbeitssätze je Muskelgruppe und Woche (Hauptmuskel 1, Hilfsmuskel 0,5) und Tonnage.
 - **Coach:** Schwere Beineinheit gestern/heute (≥ 6 Beinsätze oder ≥ 3 bei RPE ≥ 8) → keine harten Rad-Intervalle; nach 14 Tagen ohne Kraft eine Erinnerung.
 - **Vorlagen:** `save_strength_template`, `suggest_strength_session` (letztes Gewicht, nach komplett geschafften Sätzen +2,5 kg bzw. +5 kg bei Beinen/Kreuzheben).
+
+## Erholungs-Prognose (`get_recovery_forecast`, #93)
+
+Schätzt die WHOOP-Erholung für morgen früh. Modell: Ridge-Regression (`core/forecast.ts`) nur auf den eigenen letzten 90 Tagen; je Tag D wird die Erholung mit Erholung, Belastung und Strain von D−1, dem Schlaf der Nacht davor und Training nach 19 Uhr (lokal) am Vortag verglichen.
+
+- Eingaben: `sleepH` (geplanter Schlaf, Standard: Median der letzten 14 Nächte), `extraLoad` (heute noch geplante Belastung, zählt als Abendtraining; Strain wird über die eigene Strain-pro-Belastung-Steigung mitgeschätzt).
+- Ausgabe: `forecast` mit 80-%-Spanne (±1,28 · RMSE), `scenarios` (±1 h Schlaf, Abendtraining ja/nein), `effects` je Einheit, `quality` (Leave-one-out-Fehler, Vergleich mit „Durchschnitt raten“ und „wie heute“, letzte 14 Tage geschätzt gegen tatsächlich).
+- Ehrlichkeit: keine Prognose (`available: false` mit `reason`) unter 30 Tagen Daten, bei mittlerem Fehler über 18 Punkten oder wenn das Modell nicht besser ist als den eigenen Durchschnitt zu raten.
+- Dashboard: Abschnitt `sections/forecast.js` im Reiter Heute mit Auswahl für Schlaf und Abendtraining.
+- Schätzung, keine Diagnose; Krankheit, Alkohol, Stress oder Reisen kennt das Modell nicht.

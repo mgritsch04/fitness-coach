@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -398,6 +398,22 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await recordsView(env.DB, await analysisContext(env.DB, { days: 14 }), d ?? 30)),
+  );
+
+  server.registerTool(
+    "get_recovery_forecast",
+    {
+      description:
+        "Erholungs-Prognose: geschätzte WHOOP-Erholung für morgen früh mit 80-%-Spanne, aus Erholung, Belastung und Strain von heute, " +
+        "geplantem Schlaf und spätem Training (Regression nur auf den eigenen letzten 90 Tagen). Mit Was-wäre-wenn (mehr/weniger Schlaf, Training am Abend) " +
+        "und ehrlicher Trefferquote; bei zu wenig Daten oder zu großem Fehler keine Prognose. Schätzung, keine Diagnose.",
+      inputSchema: {
+        sleepH: z.number().min(3).max(12).optional().describe("Geplanter Schlaf heute Nacht in Stunden, Standard: üblicher Schlaf der letzten 14 Nächte"),
+        extraLoad: z.number().min(0).max(400).optional().describe("Heute noch geplante Trainingsbelastung (TSS-ähnliche Punkte), zählt als Training am Abend"),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ sleepH, extraLoad }) => json(recoveryForecastView(await analysisContext(env.DB, { days: 90 }), { sleepH, extraLoad })),
   );
 
   server.registerTool(
