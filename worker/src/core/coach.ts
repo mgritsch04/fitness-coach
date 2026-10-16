@@ -71,10 +71,10 @@ export function coachAdvice(series: DayPoint[], today: string, trends: { hrv: Tr
   // HRV-Trend gegen die persönliche Basis.
   if (trends.hrv.status === "below") {
     score -= 10;
-    reasons.push({ factor: "hrv", effect: "down", text: `HRV im 7-Tage-Mittel ${trends.hrv.deltaPct}% unter deiner Basis.` });
+    reasons.push({ factor: "hrv", effect: "down", text: `HRV im 7-Tage-Mittel ${Math.abs(Math.round(trends.hrv.deltaPct ?? 0))} % unter deiner Basis.` });
   } else if (trends.hrv.status === "above") {
     score += 5;
-    reasons.push({ factor: "hrv", effect: "up", text: `HRV im 7-Tage-Mittel ${trends.hrv.deltaPct}% über deiner Basis.` });
+    reasons.push({ factor: "hrv", effect: "up", text: `HRV im 7-Tage-Mittel ${Math.round(trends.hrv.deltaPct ?? 0)} % über deiner Basis.` });
   }
 
   // Ruhepuls deutlich erhöht: oft ein Zeichen für Ermüdung, Stress oder beginnenden Infekt.
