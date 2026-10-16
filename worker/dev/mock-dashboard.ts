@@ -13,6 +13,7 @@ import { readJournal, saveJournal } from "../src/core/journal";
 import { weekReview } from "../src/core/review";
 import { weekView } from "../src/core/training";
 import { weekStart } from "../src/core/analysis";
+import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -54,6 +55,9 @@ await setSyncState(db, "whoop", true, null, new Date(now - 20 * 60_000).toISOStr
 const curves = await readPowerCurves(db, addDays("2026-03-31", -364));
 // Coach: Beispielziel und Check-in für die Abschnitte Wochenplan und Tagebuch.
 await saveGoal(db, { kind: "event", title: "Radmarathon (Beispiel)", targetDate: "2026-05-24", priority: "A" });
+// Körperwerte: synthetische eigene Gewichtseinträge (leicht fallend) und ein Gewichtsziel.
+for (let i = 0; i < 182; i += 2 + (i % 3)) await saveManualWeight(db, addDays(start, i), Number((78.5 - i * 0.018 + (rnd() - 0.5) * 1.2).toFixed(1)));
+await saveGoal(db, { kind: "weight", title: "Gewicht (Beispiel)", metric: "weightKg", targetValue: 74, unit: "kg", targetDate: "2026-06-30" });
 await saveJournal(db, { day: "2026-03-31", feeling: 4, energy: 3, soreness: 3, stress: 2, motivation: 4, tags: ["reise"] });
 const ctx = (days: number) => analysisContext(db, { days, now });
 const dash = await buildDashboard(db, { days: 180, now });
@@ -73,5 +77,8 @@ process.stdout.write(JSON.stringify({
   get_strain_recovery: strainRecoveryView(await ctx(90)),
   get_recovery_factors: recoveryFactorsView(await ctx(90)),
   get_sleep_report: sleepReportView(await ctx(30)),
+  get_body_history: { today: "2026-03-31", range: { from: addDays("2026-03-31", -179), to: "2026-03-31", days: 180 },
+    ...bodyReport(await readBodyHistory(db, addDays("2026-03-31", -300)), addDays("2026-03-31", -179), "2026-03-31", { watts: 250, origin: "estimate" },
+      { title: "Gewicht (Beispiel)", targetValue: 74, targetDate: "2026-06-30" }) },
   get_period_summaries: Object.fromEntries(await Promise.all((["week", "month", "year"] as const).map(async (p) => [p, periodSummariesView(await ctx(365), p)]))),
 }));
