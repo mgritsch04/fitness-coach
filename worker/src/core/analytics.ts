@@ -43,6 +43,7 @@ import { intervalReport, readIntervalRides } from "./intervals";
 import { cadenceReport } from "./cadence";
 import { riderProfile } from "./rider-profile";
 import { combineCurves } from "./power";
+import { muscleBalance } from "./muscle-balance";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -305,6 +306,13 @@ export async function riderProfileView(db: D1Database, days: number, now?: numbe
   const curve = combineCurves(rows.filter((r) => r.day >= from && r.day <= c.today).map((r) => r.power_curve));
   const previousCurve = combineCurves(rows.filter((r) => r.day < from).map((r) => r.power_curve));
   return riderProfile({ curve, previousCurve, ftpW: c.settings.ftpW, ftpOrigin: c.settings.origin.ftpW ?? null, weightKg: c.weightKg }, c.today, days);
+}
+
+/** Muskelbalance (#171): Sätze je Muskelgruppe gegen Zielbereich, Push/Pull, Beinbeuger/Beinstrecker. */
+export async function muscleBalanceView(db: D1Database, weeks: number, now?: number) {
+  const settings = await readSettings(db);
+  const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
+  return muscleBalance(await readStrengthSessions(db, addDays(today, -(7 * weeks - 1))), today, weeks);
 }
 
 /** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
