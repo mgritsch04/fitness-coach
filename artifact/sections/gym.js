@@ -29,6 +29,8 @@ FC.section({
     .gy-set.on .ok { background: var(--good); border-color: var(--good); color: var(--panel); }
     .gy-set.on input { color: var(--ink-2); }
     .gy-head { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 8px; font-size: .78rem; color: var(--ink-3); text-align: center; }
+    .gy-note { flex-basis: 100%; font-weight: 600; color: var(--good); }
+    .gy-last { font-size: .85rem; margin-top: -4px; }
     .gy-list { display: grid; gap: 12px; }
     .gy-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .gy-rpe { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -46,7 +48,7 @@ FC.section({
   },
   ready() {
     FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } })
-      .then((d) => { this.data = d; if (!this.st) this.draw(); })
+      .then((d) => { this.data = d; if (!this.st || !FC.$("gyBody")?.contains(document.activeElement)) this.draw(); })
       .catch((err) => { this.err = FC.errText(err); if (!this.st) this.draw(); });
     this.draw();
   },
@@ -55,6 +57,8 @@ FC.section({
   loadState() { try { const v = JSON.parse(localStorage.getItem(this.KEY) ?? "null"); return v?.exercises ? v : null; } catch { return null; } },
   persist() { try { if (this.st) localStorage.setItem(this.KEY, JSON.stringify(this.st)); else localStorage.removeItem(this.KEY); } catch {} },
   restFor(name) { return /kniebeuge|kreuzheben|bankdr|schulterdr|rudern|klimmzug|beinpresse|hip thrust|dips|squat|deadlift|bench|press|row|pull/i.test(name) ? 180 : 90; },
+  /** Verlauf einer Übung aus get_strength (nach Name, da Vorlagen und Plan Namen liefern). */
+  prog(name) { const n = name.trim().toLowerCase(); return this.data?.progress?.find((p) => p.name.toLowerCase() === n || p.exercise === n) ?? null; },
   mmss(s) { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; },
   msg(t) { FC.$("gyMsg").textContent = t ?? ""; },
 
@@ -123,7 +127,8 @@ FC.section({
     const skip = el("button", { type: "button", text: "Weiter", "aria-label": "Pause beenden" });
     minus.onclick = () => this.shiftRest(-15); plus.onclick = () => this.shiftRest(15); skip.onclick = () => { st.restEnd = null; this.persist(); this.tickNow(); };
     const rest = el("div", { class: "gy-rest", id: "gyRest" }, el("span", { class: "muted", text: "Pause" }), restB, minus, plus, skip);
-    const bar = el("div", { class: "gy-bar" }, clock, rest);
+    const note = el("div", { class: "gy-note", role: "status", text: this.note ?? "" }); note.hidden = !this.note;
+    const bar = el("div", { class: "gy-bar" }, clock, rest, note);
 
     const list = el("div", { class: "gy-list" }, ...st.exercises.map((x, i) => this.exCard(x, i)));
     const addName = el("input", { type: "text", list: "stEx", maxlength: 80, placeholder: "Übung hinzufügen", "aria-label": "Übung hinzufügen", style: "flex:1 1 12em;min-width:0" });
@@ -144,6 +149,12 @@ FC.section({
     const title = x.name ? el("h3", { text: x.name }) : (() => { const inp = el("input", { type: "text", list: "stEx", maxlength: 80, placeholder: "Übung", "aria-label": "Name der Übung" }); inp.onchange = () => { x.name = inp.value.trim(); x.rest = this.restFor(x.name); this.persist(); }; return inp; })();
     const card = el("div", { class: `gy-ex${i === st.cur ? " cur" : ""}${doneSets === x.sets.length ? " done" : ""}` },
       el("div", { class: "gy-exh" }, title, el("span", { class: "muted" }, `${doneSets}/${x.sets.length} Sätze · `, restBtn)),
+      (() => {
+        const last = x.name ? this.prog(x.name)?.history?.at(-1) : null;
+        if (!last) return null;
+        const kg = last.topSet.weightKg ? ` mit ${FC.de(last.topSet.weightKg, last.topSet.weightKg % 1 ? 1 : 0)} kg` : "";
+        return el("div", { class: "muted gy-last", text: `Letztes Mal (${FC.fmtDayLong(last.day)}): ${last.sets} ${last.sets === 1 ? "Satz" : "Sätze"}, bester Satz ${last.topSet.reps}${x.unit === "s" ? " s" : ""}${kg}` });
+      })(),
       el("div", { class: "gy-head", "aria-hidden": "true" }, el("span", { text: "Satz" }), el("span", { text: x.unit === "s" ? "Sekunden" : "Wdh" }), el("span", { text: "kg" }), el("span", { text: "" })));
     const kgs = [];
     x.sets.forEach((s, j) => {
@@ -174,14 +185,24 @@ FC.section({
   toggle(x, i, s, reps, kg) {
     const st = this.st;
     if (!s.done && !reps) { this.msg("Bitte die Wiederholungen eintragen."); return; }
-    s.reps = reps; s.kg = kg ?? 0; s.done = !s.done; this.msg("");
+    s.reps = reps; s.kg = kg ?? 0; s.done = !s.done; this.msg(""); this.note = null;
     if (s.done) {
       st.restEnd = Date.now() + x.rest * 1000; this.beeped = false;
       if (x.sets.every((y) => y.done)) { const next = st.exercises.findIndex((y, k) => k > i && y.sets.some((z) => !z.done)); st.cur = next >= 0 ? next : i; }
       else st.cur = i;
+      this.checkBest(x, s);
       this.audio(); // AudioContext nach einer Berührung anlegen, damit der Ton am Pausenende spielen darf
     }
     this.persist(); this.draw();
+  },
+  /** Neuer Bestwert? Geschätztes 1RM nach Epley (bis 12 Wdh.), verglichen mit dem bisher besten. */
+  checkBest(x, s) {
+    const best = this.prog(x.name)?.bestE1rmKg;
+    if (!best || x.unit === "s" || !s.kg || s.reps > 12) return;
+    const e1 = Math.round(s.kg * (1 + s.reps / 30) * 10) / 10;
+    if (e1 <= best || e1 <= (x.pr ?? 0)) return;
+    x.pr = e1;
+    this.note = `Neuer Bestwert bei ${x.name}: geschätztes 1RM ${FC.de(e1, 1)} kg (bisher ${FC.de(best, 1)} kg).`;
   },
   shiftRest(d) { const st = this.st; if (!st.restEnd) st.restEnd = Date.now(); st.restEnd = Math.max(Date.now(), st.restEnd + d * 1000); this.beeped = false; this.persist(); this.tickNow(); },
   tickNow() {
