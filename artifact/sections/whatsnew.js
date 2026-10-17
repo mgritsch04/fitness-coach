@@ -1,10 +1,13 @@
 // „Neu im Dashboard“ (#152): neue Abschnitte seit dem letzten Besuch, Tippen springt hin.
 // Neue Einträge oben anhängen und `n` hochzählen; „Alles gesehen“ merkt sich das höchste n im Browser.
+// id "search" öffnet die Abschnittssuche (#269) statt zu einem Abschnitt zu springen.
 FC.section({
   id: "whatsnew",
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 45, id: "search", title: "Abschnitte suchen", text: "Oben „Suchen“ (am Rechner Taste /): Begriff tippen, z. B. Kadenz oder Schlaf, und direkt zum Abschnitt springen." },
+    { n: 44, id: "consistency", title: "Konstanz und Serien", text: "Wie viele Wochen in Folge du dein Ziel aus Kraft und Rad erreicht hast." },
     { n: 43, id: "gym", title: "Übung tauschen", text: "Im Gym-Modus bei belegtem Gerät „Tauschen“: passende Alternativen für dieselbe Muskelgruppe." },
     { n: 42, id: "strength", title: "Kraft pro kg", text: "Deine Grundübungen im Verhältnis zum Körpergewicht, mit groben Stufen (Schätzung)." },
     { n: 41, id: "agenda", title: "Rückmeldung zur Empfehlung", text: "Unter „Heute dran“: sag, ob die Tagesempfehlung gepasst hat; der Coach passt sich vorsichtig an." },
@@ -72,7 +75,7 @@ FC.section({
   draw() {
     const { el } = FC, seen = this.seen();
     const live = new Map(FC.layout.list().filter((s) => !s.hidden).map((s) => [s.id, s]));
-    const all = this.NEWS.filter((x) => x.n > seen && live.has(x.id)), items = this.open ? all : all.slice(0, 3);
+    const all = this.NEWS.filter((x) => x.n > seen && (live.has(x.id) || (x.id === "search" && FC.$("btnSearch")))), items = this.open ? all : all.slice(0, 3);
     this.root.hidden = !all.length;
     let more = null;
     if (all.length > items.length) {
@@ -82,7 +85,7 @@ FC.section({
     }
     FC.$("wnList").replaceChildren(...items.map((x) => {
       const b = el("button", { type: "button" }, el("strong", { text: x.title }), el("span", { text: x.text }));
-      b.onclick = () => FC.goTo(x.id);
+      b.onclick = () => (x.id === "search" ? FC.$("btnSearch").click() : FC.goTo(x.id));
       return el("li", {}, b);
     }), ...(more ? [more] : []));
   },
