@@ -151,3 +151,7 @@ Ist ein Gerät belegt, tauscht „Tauschen“ eine offene Übung gegen eine glei
 ## Konstanz und Serien (#209)
 
 Das Wochenziel besteht aus Kraft- und Radeinheiten. Es kommt aus den Trainingsvorlieben (`strengthPerWeek`, `ridesPerWeek`), sonst wird es als Median der letzten abgeschlossenen Wochen geschätzt und so gekennzeichnet. Kraft zählt einmal pro Tag, Rad ab 20 min. `get_consistency` liefert die letzten 12 Wochen (erreicht ja/nein), die aktuelle und die beste Serie, die Quote der abgeschlossenen Wochen und die Plan-Treue aus gespeicherten Plänen. Die laufende Woche bricht keine Serie ab. Karte „Konstanz und Serien“ im Coach-Tab (`artifact/sections/consistency.js`, Logik in `worker/src/core/consistency.ts`).
+
+## Reserve je Satz im Gym-Modus (#280)
+
+Nach jedem abgehakten Satz fragt der Gym-Modus „Noch drin: 0 / 1–2 / 3+“. Das sind die Wiederholungen, die noch möglich gewesen wären (RIR). Bei 3+ wird der nächste Satz etwa 2,5 % schwerer, bei 0 etwa 5 % leichter (Langhantel auf 2,5 kg, sonst auf 1 kg gerundet, Ziel 1–2). Die Angabe wird als Satz-RPE gespeichert (RPE = 10 − RIR). `get_strength.autoregulation` wertet die letzten 3 Wochen je Übung aus (ab 2 Einheiten mit Angabe): Schnitt ≥ 3 heißt steigern, ≤ 0,5 heißt halten oder leichter. Logik in `worker/src/core/autoregulation.ts`, die Gewichtsregel ist in `gym.js` gespiegelt.
