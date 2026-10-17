@@ -99,6 +99,11 @@ const pw = await import("playwright").catch(() => import("/opt/node22/lib/node_m
 const chromium = pw.chromium ?? pw.default.chromium;
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
 const errors = [];
+// axe-core ist eine Dev-Abhängigkeit nur für die Vorschau (in der CI per npm install --no-save).
+const axeSrc = await import("node:module").then(({ createRequire }) => readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8")).catch(() => null);
+if (!axeSrc && process.env.CI) errors.push("axe-core fehlt in der CI (#211)");
+if (!axeSrc) console.warn("axe-core nicht installiert: Barrierefreiheit wird nicht geprüft (npm install --no-save axe-core@4.10.3).");
+const a11y = [];
 // Jede Abschnittsdatei muss in dashboard.html eingetragen sein (sonst fehlt sie nach dem Veröffentlichen).
 for (const f of readdirSync(join(here, "..", "sections"))) if (f.endsWith(".js") && !page.includes(`src="sections/${f}"`)) errors.push(`sections/${f} fehlt in dashboard.html`);
 const shots = [["desktop-light", { width: 1280, height: 900 }, "light"], ["desktop-dark", { width: 1280, height: 900 }, "dark"],
@@ -287,9 +292,23 @@ for (const [name, vp, scheme, tab] of shots) {
   }
   const sw = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (sw > 0) errors.push(`${name}: horizontal overflow ${sw}px`);
+  if (axeSrc) {
+    // Barrierefreiheit (#211): axe-core, WCAG 2 A/AA, in jeder Ansicht hell und dunkel.
+    await p.addScriptTag({ content: axeSrc });
+    const res = await p.evaluate(async () => (await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] }, resultTypes: ["violations"] }))
+      .violations.map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.map((n) => ({ target: n.target.join(" "), summary: n.failureSummary })) })));
+    for (const v of res) for (const n of v.nodes) a11y.push({ view: name, ...v, nodes: undefined, ...n });
+  }
   await p.screenshot({ path: join(out, `${name}.png`), fullPage: !tab });
   await ctx.close();
 }
 await browser.close();
+writeFileSync(join(out, "a11y.json"), JSON.stringify(a11y, null, 1));
+{
+  // Je Regel und Element einmal melden (die Ansichten überschneiden sich).
+  const seen = new Map();
+  for (const v of a11y) { const k = `${v.id} ${v.target}`; if (!seen.has(k)) seen.set(k, v); }
+  for (const v of seen.values()) if (["serious", "critical"].includes(v.impact)) errors.push(`Barrierefreiheit (${v.view}): ${v.id} – ${v.help} – ${v.target}`);
+}
 console.log(errors.length ? errors.join("\n") : "keine Fehler");
 if (errors.length) process.exitCode = 1;

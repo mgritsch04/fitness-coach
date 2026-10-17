@@ -14,9 +14,9 @@ FC.section({
     .st-vol .r { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 3.5em; gap: 8px; align-items: center; font-size: 0.88rem; }
     .st-vol .b { height: 10px; border-radius: 5px; background: var(--accent); min-width: 2px; }
     .st-vol .n { text-align: right; font-variant-numeric: tabular-nums; }
-    .pill.progress { background: var(--good-wash); color: var(--good); }
-    .pill.plateau { background: var(--warn-wash); color: var(--warn); }
-    .pill.decline { background: var(--bad-wash); color: var(--bad); }
+    .pill.progress { background: var(--good-wash); color: var(--good-ink); }
+    .pill.plateau { background: var(--warn-wash); color: var(--warn-ink); }
+    .pill.decline { background: var(--bad-wash); color: var(--bad-ink); }
     .pill.new, .pill.unknown { background: var(--accent-wash); color: var(--accent); }
     .st-spark { width: 90px; height: 24px; }
   `,

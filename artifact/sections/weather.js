@@ -6,7 +6,7 @@ FC.section({
   css: `
     .wx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
     .wx-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-    .pill.wx-outside { background: var(--good-wash); color: var(--good); }
+    .pill.wx-outside { background: var(--good-wash); color: var(--good-ink); }
     .pill.wx-indoor { background: var(--accent-wash); color: var(--accent); }
     .pill.wx-rest, .pill.wx-no_ride { background: var(--line); color: var(--ink-2); }
     .wx-win { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: .92rem; }
@@ -82,7 +82,7 @@ FC.section({
         el("div", { class: "wx-head" }, el("h3", { text: i === 0 ? "Heute" : "Morgen" }), el("span", { class: `pill wx-${d.advice.verdict}`, text: LABEL[d.advice.verdict] })),
         el("p", { style: "margin:6px 0", text: d.advice.text }),
         d.planned ? el("div", { class: "wx-win", text: `Plan: ${d.planned.title}${d.planned.durationMin ? `, ${d.planned.durationMin} min` : ""}` }) : null,
-        hours.length ? el("div", { class: "wx-hours", role: "img", "aria-label": `Radwetter je Stunde ${i === 0 ? "heute" : "morgen"}` }, ...hours.map((h) => {
+        hours.length ? el("div", { class: "wx-hours", role: "img", tabindex: "0", "aria-label": `Radwetter je Stunde ${i === 0 ? "heute" : "morgen"}` }, ...hours.map((h) => {
           const bar = el("i"); bar.style.background = col(h.score);
           return el("div", { class: `wx-h${inWin(h.time) ? " in" : ""}`, title: `${h.time.slice(11, 16)} Uhr: ${h.tempC != null ? `${Math.round(h.tempC)} °C` : "–"}, Regen ${h.rainProb ?? "–"} %, Wind ${h.windKmh != null ? Math.round(h.windKmh) : "–"} km/h${h.issues.length ? ` (${h.issues.join(", ")})` : ""}` },
             el("span", { text: h.time.slice(11, 13) }), bar, el("b", { text: h.tempC != null ? `${Math.round(h.tempC)}°` : "–" }));

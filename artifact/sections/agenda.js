@@ -13,9 +13,10 @@ FC.section({
     .ag-day .k { font-size: .72rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .ag-day .p { font-size: .65rem; color: var(--ink-3); min-height: 1em; line-height: 1; }
     .ag-day .s { font-weight: 700; font-size: .85rem; min-height: 1.1em; }
-    .ag-day .s.done { color: var(--good); } .ag-day .s.missed { color: var(--bad); } .ag-day .s.partial { color: var(--warn); } .ag-day .s.extra { color: var(--accent); }
+    .ag-day .s.done { color: var(--good-ink); } .ag-day .s.missed { color: var(--bad-ink); } .ag-day .s.partial { color: var(--warn-ink); } .ag-day .s.extra { color: var(--accent); }
     .ag-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
     .ag-day[aria-pressed="true"] { background: var(--accent-wash); }
+    .ag-day[aria-pressed="true"] .w, .ag-day[aria-pressed="true"] .p { color: var(--ink-2); }
     .ag-day.rest .k { color: var(--ink-3); font-weight: 400; }
     .ag-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
     .ag-head h3 { margin: 0; }

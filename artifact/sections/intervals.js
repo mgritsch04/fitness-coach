@@ -10,7 +10,7 @@ FC.section({
     .iq-tab th { font-weight: 600; color: var(--ink-2); white-space: normal; }
     .iq-tab td:not(:first-child), .iq-tab th:not(:first-child) { text-align: right; }
     .iq-tab td:not(:first-child) { white-space: nowrap; }
-    .iq-even, .iq-building { color: var(--good); } .iq-slight { color: var(--warn); } .iq-strong { color: var(--bad); }
+    .iq-even, .iq-building { color: var(--good-ink); } .iq-slight { color: var(--warn-ink); } .iq-strong { color: var(--bad-ink); }
     .iq-bars { display: flex; gap: 2px; align-items: flex-end; height: 18px; justify-content: flex-end; margin-top: 2px; }
     .iq-bars span { width: 5px; background: var(--accent); border-radius: 1px; }
     @media (max-width: 520px) { .iq-tab { font-size: 0.82rem; } .iq-tab td, .iq-tab th { padding: 4px 3px; } }`,

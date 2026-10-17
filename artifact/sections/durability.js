@@ -9,7 +9,7 @@ FC.section({
     .du-tab td:first-child, .du-tab th:first-child { text-align: left; }
     .du-tab th { font-weight: 600; color: var(--ink-2); }
     .du-tab td { white-space: nowrap; }
-    .du-good { color: var(--good); } .du-mid { color: var(--warn); } .du-bad { color: var(--bad); }
+    .du-good { color: var(--good-ink); } .du-mid { color: var(--warn-ink); } .du-bad { color: var(--bad-ink); }
     @media (max-width: 520px) { .du-tab { font-size: 0.82rem; } .du-tab td, .du-tab th { padding: 4px 3px; } }`,
   mount(root) {
     root.innerHTML = `

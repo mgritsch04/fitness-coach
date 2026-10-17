@@ -6,7 +6,7 @@ FC.section({
   css: `
     .ae-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 18px; margin-top: 10px; }
     .ae-top div { display: grid; gap: 2px; } .ae-top b { font-family: var(--font-display); font-size: 1.3rem; }
-    .ae-good { color: var(--good); } .ae-ok { color: var(--warn); } .ae-high { color: var(--bad); }`,
+    .ae-good { color: var(--good-ink); } .ae-ok { color: var(--warn-ink); } .ae-high { color: var(--bad-ink); }`,
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-aerobic">Aerobe Basis</h2><span class="muted" id="aeRange"></span></div>

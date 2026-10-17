@@ -7,7 +7,7 @@ FC.section({
     .hv-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 18px; margin-bottom: 10px; }
     .hv-top div { display: grid; gap: 2px; } .hv-top b { font-family: var(--font-display); font-size: 1.3rem; }
     .hv-state { font-weight: 600; margin: 0 0 4px; }
-    .hv-within, .hv-stable, .hv-high { color: var(--good); } .hv-unsettled, .hv-low { color: var(--warn); } .hv-fatigue, .hv-saturation, .hv-below { color: var(--bad); }`,
+    .hv-within, .hv-stable, .hv-high { color: var(--good-ink); } .hv-unsettled, .hv-low { color: var(--warn-ink); } .hv-fatigue, .hv-saturation, .hv-below { color: var(--bad-ink); }`,
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-hrvtrend">HRV-Trend</h2><span class="muted">7-Tage-Mittel und Normalbereich</span></div>

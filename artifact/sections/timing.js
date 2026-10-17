@@ -10,7 +10,7 @@ FC.section({
     .tm-tab th { font-weight: 600; color: var(--ink-2); white-space: normal; }
     .tm-tab td:not(:first-child), .tm-tab th:not(:first-child) { text-align: right; }
     .tm-tab td:not(:first-child) { white-space: nowrap; }
-    .tm-up { color: var(--good); } .tm-down { color: var(--bad); }
+    .tm-up { color: var(--good-ink); } .tm-down { color: var(--bad-ink); }
     @media (max-width: 520px) { .tm-tab { font-size: 0.82rem; } .tm-tab td, .tm-tab th { padding: 4px 3px; } }`,
   mount(root) {
     root.innerHTML = `

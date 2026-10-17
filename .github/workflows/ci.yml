@@ -22,7 +22,7 @@ jobs:
       - run: npx wrangler deploy --dry-run --outdir dist
 
   dashboard:
-    # Vorschau des Artefakts mit synthetischen Daten: Skriptfehler, Überlauf am Handy, fehlende Abschnitte (#68)
+    # Vorschau des Artefakts mit synthetischen Daten: Skriptfehler, Überlauf am Handy, fehlende Abschnitte (#68), Barrierefreiheit mit axe-core (#211)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
         working-directory: worker
       - run: npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
         working-directory: worker
-      - run: npm install --no-save --no-package-lock playwright@1.56.1 && npx playwright install --with-deps chromium
+      - run: npm install --no-save --no-package-lock playwright@1.56.1 axe-core@4.10.3 && npx playwright install --with-deps chromium
       - run: node artifact/dev/preview.mjs artifact/dev/out
       - uses: actions/upload-artifact@v4
         if: always()

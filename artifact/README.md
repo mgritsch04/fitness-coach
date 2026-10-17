@@ -16,6 +16,11 @@ Mit dem Artifact-Werkzeug `dashboard.html` auf dieselbe URL veröffentlichen, `r
 ## Vorschau mit synthetischen Daten
 ```bash
 cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json && cd ..
+npm install --no-save --no-package-lock axe-core@4.10.3                # einmalig, für die Barrierefreiheits-Prüfung
 PW_CHROMIUM=/opt/pw-browsers/chromium node artifact/dev/preview.mjs   # Screenshots in artifact/dev/out/
 ```
 `preview.mjs` baut ein nachgemachtes `window.claude` (Connector und Coach antworten mit Beispieldaten) und meldet Skriptfehler und waagrechtes Überlaufen.
+
+Außerdem läuft axe-core (WCAG 2.1 A/AA) in jeder Ansicht, hell und dunkel; ernste Verstöße brechen die CI ab, alle Funde stehen in `artifact/dev/out/a11y.json` (#211).
+
+**Farben für Text:** Statustexte nutzen `--good-ink`, `--warn-ink`, `--bad-ink` (AA-Kontrast); `--good`/`--warn`/`--bad` sind für Punkte, Balken und Linien. Kein `opacity` auf Text, stattdessen `--ink-2`/`--ink-3`.

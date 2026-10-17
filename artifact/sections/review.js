@@ -8,10 +8,10 @@ FC.section({
     .rv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
     .rv-stats > div { border: 1px solid var(--line, rgba(127,127,127,.25)); border-radius: 10px; padding: 8px 10px; min-width: 0; }
     .rv-stats b { font-size: 18px; display: block; }
-    .rv-up { color: #2fbf2f; } .rv-down { color: #e66767; }
+    .rv-up { color: var(--good-ink); } .rv-down { color: var(--bad-ink); }
     .rv-list { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
     .rv-week { display: flex; gap: 6px; flex-wrap: wrap; }
-    .rv-week button[aria-pressed="true"] { background: var(--accent, #4fb3cf); color: #fff; border-color: transparent; }
+    .rv-week button[aria-pressed="true"] { background: var(--accent, #4fb3cf); color: var(--accent-ink, #fff); border-color: transparent; }
   `,
   mount(root) {
     root.innerHTML = `
