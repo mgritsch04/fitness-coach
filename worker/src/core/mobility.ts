@@ -1,6 +1,7 @@
 // Mobility-Routine nach der Einheit (#223): kurze Routinen (5–10 min) je Einheitstyp, passend zu dem, was
 // beim Radfahren oder Krafttraining fest wird (Hüftbeuger, Rücken, Beine, Schultern). Übungen mit Dauer für
 // einen Timer. Faustregeln, keine Physiotherapie; bei Schmerzen abbrechen.
+import { EXERCISES, type StrengthSession } from "./strength";
 import type { PlannedSession } from "./plan";
 
 export type MobilityKind = "ride_long" | "ride_intervals" | "legs" | "upper" | "general";
@@ -83,4 +84,37 @@ export function mobilityKindFor(s: Pick<PlannedSession, "type" | "durationMin" |
   if (/^Oberkörper/.test(focus)) return "upper";
   if (s.type === "endurance") return "ride_long";
   return "general";
+}
+
+const LEG_MUSCLES = new Set(["quads", "hamstrings", "glutes", "calves"]);
+const RIDE = /cycl|bike|biking|spin|ride|radfahr/i;
+
+/**
+ * Routine nach dem, was heute wirklich trainiert wurde (#297): Beintag (aus den gespeicherten Sätzen) vor
+ * langer Fahrt (ab 90 min) vor harter Fahrt (≥ 70 Belastung pro Stunde) vor Oberkörper. Ohne heutige
+ * Einheit oder ohne erkennbaren Fokus gilt weiter der Plan.
+ */
+export function mobilityKindForActual(
+  today: string,
+  workouts: { day: string; sport: string | null; durationMin: number; load: number | null }[],
+  sessions: StrengthSession[],
+  planned: Pick<PlannedSession, "type" | "durationMin" | "strength"> | null,
+): { kind: MobilityKind; basis: "actual" | "plan" } {
+  const rides = workouts.filter((w) => w.day === today && RIDE.test(w.sport ?? "") && w.durationMin >= 15);
+  const rideMin = rides.reduce((a, w) => a + w.durationMin, 0);
+  const rideLoad = rides.reduce((a, w) => a + (w.load ?? 0), 0);
+  let legs = 0, upper = 0;
+  for (const s of sessions) {
+    if (s.day !== today) continue;
+    for (const t of s.sets) for (const m of EXERCISES[t.exercise]?.primary ?? []) {
+      if (LEG_MUSCLES.has(m)) legs++;
+      else if (m !== "core" && m !== "other") upper++;
+    }
+  }
+  if (legs && legs >= upper) return { kind: "legs", basis: "actual" };
+  if (rideMin >= 90) return { kind: "ride_long", basis: "actual" };
+  if (rideMin && rideLoad / (rideMin / 60) >= 70) return { kind: "ride_intervals", basis: "actual" };
+  if (upper) return { kind: "upper", basis: "actual" };
+  if (rideMin >= 30) return { kind: "ride_long", basis: "actual" };
+  return { kind: mobilityKindFor(planned), basis: "plan" };
 }

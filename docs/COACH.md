@@ -136,6 +136,8 @@ Ist heute eine Schlüsseleinheit geplant und sagt die Tagesform „Ruhe“ oder 
 
 `core/mobility.ts`: fünf Routinen (nach langer Fahrt, nach Intervallen, nach Beintag, nach Oberkörper, allgemein) mit je 5–6 Übungen, Dauer in Sekunden (je Seite), insgesamt 5–10 min. `mobilityKindFor(Planeinheit)` wählt die Routine: Bein-/Ganzkörperkraft → Beintag, lange Fahrt → Hüfte/Rücken, Intervalle → Beine lockern, Oberkörper → Schultern. Feld `training.mobilityToday`, Werkzeug `get_mobility_routine {kind?}`. Abschnitt `sections/mobility.js` (Heute) mit Timer je Übung; in „Heute dran“ nach erledigter Einheit oder am Ruhetag der Knopf „Mobility starten“.
 
+Seit #297 zählt, was heute wirklich trainiert wurde (`mobilityKindForActual`). Die Reihenfolge ist: Beintag aus den gespeicherten Sätzen, dann eine Fahrt ab 90 min, dann eine harte Fahrt (≥ 70 Belastung pro Stunde), dann Oberkörper, dann eine Fahrt ab 30 min. Ohne heutige Einheit oder ohne erkennbaren Fokus gilt der Plan. `training.mobilityToday.basis` ist `actual` oder `plan`.
+
 ## Rückmeldung zur Tagesempfehlung (#216)
 
 `core/feedback.ts`, Tabelle `recommendation_feedback` (Migration 0012): eine Rückmeldung je Tag (`ok`, `too_hard`, `too_easy`). `feedbackAdjust` wertet die letzten 30 Tage vor heute aus (ab 4 Rückmeldungen): Faktor = (zu leicht − zu hart) / Anzahl, ab einem Überhang von 25 % eine Korrektur der Bereitschafts-Punktzahl, begrenzt auf −10 … +5. `applyFeedback` ändert die Empfehlung höchstens um eine Stufe; nach oben nie bei Warnungen oder Ruhetag. Läuft vor dem Wiedereinstieg-Deckel (#201). Werkzeug `save_recommendation_feedback`, Feld `recommendationFeedback` im Dashboard und Coach-Kontext; in „Heute dran“ nach erledigter Einheit drei Knöpfe.
