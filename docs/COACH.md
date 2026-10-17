@@ -103,3 +103,7 @@ Die Deutung des HRV-Trends aus `core/hrv-trend.ts` (Analyse-Thread, 7-Tage-Mitte
 ## Ausgefallene Schlüsseleinheit nachholen (#194)
 
 `training.makeUp` (auch in `get_coach_context`): Ist eine Schlüsseleinheit der Woche ausgefallen (oder Intervalle nur locker gefahren), sucht `core/make-up.ts` den frühesten lockeren Tag ab heute, an dem sie die Grundlage ersetzen kann. Gesperrt sind Tage direkt nach einem harten Tag, nach der langen Fahrt oder nach Beinkraft, Tage vor einem harten Tag oder einem Beintag, Tage mit Beinkraft sowie heute bei lockerer Tagesform oder wenn heute schon trainiert wurde. Nachgeholt wird höchstens eine Einheit (Schwelle vor VO2max vor langer Fahrt vor Tempo), die übrigen entfallen. Passt kein Tag, lautet der Rat: nicht nachholen. Felder: `{missed {day,title,type}, day|null, replaces|null, text, dropped[]}`. Der Wochenplan markiert den Tag mit „Nachholen“.
+
+### Verschieben bei schlechter Tagesform (#198)
+
+Ist heute eine Schlüsseleinheit geplant und sagt die Tagesform „Ruhe“ oder „locker“, liefert `makeUp` `kind: "postpone"`. Die Einheit wandert auf den frühesten passenden späteren Tag, nach denselben Abstandsregeln; der erste Tag der nächsten Woche zählt mit. Auch ein Krafttag ohne Beine kann Platz machen. Ausgefallene Einheiten derselben Woche entfallen dann (`dropped`). `kind: "makeUp"` ist das Nachholen. Der Wochenplan markiert den Tag mit „Verschoben“ bzw. „Nachholen“.

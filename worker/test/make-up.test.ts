@@ -63,4 +63,32 @@ describe("makeUpPlan", () => {
     days[1].status = "partial";
     expect(makeUpPlan(cmp(days), TODAY, "hard")?.missed.title).toBe("Schwelle 3×10");
   });
+  it("verschiebt die heutige lange Fahrt bei schlechter Tagesform auf einen leichten Krafttag", () => {
+    // Fr Ruhetag, Sa lange Fahrt (heute), So Rumpf-Kraft; nächste Woche Mo locker.
+    const days = [
+      d("2026-03-23", "endurance", "Grundlage Mo", "done"),
+      d("2026-03-24", "tempo", "Tempo Di", "missed"),
+      d("2026-03-25", "endurance", "Grundlage Mi", "done"),
+      d("2026-03-26", "endurance", "Grundlage Do", "done"),
+      d("2026-03-27", "rest", "Ruhetag", "rest"),
+      d("2026-03-28", "long", "Lange Fahrt", "today"),
+      d("2026-03-29", "strength", "Krafttraining", "upcoming", { key: false, strength: { durationMin: 40, focus: "Rumpf + Mobility" } }),
+    ];
+    const nextMo = d("2026-03-30", "endurance", "Grundlage", "upcoming");
+    const r = makeUpPlan(cmp(days), "2026-03-28", "rest", nextMo)!;
+    expect(r.kind).toBe("postpone");
+    expect(r.missed.title).toBe("Lange Fahrt");
+    expect(r.day).toBe("2026-03-29");
+    expect(r.replaces).toBe("Krafttraining");
+    expect(r.dropped).toEqual(["Tempo Di (Dienstag)"]);
+    expect(r.text).toContain("Heute lieber Ruhe");
+    // Gute Tagesform: nichts verschieben, nur das ausgefallene Tempo prüfen (Sonntag folgt auf die lange Fahrt).
+    const ok = makeUpPlan(cmp(days), "2026-03-28", "moderate", nextMo)!;
+    expect(ok.kind).toBe("makeUp");
+    expect(ok.day).toBeNull();
+    // Harte Einheit am nächsten Montag sperrt den Sonntag.
+    const hardMo = makeUpPlan(cmp(days), "2026-03-28", "easy", d("2026-03-30", "threshold", "Schwelle", "upcoming"))!;
+    expect(hardMo.day).toBeNull();
+    expect(hardMo.text).toContain("ausfallen lassen");
+  });
 });
