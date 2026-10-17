@@ -26,6 +26,7 @@ describe("4-Wochen-Block", () => {
     // Woche 1 läuft (zu früh für Entlastung), Woche 2 wird Entlastung.
     expect(v.weeks.map((w) => w.deload)).toEqual([false, true]);
     expect(v.weeks[1].adjusted).toContain("Ruhepuls erhöht");
+    expect(v.text).toContain("Nächste Woche Entlastung");
     const later = blockView(b, [wk("2026-03-02", 300), wk("2026-03-09", 100)], "2026-03-11", "HRV niedrig");
     expect(later.current).toMatchObject({ index: 1, deload: true, targetLoad: 168 });
     expect(later.weeks).toHaveLength(2);
