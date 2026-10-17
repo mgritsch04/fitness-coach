@@ -34,8 +34,8 @@ export function strengthSeason(planPhase: Phase, week: string, setting?: Strengt
     source = "season";
   }
   const why = source === "setting" ? " (fest eingestellt)" : source === "plan" ? " (aus der Planphase)" : " (nach Jahreszeit; mit einem Ziel-Termin richtet es sich nach dem Plan)";
-  return { phase, label: SEASON_LABEL[phase], source, // Nur nach Jahreszeit wird die gewohnte Häufigkeit nicht gekürzt (nur Hinweis), sonst Erhalt höchstens 2.
-    maxPerWeek: phase === "race" ? 1 : phase === "maintain" && source !== "season" ? 2 : null, text: TEXT[phase] + why };
+  return { phase, label: SEASON_LABEL[phase], source, // Die gewohnte Häufigkeit wird nur in der Wettkampfphase oder bei fest eingestelltem Erhalt gekürzt.
+    maxPerWeek: phase === "race" ? 1 : phase === "maintain" && source === "setting" ? 2 : null, text: TEXT[phase] + why };
 }
 
 export interface SeasonItem { exercise: string; sets: number; reps: number; unit?: "s" }

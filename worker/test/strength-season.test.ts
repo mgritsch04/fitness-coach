@@ -14,7 +14,8 @@ describe("Kraft nach Saisonphase (#213)", () => {
   it("Phase aus Einstellung, Planphase oder Jahreszeit", () => {
     expect(strengthSeason("maintain", "2026-10-12")).toMatchObject({ phase: "build", source: "season", maxPerWeek: null });
     expect(strengthSeason("base", "2026-05-04")).toMatchObject({ phase: "maintain", maxPerWeek: null });
-    expect(strengthSeason("build", "2026-01-05")).toMatchObject({ phase: "maintain", source: "plan", maxPerWeek: 2 });
+    expect(strengthSeason("build", "2026-01-05")).toMatchObject({ phase: "maintain", source: "plan", maxPerWeek: null });
+    expect(strengthSeason("base", "2026-05-04", "maintain").maxPerWeek).toBe(2);
     expect(strengthSeason("taper", "2026-01-05")).toMatchObject({ phase: "race", maxPerWeek: 1 });
     expect(strengthSeason("taper", "2026-01-05", "build")).toMatchObject({ phase: "build", source: "setting" });
   });
