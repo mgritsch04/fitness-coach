@@ -1,6 +1,6 @@
 ---
 name: User-Test
-about: Manuelle Abnahme einer fertigen Funktion (legt Claude an)
+about: Nur noch für Altfälle – neue Tests laufen im Feature-Issue (Label auto-user-test, Kommentar „## Testschritte“)
 title: "[USERTEST] "
 labels: user-test
 ---
