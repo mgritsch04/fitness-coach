@@ -295,3 +295,11 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `rows[]`: je Bereich `targetMin` (ganze Woche), `targetSoFarMin` (geplante Einheiten bis heute), `actualMin`.
 - `hints[]`: zu viel mittlerer Bereich (≥ 20 min und 1,5 × Soll bis heute), harte Minuten unter der Hälfte, Grundlage unter 60 %; sonst „passt“.
 - Dashboard: Block „Diese Woche: Plan gegen Ist“ im bestehenden Abschnitt Pulszonen (kein neuer Abschnitt).
+
+## Leistungskurve Zeitraum gegen Zeitraum (`get_power_curve` mit `compare`, #215)
+
+`core/power-compare.ts` vergleicht die beste Leistung je Dauer (5 s bis 60 min) im gewählten Zeitraum mit dem gleich langen Zeitraum davor (`compare: "previous"`) oder derselben Zeit im Vorjahr (`compare: "lastYear"`). Grundlage sind die Bestwerte je Fahrt (`readPowerCurves`); ohne `compare` bleibt `get_power_curve` unverändert.
+
+- `comparison.durations[]`: je Dauer `currentW`/`currentDay`, `referenceW`/`referenceDay`, `diffW`, `diffPct`.
+- `comparison.hints[]`: stärker, schwächer, gemischt oder etwa gleich (Schwelle ±3 %); fehlende Daten werden benannt.
+- Dashboard: Block „Leistungskurve im Vergleich“ im bestehenden Abschnitt Fahrertyp, Umschalter „vorige 90 Tage / Vorjahr“ (kein neuer Abschnitt).

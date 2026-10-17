@@ -52,6 +52,7 @@ import { eftpTrend, WINDOW_DAYS as EFTP_WINDOW_DAYS } from "./eftp";
 import { readFtpTests } from "./ftp-test";
 import { indoorOutdoor } from "./indoor-outdoor";
 import { wbalModel } from "./wbal";
+import { comparePowerCurves, compareWindows, type CompareMode } from "./power-compare";
 import { criticalPower, enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -375,4 +376,11 @@ export async function eftpView(db: D1Database, weeks: number, now?: number) {
 /** Rolle gegen Straße (#207): Effizienz, Puls bei gleicher Leistung und Kadenz drinnen gegen draußen. */
 export function indoorOutdoorView(c: AnalysisContext, days: number) {
   return indoorOutdoor(c.workouts, c.settings.ftpW, c.today, days);
+}
+
+/** Leistungskurve Zeitraum gegen Zeitraum (#215): jetzt gegen den Zeitraum davor oder das Vorjahr. */
+export async function powerCompareView(db: D1Database, mode: CompareMode, days: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  const rows = flattenCurves(await readPowerCurves(db, compareWindows(mode, c.today, days).reference.from));
+  return comparePowerCurves(rows, mode, c.today, days);
 }

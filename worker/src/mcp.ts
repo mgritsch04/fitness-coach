@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, indoorOutdoorView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, indoorOutdoorView, powerCompareView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -126,12 +126,17 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       description:
         "Leistungskurve (beste Durchschnittsleistung in Watt je Dauer in Sekunden, 1 s bis 2 h) über den Zeitraum, dazu die Kurve je Workout. " +
         "Bisher nur aus importierten FIT-Dateien mit Sekundenwerten.",
-      inputSchema: { days: z.number().int().min(1).max(3650).optional().describe("Zeitraum in Tagen bis heute, Standard 90") },
+      inputSchema: {
+        days: z.number().int().min(1).max(3650).optional().describe("Zeitraum in Tagen bis heute, Standard 90"),
+        compare: z.enum(["previous", "lastYear"]).optional()
+          .describe("Zusätzlich Vergleich (comparison): previous = gleich langer Zeitraum davor, lastYear = dieselbe Zeit im Vorjahr; Differenz je Dauer in W und %"),
+      },
       annotations: { readOnlyHint: true },
     },
-    async ({ days: d }) => {
+    async ({ days: d, compare }) => {
       const workouts = await readPowerCurves(env.DB, fromDay(d ?? 90));
-      return json({ best: combineCurves(workouts.map((w) => w.power_curve)), workouts });
+      const comparison = compare ? await powerCompareView(env.DB, compare, Math.min(d ?? 90, 365)) : undefined;
+      return json({ best: combineCurves(workouts.map((w) => w.power_curve)), workouts, ...(comparison ? { comparison } : {}) });
     },
   );
 
