@@ -11,6 +11,8 @@ export interface Env {
   WAHOO_CLIENT_SECRET?: string;
   /** Token aus den Webhook-Einstellungen der Wahoo-App; ohne ihn lehnt /webhooks/wahoo ab. */
   WAHOO_WEBHOOK_TOKEN?: string;
+  /** Optional: lesendes GitHub-Token fürs Master-Dashboard (#309); ohne läuft get_dev_board unauthentifiziert. */
+  GITHUB_READ_TOKEN?: string;
 }
 
 /** Was nach der Anmeldung verschlüsselt am Connector-Token hängt. */

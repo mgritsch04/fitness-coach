@@ -20,6 +20,7 @@ import { registerBodyTools } from "./body-tools";
 import { registerFtpTools } from "./ftp-tools";
 import { registerBikeWorkoutTools } from "./bike-workout-tools";
 import { registerWeatherTools } from "./weather-tools";
+import { registerDevBoardTools } from "./devboard-tools";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
 
@@ -626,6 +627,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
   registerFtpTools(server, env);
   registerBikeWorkoutTools(server, env);
   registerWeatherTools(server, env);
+  registerDevBoardTools(server, env);
 
   return server;
 }

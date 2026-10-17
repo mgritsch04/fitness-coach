@@ -28,5 +28,29 @@ Auf Gs Wunsch zeigt das Dashboard beide Projekte: Nutzung einmal oben (gilt für
 - **Fitness-Sitzungen und GitHub-Stand beider Repos** (`live`, `features`, `usertests`, `forecast`, `wp_*`): Kette im Thread „Entwicklungsstand-Dashboard“ alle ~15 min. Jeder Lauf prüft zuerst, ob sich etwas geändert hat, und schreibt nur dann (Helfer nach [`DASHBOARD_UPDATER.md`](DASHBOARD_UPDATER.md), Kopie: `/mnt/project-files/dashboard/updater-anleitung.md`). Zusätzlicher Lauf, wenn ein Thread startet oder endet. Tests, Features und Backlog kommen nur aus den Issue-Labels (`auto-user-test`, `user-test`, `in-progress`, `planned` …), damit sie nicht davon abhängen, dass ein Thread sie einträgt.
 - Ende: 2026-10-18 00:00 UTC; verlängern oder stoppen nur auf deinen Wunsch. Keine Zugangsdaten im Seiten-Code.
 
+## Ohne Updater-Session (#309, ab 17.10.)
+- **GitHub-Stand ohne Modell:** Die Seite ruft über den „Fitness Coach“-Connector das nur lesende Werkzeug `get_dev_board` auf (Worker, `worker/src/devboard-tools.ts`). Der Worker holt die offenen Issues und PRs beider Repos von der öffentlichen GitHub-API und hält das Ergebnis 5 min im KV. Bei einem GitHub-Fehler zeigt er den letzten Stand mit `stale: true`. Ein Token ist nicht nötig. Ein optionales Secret `GITHUB_READ_TOKEN` hebt das Limit an. Die Dokumente `features`, `usertests`, `forecast` und `wp_*` dienen nur noch als Rückfall.
+- **Thread-Zeilen (R2):** Jeder Thread schreibt seine eigene Zeile, ohne Abruf im Takt.
+
+### Zeile je Thread: Sammlung `threads`
+Ein Dokument je Thread, `doc_id` = ID der Thread-Wurzel (`cmsg_…`, steht in jeder Wake-Nachricht):
+
+```json
+{"project": "fitness", "title": "Trainingscoach", "status": "working", "task": "Baut den Wochenplan für #299", "issue": 299, "env": "cloud", "updated": "2026-10-17T11:20:00Z"}
+```
+
+| Feld | Werte |
+|---|---|
+| `project` | `fitness` oder `wp` |
+| `status` | `working`, `blocked` (wartet auf G), `paused` (pausiert wegen Budget, zählt nicht als aktiv), `done`, `failed` |
+| `task` | ein Satz Klartext, nie rohe Befehle |
+| `issue` | Issue-Nummer oder `null` |
+| `env` | `cloud` oder `pc` |
+| `updated` | ISO-Zeit UTC des Schreibens |
+
+**So schreibt ein Thread:** `ArtifactData` mit `action: "set"`, `url: https://claude.ai/artifact/DLsyumhy4w8L66F1VNA9pk`, `collection: "threads"`, `doc_id: <eigene cmsg_-ID>`. Beim ersten Mal ohne `if_version`, danach mit der `version` aus dem letzten Ergebnis. Bei einem Versionskonflikt einmal mit `get` neu lesen und dann setzen. Geschrieben wird beim Start, bei jedem Schrittwechsel (neuer Status oder neue Aufgabe) und am Ende mit `status: "done"` (bei Abbruch `failed`). Nur die eigene Zeile schreiben.
+
+**Anzeige:** Aktiv sind Zeilen mit `working` oder `blocked`, deren `updated` jünger als 2 h ist. `paused` zählt nicht als aktiv. Zeilen mit `done` oder `failed` verschwinden nach 24 h. Die Zeile des Updater-Threads „Entwicklungsstand-Dashboard“ wird über ihre `doc_id` ausgeblendet. Die Kopfzeile zeigt das Alter des GitHub-Stands und „veraltet“, wenn er älter als 15 min ist oder der letzte Abruf fehlschlug. Solange ein Projekt noch keine `threads`-Zeilen hat, zeigt die Seite dafür weiter `live` bzw. `live_wp`.
+
 ## Stand
 Live: https://claude.ai/artifact/DLsyumhy4w8L66F1VNA9pk
