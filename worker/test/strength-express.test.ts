@@ -55,4 +55,9 @@ describe("Express-Krafteinheit (#281)", () => {
     expect(r.text).toContain("Weggelassen");
     expect(estimateMin(r.exercises)).toBe(r.estimatedMin);
   });
+  it("schreibt unbekannte Übungen auch aus einem kleingeschriebenen Schlüssel groß", () => {
+    const r = strengthExpress(session.map((x) => (x.name === "Bizepscurls" ? { ...x, name: "bizepscurls" } : x)), 20);
+    expect(r.dropped).toContain("Bizepscurls");
+    expect(r.text).not.toContain("bizepscurls");
+  });
 });
