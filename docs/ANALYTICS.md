@@ -239,7 +239,7 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 
 ## Analyse-Highlights (`get_analysis_highlights`, #175)
 
-`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz, Erholungskurve und Training nach der Erholungsampel. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
+`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz, Erholungskurve, Training nach der Erholungsampel und FTP-Schätzung. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
 
 - Der View (`analysisHighlightsView`) liest Kontext (180 Tage) und Sekundenwerte (120 Tage) nur einmal und füttert damit alle Berichte.
 - Kein eigener Dashboard-Abschnitt; gedacht als Einstieg für den Coach und für Briefing oder Wochenrückblick.
@@ -261,3 +261,12 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `counts.against`: hart an roten Tagen; `redCost`: Erholung am Morgen danach, ruhige gegen harte rote Tage (je mindestens 2 Fälle); `greenUsedPct`, `hardOnGreenPct`.
 - `recent[]`: letzte 14 Tage mit Zone, Strain und Bewertung; `hints[]`: gegen die Ampel trainiert, grüne Tage selten genutzt, harte Tage selten auf grün, sonst Lob.
 - Dashboard: `sections/readiness.js`, Reiter Verlauf nach der Erholungskurve. Auch in `get_analysis_highlights` (Thema `readiness`).
+
+## eFTP-Verlauf (`get_eftp_trend`, #200)
+
+`core/eftp.ts` schätzt die FTP je Woche aus den Bestwerten der 42 Tage davor (`readPowerCurves`): Critical Power aus 3–20 min, wenn das Modell mindestens „medium“ ist, sonst 95 % der besten 20 min, sonst 90 % der besten 10 min. Die beste 60-min-Leistung gilt als Untergrenze. `low`/`high` ist die Spanne aller verfügbaren Ansätze.
+
+- `points[]`: je Woche `eftpW`, Spanne, Methode, Tag des Bestwerts und ein FTP-Test dieser Woche (`testW`).
+- `current` mit W/kg und `stale` (Bestwert älter als 28 Tage); `change` über 6 Wochen, `direction` ab ±2 %.
+- `suggestTest`: zwei Wochen in Folge mindestens 5 % Abweichung in dieselbe Richtung von der selbst eingestellten FTP (eine geschätzte FTP zählt nicht).
+- Dashboard: `sections/eftp.js`, Reiter Verlauf (Training-Reiter ist voll). Auch in `get_analysis_highlights` (Thema `eftp`).

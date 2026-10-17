@@ -35,6 +35,7 @@ const payloads = {
   get_muscle_balance: () => window.__MOCK__.get_muscle_balance,
   get_recovery_curve: () => window.__MOCK__.get_recovery_curve,
   get_readiness_alignment: () => window.__MOCK__.get_readiness_alignment,
+  get_eftp_trend: () => window.__MOCK__.get_eftp_trend,
   get_analysis_highlights: () => ({ highlights: [
     { topic: "muscles", title: "Muskelbalance", tool: "get_muscle_balance", tone: "warn", text: "Rücken und Beinbeuger bekommen deutlich weniger Sätze als Brust und Beinstrecker." },
     { topic: "aerobic", title: "Aerobe Basis", tool: "get_aerobic_decoupling", tone: "good", text: "Puls bleibt bei lockeren Fahrten stabil zur Leistung." },

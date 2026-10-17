@@ -10,6 +10,7 @@ import {
   todayIn,
   trainingLoad,
   workoutLoad,
+  weekStart,
   type DailyRow,
   type SleepRow,
   type WorkoutRow,
@@ -47,6 +48,8 @@ import { muscleBalance } from "./muscle-balance";
 import { analysisHighlights } from "./highlights";
 import { recoveryCurve } from "./recovery-curve";
 import { readinessAlignment } from "./readiness-alignment";
+import { eftpTrend, WINDOW_DAYS as EFTP_WINDOW_DAYS } from "./eftp";
+import { readFtpTests } from "./ftp-test";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -323,7 +326,7 @@ export async function analysisHighlightsView(db: D1Database, limit: number, now?
   const c = await analysisContext(db, { days: 180, maxDays: 450, now });
   const rides = await readIntervalRides(db, addDays(c.today, -119));
   const withHr = rides.flatMap((r) => (r.heartRate ? [{ ...r, heartRate: r.heartRate }] : []));
-  const [interference, rider, muscles] = await Promise.all([interferenceView(db, c, 180), riderProfileView(db, 90, now), muscleBalanceView(db, 4, now)]);
+  const [interference, rider, muscles, eftp] = await Promise.all([interferenceView(db, c, 180), riderProfileView(db, 90, now), muscleBalanceView(db, 4, now), eftpView(db, 8, now)]);
   return analysisHighlights({
     forecast: recoveryForecastView(c),
     hrv: hrvTrendView(c, 90),
@@ -337,6 +340,7 @@ export async function analysisHighlightsView(db: D1Database, limit: number, now?
     cadence: cadenceReport(rides, c.settings.ftpW, c.today, 90),
     recoveryCurve: recoveryCurve(c.series, c.today, 180),
     readiness: readinessAlignment(c.series, c.today, 90),
+    eftp,
   }, limit);
 }
 
@@ -355,4 +359,12 @@ export async function aerobicView(db: D1Database, days: number, now?: number) {
   const settings = await readSettings(db);
   const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
   return aerobicReport(await readHrRideStreams(db, addDays(today, -(days - 1))), today, days);
+}
+
+/** eFTP-Verlauf (#200): FTP-Schätzung je Woche aus der Leistungskurve der letzten 42 Tage. */
+export async function eftpView(db: D1Database, weeks: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  const from = addDays(weekStart(c.today), -7 * (weeks - 1) - EFTP_WINDOW_DAYS);
+  const [rows, tests] = await Promise.all([readPowerCurves(db, from).then(flattenCurves), readFtpTests(db).catch(() => [])]);
+  return eftpTrend({ rows, ftpW: c.settings.origin.ftpW === "user" ? c.settings.ftpW : null, tests: tests.map((t) => ({ day: t.day, ftpW: t.ftp_w })), weightKg: c.weightKg }, c.today, weeks);
 }
