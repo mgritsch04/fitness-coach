@@ -70,7 +70,7 @@ FC.section({
       return {
         ...(prevExtras ? prevExtras() : {}),
         ...(t ? {
-          wochenplan: { phase: t.thisWeek.phaseLabel, grund: t.thisWeek.plan.phaseReason, stand: t.thisWeek.comparison.summary, heute: t.today.text, intensitaet: t.intensity?.text ?? null, ftpTest: t.ftpTest?.text ?? null, kraftVorschlag: (t.strengthWorkouts?.days ?? []).slice(0, 2).map((k) => ({ tag: k.day, fokus: k.focus, uebungen: k.text })),
+          wochenplan: { phase: t.thisWeek.phaseLabel, grund: t.thisWeek.plan.phaseReason, stand: t.thisWeek.comparison.summary, heute: t.today.text, intensitaet: t.intensity?.text ?? null, ftpTest: t.ftpTest?.text ?? null, nachholen: t.makeUp?.text ?? null, kraftVorschlag: (t.strengthWorkouts?.days ?? []).slice(0, 2).map((k) => ({ tag: k.day, fokus: k.focus, uebungen: k.text })),
             tage: t.thisWeek.comparison.days.map((x) => ({ tag: x.day, einheit: x.title, typ: x.type, min: x.durationMin, belastung: x.targetLoad, kraft: x.strength?.focus ?? null, status: x.status })) },
           ziele: t.goals.map((g) => ({ ziel: g.goal.title, datum: g.goal.targetDate, prio: g.goal.priority, stand: g.text })),
           vorlieben: t.prefs,
@@ -91,7 +91,9 @@ FC.section({
     $("planSummary").textContent = `${cmp.summary} Geplant: ${de(w.plan.targetHours, 1)} h, ~${de(w.plan.days.reduce((a, x) => a + x.targetLoad, 0))} Belastungspunkte (geschätzt).`;
     if (t.intensity && t.intensity.verdict !== "ok") $("planSummary").textContent += ` ${t.intensity.text}`;
     if (t.ftpTest) $("planSummary").textContent += ` ${t.ftpTest.text}`;
+    if (t.makeUp) $("planSummary").textContent += ` ${t.makeUp.text}`;
     const ftpDay = t.ftpTest?.day ?? null;
+    const makeUpDay = t.makeUp?.day ?? null;
     const MARK = { done: "✓", missed: "✗", partial: "◐", extra: "+", today: "•", upcoming: "", rest: "" };
     const grid = $("wplan"); grid.replaceChildren();
     const fuel = new Map((t.fueling?.days ?? []).map((f) => [f.day, f]));
@@ -105,12 +107,14 @@ FC.section({
         el("span", { class: "m", text: x.type === "rest" ? "" : `${x.durationMin ? `${x.durationMin} min · ` : ""}~${de(x.targetLoad)}` }),
         x.strength && x.type !== "strength" ? el("span", { class: "k", text: `+ Kraft ${x.strength.durationMin} min${x.strengthDone ? " ✓" : ""}` }) : null,
         x.day === ftpDay ? el("span", { class: "k", text: "oder FTP-Test" }) : null,
+        x.day === makeUpDay ? el("span", { class: "k", text: "Nachholen" }) : null,
       ].filter(Boolean));
       box.onclick = () => {
         const out = $("planDetail"); out.classList.remove("muted"); out.replaceChildren(...[
           el("p", {}, el("strong", { text: `${fmtDayLong(x.day)}: ${x.title}` })),
           x.intensity ? el("p", { text: x.intensity }) : null,
           el("p", { text: x.description }),
+          x.day === makeUpDay ? el("p", {}, el("strong", { text: `Vorschlag: „${t.makeUp.missed.title}“ statt dieser Einheit nachholen.` })) : null,
           ...(x.day === ftpDay ? [el("p", {}, el("strong", { text: "Vorschlag: FTP-Test statt dieser Einheit. " }), t.ftpTest.reason), el("ul", {}, ...t.ftpTest.howTo.map((h) => el("li", { text: h })))] : []),
           ...(kraft.get(x.day) ? [
             el("p", {}, el("strong", { text: `Kraft, ${kraft.get(x.day).durationMin} min: ${kraft.get(x.day).focus}` })),
