@@ -124,6 +124,29 @@ for (const [name, vp, scheme, tab] of shots) {
     // Für die folgenden Tests alles aufklappen.
     await p.evaluate(() => document.querySelectorAll("#sections > section.on.folded > .fold-bar").forEach((b) => b.click())); await p.waitForTimeout(400);
   }
+  if (tab === "training") {
+    // Workout-Filter (#220): Sportart, Quelle, Suche; 25 je Seite, „weitere laden“, gemerkt nach Neuladen, zurücksetzen.
+    const wo = () => p.evaluate(() => ({ rows: [...document.querySelectorAll("#tWorkouts tbody tr:not(.rpe-row)")].map((r) => r.cells[1]?.innerText ?? ""), count: document.getElementById("woCount").textContent, more: !document.getElementById("btnMoreWorkouts").hidden, over: document.documentElement.scrollWidth > innerWidth }));
+    const w0 = await wo();
+    if (w0.rows.length !== 25 || !w0.more || w0.over) errors.push(`${name}: Workout-Liste ohne Filter falsch ${JSON.stringify({ n: w0.rows.length, more: w0.more, over: w0.over })}`);
+    await p.click("#btnMoreWorkouts"); await p.waitForTimeout(150);
+    if ((await wo()).rows.length !== 50) errors.push(`${name}: „weitere laden“ lädt nicht nach`);
+    await p.click("#woKind [data-k=bike]"); await p.waitForTimeout(150);
+    const w1 = await wo();
+    if (!w1.rows.length || w1.rows.some((r) => !/Radfahren|Spinning/.test(r)) || !/ von /.test(w1.count)) errors.push(`${name}: Filter Rad falsch ${JSON.stringify(w1.rows.slice(0, 3))} ${w1.count}`);
+    await p.selectOption("#woSource", "mywhoosh"); await p.fill("#woSearch", "radfahren"); await p.waitForTimeout(150);
+    const w2 = await wo();
+    if (!w2.rows.length || w2.rows.some((r) => !/Radfahren/.test(r))) errors.push(`${name}: Quelle/Suche falsch ${JSON.stringify(w2.rows.slice(0, 3))}`);
+    await p.fill("#woSearch", "gibtsnicht"); await p.waitForTimeout(150);
+    if (!/passen zum Filter/.test(await p.locator("#tWorkouts tbody").innerText())) errors.push(`${name}: leerer Filter ohne Hinweis`);
+    await p.fill("#woSearch", "radfahren"); await p.reload(); await p.waitForTimeout(800); await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(300);
+    const w3 = await p.evaluate(() => ({ q: document.getElementById("woSearch").value, src: document.getElementById("woSource").value, kind: document.querySelector("#woKind [aria-pressed=true]")?.dataset.k }));
+    if (w3.q !== "radfahren" || w3.src !== "mywhoosh" || w3.kind !== "bike") errors.push(`${name}: Filter nicht gemerkt ${JSON.stringify(w3)}`);
+    await p.locator("#sec-workouts").scrollIntoViewIfNeeded(); await p.evaluate(() => document.getElementById("sec-workouts").scrollIntoView()); await p.waitForTimeout(200);
+    await p.screenshot({ path: join(out, "phone-workout-filter.png") });
+    await p.click("#btnResetWorkouts"); await p.waitForTimeout(150);
+    if ((await wo()).rows.length !== 25) errors.push(`${name}: Zurücksetzen zeigt nicht wieder alle`);
+  }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "verlauf") {
     // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.

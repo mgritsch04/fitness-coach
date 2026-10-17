@@ -96,7 +96,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 81 | Rückmeldung zur Tagesempfehlung (#216) | passt/zu hart/zu leicht, Korrekturfaktor | Coach lernt | P3 | M | Zeile 9 | Unit-Tests, Vorschau | Planned |
 | 82 | Wochenbilanz als Bild (#218) | Canvas-PNG über Downloads | aufheben/teilen | P3 | S | Zeile 33 | Vorschau | Planned |
 | 83 | Zwei Workouts vergleichen (#219) | Kennzahlen und Kurven nebeneinander | Fortschritt auf gleicher Runde | P3 | M | Zeile 20 | Unit-Tests, Vorschau | Planned |
-| 84 | Workout-Liste filtern und suchen (#220) | Sport, Zeitraum, Quelle, Suche | lange Historie nutzbar | P3 | S | — | Vorschau | Planned |
+| 84 | Workout-Liste filtern und suchen (#220) | Sport, Zeitraum, Quelle, Suche | lange Historie nutzbar | P3 | S | — | Vorschau, User-Test #236 | Done |
 | 85 | Workout-Bibliothek für MyWhoosh (#221) | Vorlagen je Typ, an FTP angepasst, .zwo | Auswahl für spontane Rolleneinheiten | P2 | M | Zeile 26 | Unit-Tests, Vorschau | Planned |
 | 86 | Eiweiß-/KH-Richtwert je Tag (#222) | aus Gewicht und Tagesbelastung | Essen planen | P3 | S | Zeile 23 | Unit-Tests | Planned |
 | 87 | Mobility-Routine nach der Einheit (#223) | Routinen je Einheitstyp mit Timer | Beweglichkeit | P3 | S | Zeile 38 | Unit-Tests, Vorschau | Planned |

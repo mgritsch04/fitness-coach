@@ -5,6 +5,8 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 30, id: "readiness", title: "Training nach der Erholungsampel", text: "Wie gut deine Belastung zur Erholung passte: Strain je Erholungszone und Treffer-Quote." },
+    { n: 29, id: "workouts", title: "Workouts filtern", text: "Workout-Liste nach Rad, Kraft und Quelle filtern und durchsuchen; der Filter bleibt gemerkt." },
     { n: 28, id: "recovery", title: "Diagramme antippen", text: "Am Handy zeigt ein Tippen ins Diagramm Datum und Werte; waagrecht wischen fährt die Tage ab." },
     { n: 27, id: "recoverycurve", title: "Erholung nach harten Tagen", text: "Wie viele Tage Erholung, HRV und Ruhepuls nach einem harten Tag brauchen." },
     { n: 26, id: "gym", title: "Training-Tab aufgeräumt", text: "Am Handy sind Abschnitte in Heute, Training und Verlauf einklappbar und laden erst beim Aufklappen." },

@@ -1,5 +1,12 @@
 // Workout-Liste. Andere Abschnitte können eine Detailansicht über FC.state.openWorkout(w) anbieten.
 // Anstrengung (RPE 1–10) je Workout eintragen (#134); FC.state.rpePicker(w) nutzt auch „Heute dran“.
+const WO_KEY = "fc-wo-filter", PAGE = 25;
+const kindOf = (sp) => {
+  const s = (sp ?? "").toLowerCase();
+  if (/cycl|spin|bike|ride|rad/.test(s)) return "bike";
+  if (/weight|strength|bodybuild|powerlift|functional|crossfit|kraft|gym/.test(s)) return "strength";
+  return "other";
+};
 FC.section({
   id: "workouts",
   tab: "training",
@@ -7,12 +14,30 @@ FC.section({
   mount(root) {
     root.innerHTML = `
       <h2 id="h-workouts">Workouts</h2>
-      <div class="panel tablewrap"><table id="tWorkouts" class="cards"><thead><tr>
+      <div class="panel tablewrap">
+        <div class="wo-filter" role="search">
+          <div class="seg" id="woKind" role="group" aria-label="Sportart">
+            <button type="button" data-k="all">Alle</button><button type="button" data-k="bike">Rad</button><button type="button" data-k="strength">Kraft</button><button type="button" data-k="other">Andere</button>
+          </div>
+          <select id="woSource" aria-label="Quelle"><option value="">Alle Quellen</option></select>
+          <input type="search" id="woSearch" placeholder="Suchen, z. B. Spinning oder Mai" aria-label="Workouts durchsuchen" autocomplete="off">
+        </div>
+        <p class="muted fine" id="woCount" role="status"></p>
+        <table id="tWorkouts" class="cards"><thead><tr>
         <th class="l">Tag</th><th class="l">Sport</th><th>Dauer</th><th>Ø Puls</th><th>Max</th><th>Leistung</th><th>Strain</th><th>Belastung</th><th>Anstrengung</th><th class="l">Quelle</th>
       </tr></thead><tbody><tr><td colspan="10" class="empty">Noch keine Daten.</td></tr></tbody></table>
-      <div class="row" style="margin-top:10px"><button type="button" id="btnAllWorkouts" hidden>Alle anzeigen</button></div></div>`;
-    this.all = false;
-    FC.$("btnAllWorkouts").onclick = () => { this.all = !this.all; this.render(FC.state.data); };
+      <div class="row" style="margin-top:10px"><button type="button" id="btnMoreWorkouts" hidden>Mehr laden</button><button type="button" id="btnResetWorkouts" class="link" hidden>Filter zurücksetzen</button></div></div>`;
+    // Filter (#220) bleiben im Browser gemerkt; die Liste zeigt 25 und lädt in 25er-Schritten nach.
+    this.f = { kind: "all", source: "", q: "" };
+    try { Object.assign(this.f, JSON.parse(localStorage.getItem(WO_KEY) ?? "{}")); } catch {}
+    this.shown = PAGE;
+    const changed = () => { this.shown = PAGE; try { localStorage.setItem(WO_KEY, JSON.stringify(this.f)); } catch {} if (FC.state.data) this.render(FC.state.data); };
+    for (const b of root.querySelectorAll("#woKind button")) b.onclick = () => { this.f.kind = b.dataset.k; changed(); };
+    FC.$("woSource").onchange = (e) => { this.f.source = e.target.value; changed(); };
+    FC.$("woSearch").value = this.f.q;
+    FC.$("woSearch").oninput = (e) => { this.f.q = e.target.value; changed(); };
+    FC.$("btnMoreWorkouts").onclick = () => { this.shown += PAGE; this.render(FC.state.data); };
+    FC.$("btnResetWorkouts").onclick = () => { this.f = { kind: "all", source: "", q: "" }; FC.$("woSearch").value = ""; changed(); };
     FC.state.rpePicker = (w, done) => this.picker(w, done);
   },
   /** Knöpfe 1–10; speichert sofort (save_workout_rpe) und lädt das Dashboard neu. */
@@ -38,10 +63,23 @@ FC.section({
     const { $, el, de, fmtDayLong, sport, SOURCES, state } = FC;
     const from = d.days.at(-state.range)?.day ?? d.range.from;
     const tb = $("tWorkouts").tBodies[0]; tb.replaceChildren();
-    const ws = d.workouts.filter((w) => w.day >= from);
-    const more = $("btnAllWorkouts"); more.hidden = ws.length <= 25; more.textContent = this.all ? "Weniger anzeigen" : `Alle ${ws.length} anzeigen`;
-    if (!ws.length) tb.append(el("tr", {}, el("td", { colspan: 10, class: "empty", text: "Keine Workouts im Zeitraum." })));
-    for (const w of this.all ? ws : ws.slice(0, 25)) {
+    const inRange = d.workouts.filter((w) => w.day >= from), f = this.f;
+    // Quellen-Auswahl aus den vorhandenen Daten; eine gemerkte Quelle bleibt wählbar.
+    const srcs = [...new Set(inRange.flatMap((w) => w.sources).concat(f.source ? [f.source] : []))].sort();
+    const sel = $("woSource");
+    sel.replaceChildren(el("option", { value: "", text: "Alle Quellen" }), ...srcs.map((s) => el("option", { value: s, text: SOURCES[s] ?? s })));
+    sel.value = f.source; sel.hidden = srcs.length < 2 && !f.source;
+    for (const b of $("woKind").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.k === f.kind));
+    const words = f.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const ws = inRange.filter((w) => (f.kind === "all" || kindOf(w.sport) === f.kind) && (!f.source || w.sources.includes(f.source)) &&
+      (!words.length || words.every((q) => [sport(w.sport), w.sport ?? "", fmtDayLong(w.day), w.day, ...w.sources.map((s) => SOURCES[s] ?? s)].join(" ").toLowerCase().includes(q))));
+    const filtered = f.kind !== "all" || !!f.source || words.length > 0;
+    $("woCount").textContent = filtered ? `${ws.length} von ${inRange.length} Workouts im Zeitraum` : `${inRange.length} Workouts im Zeitraum`;
+    $("btnResetWorkouts").hidden = !filtered;
+    const more = $("btnMoreWorkouts"), rest = ws.length - this.shown;
+    more.hidden = rest <= 0; more.textContent = `${Math.min(PAGE, rest)} weitere laden`;
+    if (!ws.length) tb.append(el("tr", {}, el("td", { colspan: 10, class: "empty", text: filtered ? "Keine Workouts passen zum Filter." : "Keine Workouts im Zeitraum." })));
+    for (const w of ws.slice(0, this.shown)) {
       const name = state.openWorkout ? el("button", { type: "button", class: "link", text: sport(w.sport) }) : document.createTextNode(sport(w.sport));
       if (state.openWorkout) name.onclick = () => state.openWorkout(w);
       const rpe = el("button", { type: "button", class: "link", text: w.rpe ? `${w.rpe}${w.sessionRpe ? ` (${de(w.sessionRpe)})` : ""}` : "eintragen", "aria-label": `Anstrengung für ${sport(w.sport)} am ${fmtDayLong(w.day)}${w.rpe ? `: ${w.rpe}` : " eintragen"}` });
