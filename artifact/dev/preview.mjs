@@ -101,7 +101,7 @@ for (const f of readdirSync(join(here, "..", "sections"))) if (f.endsWith(".js")
 const shots = [["desktop-light", { width: 1280, height: 900 }, "light"], ["desktop-dark", { width: 1280, height: 900 }, "dark"],
   ...["heute", "coach", "verlauf", "training", "mehr"].map((t) => [`phone-${t}`, { width: 390, height: 844 }, t === "verlauf" ? "dark" : "light", t])];
 for (const [name, vp, scheme, tab] of shots) {
-  const ctx = await browser.newContext({ viewport: vp, colorScheme: scheme });
+  const ctx = await browser.newContext({ viewport: vp, colorScheme: scheme, hasTouch: name.startsWith("phone") });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
   p.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
@@ -122,6 +122,17 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.evaluate(() => document.querySelectorAll("#sections > section.on.folded > .fold-bar").forEach((b) => b.click())); await p.waitForTimeout(400);
   }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
+  if (tab === "verlauf") {
+    // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.
+    const box = p.locator("#sections > section.on:not(.folded) .chart svg").first();
+    await box.scrollIntoViewIfNeeded(); const bb = await box.boundingBox();
+    await p.touchscreen.tap(bb.x + bb.width * 0.6, bb.y + bb.height / 2); await p.waitForTimeout(400);
+    const t1 = await p.evaluate(() => { const t = [...document.querySelectorAll(".tip")].find((x) => !x.hidden); return t && { text: t.innerText, rows: t.querySelectorAll(".row").length, over: document.documentElement.scrollWidth > innerWidth }; });
+    if (!t1 || t1.rows < 1 || !/\d/.test(t1.text) || t1.over) errors.push(`${name}: Tippen zeigt keine Werte ${JSON.stringify(t1)}`);
+    await p.screenshot({ path: join(out, "phone-chart-tap.png") });
+    await p.touchscreen.tap(bb.x + bb.width / 2, Math.max(4, bb.y - 60)); await p.waitForTimeout(200);
+    if (await p.evaluate(() => [...document.querySelectorAll(".tip")].some((x) => !x.hidden))) errors.push(`${name}: Tippen daneben blendet Werte nicht aus`);
+  }
   if (tab === "heute") {
     // Heute (#191): bis „Heute dran“ offen, darunter eingeklappt.
     const hf = await p.evaluate(() => [...document.querySelectorAll("#sections > section.on.foldable")].map((x) => `${x.id.slice(4)}:${x.classList.contains("folded") ? "zu" : "auf"}`));

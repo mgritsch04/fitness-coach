@@ -5,6 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 28, id: "recovery", title: "Diagramme antippen", text: "Am Handy zeigt ein Tippen ins Diagramm Datum und Werte; waagrecht wischen fährt die Tage ab." },
     { n: 27, id: "recoverycurve", title: "Erholung nach harten Tagen", text: "Wie viele Tage Erholung, HRV und Ruhepuls nach einem harten Tag brauchen." },
     { n: 26, id: "gym", title: "Training-Tab aufgeräumt", text: "Am Handy sind Abschnitte in Heute, Training und Verlauf einklappbar und laden erst beim Aufklappen." },
     { n: 25, id: "coach", title: "Coach-Chat kennt alle Analysen", text: "Frag z. B. „Was fällt in meinen Analysen auf?“ oder nach Muskelbalance, Trittfrequenz, Intervallen." },
