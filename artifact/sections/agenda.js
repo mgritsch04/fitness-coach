@@ -22,6 +22,13 @@ FC.section({
     .ag-head h3 { margin: 0; }
     .ag-meta { color: var(--ink-2); font-size: .9rem; }
     .ag-det p { margin: 6px 0; }
+    .ag-sw { margin: 10px 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+    .ag-sw summary { cursor: pointer; font-weight: 600; }
+    .ag-swa { margin-top: 4px; }
+    .ag-swf { display: grid; grid-template-columns: repeat(auto-fit, minmax(9em, 1fr)); gap: 8px; margin: 8px 0; }
+    .ag-swf label { display: grid; gap: 4px; font-size: .88rem; color: var(--ink-2); min-width: 0; }
+    .ag-swf input[type="number"] { width: 100%; min-width: 0; }
+    .ag-swf .ag-swc { display: flex; align-items: center; gap: 6px; }
     .ag-fb { display: flex; flex-wrap: wrap; gap: 8px; }
     .ag-fb button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
     .ag-rpe { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
@@ -140,7 +147,7 @@ FC.section({
     // Heutige Workouts ohne Anstrengung: kurz nachfragen (#134), verbessert die Belastungsschätzung beim Krafttraining.
     const open = isToday && FC.state.rpePicker ? d.workouts.filter((w) => w.day === d.today && !w.rpe && w.durationMin >= 10).slice(0, 2) : [];
     const ask = open.map((w) => el("div", { class: "ag-rpe" }, el("p", { text: `Wie anstrengend war dein ${FC.sport(w.sport)} (${de(w.durationMin)} min)? 1 sehr leicht, 10 maximal.` }), FC.state.rpePicker(w)));
-    $("agBody").replaceChildren(week, det, ...ask, isToday && (x.status === "done" || x.status === "partial") ? this.feedback(d) : "", act, el("p", { class: "muted", id: "agMsg", role: "status" }));
+    $("agBody").replaceChildren(week, det, ...ask, isToday && (x.status === "done" || x.status === "partial") ? this.feedback(d) : "", isToday && x.actualMin > 0 && (this.RIDES.includes(x.type) || (x.actualSports ?? []).some((sp) => /cycl|bike|ride|rad/i.test(sp))) ? this.sweat(d, x) : "", act, el("p", { class: "muted", id: "agMsg", role: "status" }));
   },
   /** Rückmeldung zur Tagesempfehlung (#216): passt / zu hart / zu leicht. */
   feedback(d) {
@@ -159,6 +166,37 @@ FC.section({
       return b;
     }));
     return el("div", { class: "ag-rpe" }, el("p", { text: "Wie passte die Empfehlung heute?" }), row);
+  },
+  /** Schweißrate messen (#282): Gewicht vor/nach der Fahrt plus Getrunkenes → persönliche Trinkmenge. */
+  sweat(d, x) {
+    const { el } = FC, sw = d.training?.sweat;
+    const num = (id, label, attrs) => el("label", {}, label, el("input", { id, type: "number", inputmode: "decimal", ...attrs }));
+    const dur = num("swDur", "Dauer (min)", { min: 30, max: 600, step: 1 }); dur.querySelector("input").value = x.actualMin ?? "";
+    const indoor = el("input", { id: "swIn", type: "checkbox" }); indoor.checked = true;
+    const save = el("button", { type: "button", class: "primary", text: "Speichern" });
+    // Nach dem Speichern zeichnet das Dashboard neu; das Ergebnis bleibt stehen und die Messung offen.
+    const last = this.swLast?.day === d.today ? this.swLast : null;
+    const out = el("p", { class: "muted", id: "swOut", role: "status", text: last?.text ?? (sw?.indoor || sw?.outdoor ? sw.text : "") });
+    save.onclick = async () => {
+      const v = (id) => { const n = Number(String(FC.$(id).value).replace(",", ".")); return FC.$(id).value === "" || !Number.isFinite(n) ? null : n; };
+      const input = { durationMin: v("swDur"), weightBeforeKg: v("swBefore"), weightAfterKg: v("swAfter"), drankL: v("swDrank") ?? 0, indoor: indoor.checked };
+      if (!input.durationMin || !input.weightBeforeKg || !input.weightAfterKg) { out.textContent = "Bitte Dauer und beide Gewichte eintragen."; return; }
+      save.disabled = true;
+      try {
+        const r = await FC.call("log_sweat_test", input);
+        if (d.training) d.training.sweat = r;
+        this.swLast = { day: d.today, text: `Gespeichert: ${FC.de(r.saved.rateLph, 2)} l/h. ${r.text}` };
+        out.textContent = this.swLast.text;
+      } catch (err) { out.textContent = err?.code === "tool_error" ? String(err.message).slice(0, 200) : "Speichern fehlgeschlagen."; }
+      save.disabled = false;
+    };
+    const box = el("details", { class: "ag-sw" }, el("summary", { text: "Schweißrate messen" }),
+      el("p", { class: "fine muted", text: "Vor und nach der Fahrt ohne Kleidung wiegen (nach dem Abtrocknen), getrunkene Menge notieren. Daraus wird deine Trinkmenge pro Stunde." }),
+      el("div", { class: "ag-swf" }, num("swBefore", "Gewicht vorher (kg)", { min: 30, max: 250, step: 0.1 }), num("swAfter", "Gewicht nachher (kg)", { min: 30, max: 250, step: 0.1 }), num("swDrank", "Getrunken (l)", { min: 0, max: 10, step: 0.1 }), dur,
+        el("label", { class: "ag-swc" }, indoor, " Auf der Rolle")),
+      el("div", { class: "ag-swa" }, save), out);
+    box.open = Boolean(last);
+    return box;
   },
   /** Zum Abschnitt springen (am Handy erst den Tab wechseln). */
   go(tab, id) {

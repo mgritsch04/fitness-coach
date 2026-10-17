@@ -8,6 +8,7 @@ import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
 import { comparePlan, normalizePlan } from "./core/plan";
 import { CONSISTENCY_WEEKS, consistency } from "./core/consistency";
+import { deleteSweatTest, readSweatTests, saveSweatTest, sweatRate, sweatSummary } from "./core/sweat";
 import { weekReview } from "./core/review";
 import { actualDays, blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, weekView } from "./core/training";
 import { blockView, buildBlock, deleteBlock, readBlock, saveBlock } from "./core/periodization";
@@ -340,6 +341,45 @@ export function registerCoachTools(server: McpServer, env: Env) {
       });
       return json(consistency({ today: dash.today, workouts: dash.workouts, prefs, plans }));
     },
+  );
+
+  server.registerTool(
+    "log_sweat_test",
+    {
+      description:
+        "Schweißraten-Messung speichern: Gewicht vor und nach einer Fahrt (ohne Kleidung), getrunkene Menge und Dauer. Rate = (vorher − nachher + getrunken) / Stunden, " +
+        "getrennt nach Rolle (indoor) und draußen. Die Verpflegungsempfehlung nutzt danach die persönliche Trinkmenge (~75 % des Verlusts). delete = id entfernt eine Messung.",
+      inputSchema: {
+        durationMin: z.number().int().min(1).max(600).optional(),
+        weightBeforeKg: z.number().min(30).max(250).optional(),
+        weightAfterKg: z.number().min(30).max(250).optional(),
+        drankL: z.number().min(0).max(10).optional().describe("während der Fahrt getrunken, in Litern"),
+        indoor: z.boolean().optional().describe("Rolle (Standard true)"),
+        day: DAY.optional().describe("Standard heute"),
+        note: z.string().max(200).optional(),
+        delete: z.number().int().optional().describe("id einer Messung zum Löschen"),
+      },
+    },
+    async (i) => {
+      const dash = await dashboard();
+      if (i.delete != null) return json({ deleted: (await deleteSweatTest(db, i.delete)) ? i.delete : null, ...sweatSummary(await readSweatTests(db), dash.today) });
+      if (i.durationMin == null || i.weightBeforeKg == null || i.weightAfterKg == null) return fail("invalid_input", "Bitte durationMin, weightBeforeKg und weightAfterKg angeben.");
+      const m = { day: i.day ?? dash.today, durationMin: i.durationMin, weightBeforeKg: i.weightBeforeKg, weightAfterKg: i.weightAfterKg, drankL: i.drankL ?? 0, indoor: i.indoor ?? true, note: i.note ?? null };
+      if (m.day > dash.today) return fail("future_day", "Messung nur für heute oder vergangene Tage.");
+      const v = sweatRate(m);
+      if ("error" in v) return fail("implausible", v.error);
+      const saved = await saveSweatTest(db, m);
+      return json({ saved, ...sweatSummary(await readSweatTests(db), dash.today) });
+    },
+  );
+
+  server.registerTool(
+    "get_sweat_rate",
+    {
+      description: "Persönliche Schweißrate (Mittel der letzten Messungen, getrennt Rolle/draußen) mit Trinkempfehlung pro Stunde. Schätzung.",
+      annotations: { readOnlyHint: true },
+    },
+    async () => json(sweatSummary(await readSweatTests(db), (await dashboard()).today)),
   );
 
   server.registerTool(

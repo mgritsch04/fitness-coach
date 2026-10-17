@@ -6,6 +6,7 @@ import type { CoachAdvice, Readiness } from "./coach";
 import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goals";
 import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
+import { personalizeFueling, readSweatTests, sweatSummary, type SweatSummary } from "./sweat";
 import { makeUpPlan, type MakeUpPlan } from "./make-up";
 import { mobilityKindFor, mobilityRoutine, type MobilityRoutine } from "./mobility";
 import { NUTRITION_NOTE, dailyNutrition, type DailyNutrition } from "./nutrition";
@@ -209,6 +210,8 @@ export interface TrainingOverview {
   strengthSeason: StrengthSeason;
   /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
   fueling: { days: Fueling[]; note: string };
+  /** Persönliche Schweißrate (#282), fließt in die Trinkmenge von fueling ein. */
+  sweat: SweatSummary;
   /** Mobility-Routine nach der heutigen Einheit (#223). */
   mobilityToday: MobilityRoutine;
   /** Eiweiß und Kohlenhydrate je Tag der laufenden Woche (#222, Faustregeln; heute nach Tagesform). */
@@ -226,6 +229,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
   const projection = eventProjection(inp, goals, prefs, thisWeek.plan);
   const season = strengthSeason(thisWeek.plan.phase, thisWeek.week, prefs.strengthPhase ?? null);
   const [tests, sessions] = await Promise.all([readFtpTests(db).catch(() => []), readStrengthSessions(db, addDays(inp.today, -120)).catch(() => [])]);
+  const sweat = sweatSummary(await readSweatTests(db).catch(() => []), inp.today);
   return {
     goals: goalProgress(goals, inp),
     prefs,
@@ -244,7 +248,8 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
       days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions, season.phase)),
       note: STRENGTH_PLAN_NOTE,
     },
-    fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null), note: FUELING_NOTE },
+    fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null).map((f) => personalizeFueling(f, sweat)), note: FUELING_NOTE },
+    sweat,
     mobilityToday: mobilityRoutine(mobilityKindFor(planned)),
     nutrition: {
       days: thisWeek.plan.days.map((d) => dailyNutrition(d, inp.body?.weightKg ?? null, d.day === inp.today ? (inp.coach?.readiness ?? null) : null)),

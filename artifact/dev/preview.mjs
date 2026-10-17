@@ -83,6 +83,7 @@ const payloads = {
   get_consistency: () => { const t = window.__MOCK__.get_dashboard.today, x = new Date(t + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() - (x.getUTCDay() + 6) % 7); const ws = (n) => { const y = new Date(x); y.setUTCDate(y.getUTCDate() - 7 * n); return y.toISOString().slice(0, 10); };
     const weeks = Array.from({ length: 12 }, (_, i) => { const n = 11 - i, met = n >= 1 && n <= 3; return { week: ws(n), strength: met ? 3 : n === 0 ? 1 : 1, rides: met ? 3 : 1, met, current: n === 0, planned: null, done: null }; });
     return { target: { strength: 2, rides: 3, strengthSource: "prefs", ridesSource: "estimate" }, weeks, streak: 3, bestStreak: 3, ratePct: 27, planAdherencePct: 80, text: "3 Wochen in Folge 2× Kraft + 3× Rad. Diese Woche fehlen noch 1× Kraft und 2× Rad.", note: "Kraft zählt einmal pro Tag, Rad ab 20 min." }; },
+  log_sweat_test: (i) => { window.__sweatIn = i; const rate = Math.round(((i.weightBeforeKg - i.weightAfterKg + i.drankL) / (i.durationMin / 60)) * 100) / 100; return { saved: { id: 1, ...i, rateLph: rate }, indoor: { tests: 1, rateLph: rate, drinkLph: 1, lastDay: "2026-03-31" }, outdoor: null, tests: [], text: "Rolle: " + String(rate).replace(".", ",") + " l/h Schweiß, etwa 1 l pro Stunde trinken (1 Messung).", note: "" }; },
   save_recommendation_feedback: (i) => { window.__fbSaved = i; return { saved: { day: window.__MOCK__.get_dashboard.today, verdict: i.verdict }, today: i.verdict, count: 4, scoreDelta: 0, text: "" }; },
   get_week_review: (i) => window.__MOCK__.get_week_review[i.week ?? "previous"],
   save_coach_note: (i) => ({ id: 1, ...i }),
@@ -270,6 +271,11 @@ for (const [name, vp, scheme, tab] of shots) {
       await fbBtn.click(); await p.waitForTimeout(300);
       const fbr = await p.evaluate(() => [window.__fbSaved?.verdict, document.querySelector("#agBody .ag-fb button:nth-child(2)")?.getAttribute("aria-pressed")]);
       if (fbr[0] !== "too_hard" || fbr[1] !== "true") errors.push(`${name}: Rückmeldung falsch gespeichert ${JSON.stringify(fbr)}`);
+      // Schweißrate (#282): nach der Radeinheit messen, Rate wird gespeichert und angezeigt.
+      await p.click("#agBody .ag-sw summary"); await p.fill("#swBefore", "70"); await p.fill("#swAfter", "69,2".replace(",", ".")); await p.fill("#swDrank", "0.6"); await p.fill("#swDur", "60");
+      await p.click("#agBody .ag-sw .primary"); await p.waitForFunction(() => /l\/h/.test(document.getElementById("swOut")?.textContent ?? ""), null, { timeout: 3000 }).catch(() => {});
+      const swr = await p.evaluate(() => ({ in: window.__sweatIn, out: document.getElementById("swOut")?.textContent ?? "", open: document.querySelector("#agBody .ag-sw")?.open, n: document.querySelectorAll("#swOut").length, msg: document.getElementById("agMsg")?.textContent }));
+      if (!(swr.in?.weightBeforeKg === 70 && swr.in.indoor === true && /1,4 l\/h/.test(swr.out))) errors.push(`${name}: Schweißrate falsch ${JSON.stringify(swr)}`);
     }
     // Mobility (#223): Abschnitt öffnen, Timer starten und stoppen.
     await p.evaluate(() => FC.goTo("mobility")); await p.waitForTimeout(300);
