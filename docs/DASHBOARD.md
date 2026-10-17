@@ -42,7 +42,7 @@ Ein Dokument je Thread, `doc_id` = ID der Thread-Wurzel (`cmsg_…`, steht in je
 | Feld | Werte |
 |---|---|
 | `project` | `fitness` oder `wp` |
-| `status` | `working`, `blocked` (wartet auf G), `done`, `failed` |
+| `status` | `working`, `blocked` (wartet auf G), `paused` (pausiert wegen Budget, zählt nicht als aktiv), `done`, `failed` |
 | `task` | ein Satz Klartext, nie rohe Befehle |
 | `issue` | Issue-Nummer oder `null` |
 | `env` | `cloud` oder `pc` |
@@ -50,7 +50,7 @@ Ein Dokument je Thread, `doc_id` = ID der Thread-Wurzel (`cmsg_…`, steht in je
 
 **So schreibt ein Thread:** `ArtifactData` mit `action: "set"`, `url: https://claude.ai/artifact/DLsyumhy4w8L66F1VNA9pk`, `collection: "threads"`, `doc_id: <eigene cmsg_-ID>`. Beim ersten Mal ohne `if_version`, danach mit der `version` aus dem letzten Ergebnis. Bei einem Versionskonflikt einmal mit `get` neu lesen und dann setzen. Geschrieben wird beim Start, bei jedem Schrittwechsel (neuer Status oder neue Aufgabe) und am Ende mit `status: "done"` (bei Abbruch `failed`). Nur die eigene Zeile schreiben.
 
-**Anzeige:** Aktiv sind Zeilen mit `working` oder `blocked`, deren `updated` jünger als 2 h ist. Fertige Zeilen verschwinden nach 24 h. Solange ein Projekt noch keine `threads`-Zeilen hat, zeigt die Seite dafür weiter `live` bzw. `live_wp`.
+**Anzeige:** Aktiv sind Zeilen mit `working` oder `blocked`, deren `updated` jünger als 2 h ist. `paused` zählt nicht als aktiv. Zeilen mit `done` oder `failed` verschwinden nach 24 h. Die Zeile des Updater-Threads „Entwicklungsstand-Dashboard“ wird über ihre `doc_id` ausgeblendet. Die Kopfzeile zeigt das Alter des GitHub-Stands und „veraltet“, wenn er älter als 15 min ist oder der letzte Abruf fehlschlug. Solange ein Projekt noch keine `threads`-Zeilen hat, zeigt die Seite dafür weiter `live` bzw. `live_wp`.
 
 ## Stand
 Live: https://claude.ai/artifact/DLsyumhy4w8L66F1VNA9pk
