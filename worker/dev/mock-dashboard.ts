@@ -1,7 +1,7 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, recoveryCurveView, readinessAlignmentView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, recoveryCurveView, readinessAlignmentView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView, powerCompareView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { ftpHistory, ftpTestSuggestion, readFtpTests, saveFtpTest } from "../src/core/ftp-test";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
@@ -82,6 +82,7 @@ process.stdout.write(JSON.stringify({
   get_dashboard: dash,
   get_week_review: { previous: await review(addDays(weekStart(dash.today), -7)), current: await review(weekStart(dash.today)) },
   get_power_curve: { best: combineCurves(curves.map((w) => w.power_curve)), workouts: curves },
+  power_compare: { previous: await powerCompareView(db, "previous", 90, now), lastYear: await powerCompareView(db, "lastYear", 90, now) },
   get_fitness_profile: fitnessProfileView(await ctx(28)),
   get_training_load: trainingLoadView(await ctx(365)),
   get_health_trends: healthTrendsView(await ctx(60)),

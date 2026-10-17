@@ -16,7 +16,7 @@ const payloads = {
   get_dashboard: (i) => { const d = window.__MOCK__.get_dashboard; if (!i?.compact) return d;
     const col = (rows) => { const keys = [...new Set(rows.flatMap(Object.keys))]; return { keys, rows: rows.map((r) => keys.map((k) => r[k] ?? null)) }; };
     return { ...d, compact: 1, days: col(d.days), workouts: col(d.workouts) }; },
-  get_power_curve: () => window.__MOCK__.get_power_curve,
+  get_power_curve: (i) => ({ ...window.__MOCK__.get_power_curve, ...(i?.compare ? { comparison: window.__MOCK__.power_compare[i.compare] } : {}) }),
   get_fitness_profile: () => window.__MOCK__.get_fitness_profile,
   get_training_load: () => window.__MOCK__.get_training_load,
   get_health_trends: () => window.__MOCK__.get_health_trends,
