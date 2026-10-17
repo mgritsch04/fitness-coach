@@ -21,6 +21,7 @@ import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./jo
 import { applyWarning } from "./warning-cap";
 import { applyHrvTrend } from "./hrv-cap";
 import { hrvTrend } from "./hrv-trend";
+import { applyReturn, returnToTraining } from "./return-to-training";
 import { earlyWarning } from "./warnings";
 import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
@@ -95,7 +96,9 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   for (const d of dailyAll) if (d.hrv_ms != null && !hrvByDay.has(d.day)) hrvByDay.set(d.day, d.hrv_ms);
   const hrv = hrvTrend([...hrvByDay].map(([day, v]) => ({ day, hrv: v }) as DayPoint), today, 14);
   const hrvSignal = hrv.available ? { pattern: hrv.pattern, label: hrv.label, advice: hrv.advice } : null;
-  const coach = applyJournal(applyHrvTrend(applyWarning(baseCoach, warning), hrvSignal), journalToday);
+  // Wiedereinstieg nach Krankheit oder Pause (return-to-training.ts, #201): deckelt die Empfehlung stufenweise.
+  const comeback = returnToTraining(series, journal, today);
+  const coach = applyReturn(applyJournal(applyHrvTrend(applyWarning(baseCoach, warning), hrvSignal), journalToday), comeback);
   const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
@@ -110,6 +113,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     coach,
     earlyWarning: warning,
     hrvTrend: hrvSignal,
+    returnToTraining: comeback,
     trends,
     days: view,
     weeks,
