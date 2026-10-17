@@ -5,6 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 36, id: "review", title: "Wochenbilanz als Bild", text: "Im Wochenrückblick „Als Bild speichern“: Kennzahlen, Sportarten und Highlights der Woche als PNG." },
     { n: 35, id: "indooroutdoor", title: "Rolle gegen Straße", text: "Puls, Leistung und Belastung auf der Rolle im Vergleich zu Fahrten draußen." },
     { n: 34, id: "block", title: "Trainingsblock", text: "4-Wochen-Block mit Aufbau und Entlastungswoche; bei schlechten Werten wird die Entlastung vorgezogen." },
     { n: 33, id: "sources", title: "Datenstand je Quelle", text: "Unter dem Datum steht, wie aktuell WHOOP und MyWhoosh sind; alte Daten sind als „veraltet“ markiert." },

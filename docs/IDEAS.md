@@ -94,7 +94,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 79 | Zeit-in-Zone-Ziele je Woche (#214) | Soll aus Plan gegen Ist | Intensitätsverteilung steuern | P3 | S | Zeile 12, 15 | Unit-Tests, Vorschau | Planned |
 | 80 | Leistungskurve Zeitraum-Vergleich (#215) | zwei Zeiträume übereinander mit Differenz | Fortschritt sehen | P3 | S | Zeile 8 | Unit-Tests, Vorschau | Planned |
 | 81 | Rückmeldung zur Tagesempfehlung (#216) | passt/zu hart/zu leicht, Korrekturfaktor | Coach lernt | P3 | M | Zeile 9 | Unit-Tests, Vorschau | Planned |
-| 82 | Wochenbilanz als Bild (#218) | Canvas-PNG über Downloads | aufheben/teilen | P3 | S | Zeile 33 | Vorschau | Planned |
+| 82 | Wochenbilanz als Bild (#218) | Canvas-PNG über Downloads | aufheben/teilen | P3 | S | Zeile 33 | Vorschau, User-Test #259 | Done |
 | 83 | Zwei Workouts vergleichen (#219) | Kennzahlen und Kurven nebeneinander | Fortschritt auf gleicher Runde | P3 | M | Zeile 20 | Unit-Tests, Vorschau | Planned |
 | 84 | Workout-Liste filtern und suchen (#220) | Sport, Zeitraum, Quelle, Suche | lange Historie nutzbar | P3 | S | — | Vorschau, User-Test #236 | Done |
 | 85 | Workout-Bibliothek für MyWhoosh (#221) | Vorlagen je Typ, an FTP angepasst, .zwo | Auswahl für spontane Rolleneinheiten | P2 | M | Zeile 26 | Unit-Tests, Vorschau | Planned |
