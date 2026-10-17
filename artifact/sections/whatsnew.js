@@ -5,6 +5,10 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 43, id: "gym", title: "Übung tauschen", text: "Im Gym-Modus bei belegtem Gerät „Tauschen“: passende Alternativen für dieselbe Muskelgruppe." },
+    { n: 42, id: "strength", title: "Kraft pro kg", text: "Deine Grundübungen im Verhältnis zum Körpergewicht, mit groben Stufen (Schätzung)." },
+    { n: 41, id: "agenda", title: "Rückmeldung zur Empfehlung", text: "Unter „Heute dran“: sag, ob die Tagesempfehlung gepasst hat; der Coach passt sich vorsichtig an." },
+    { n: 40, id: "weather", title: "Was anziehen?", text: "Im Radwetter steht je Tag eine Kleidungsempfehlung aus gefühlter Temperatur, Regen und Licht." },
     { n: 39, id: "riderprofile", title: "Leistungskurve im Vergleich", text: "Beim Fahrertyp zwei Zeiträume übereinander legen und die Differenz je Dauer sehen." },
     { n: 38, id: "bikewo", title: "Workout-Bibliothek", text: "Unter „Workout für MyWhoosh“: fertige Einheiten wie Sweet Spot oder VO2max, an deine FTP angepasst." },
     { n: 37, id: "mobility", title: "Mobility nach der Einheit", text: "Passende Dehn- und Mobility-Übungen nach Rad oder Kraft, mit Timer." },

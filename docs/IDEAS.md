@@ -100,7 +100,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 85 | Workout-Bibliothek für MyWhoosh (#221) | Vorlagen je Typ, an FTP angepasst, .zwo | Auswahl für spontane Rolleneinheiten | P2 | M | Zeile 26 | Unit-Tests, Vorschau | Done (User-Test #266) |
 | 86 | Eiweiß-/KH-Richtwert je Tag (#222) | aus Gewicht und Tagesbelastung | Essen planen | P3 | S | Zeile 23 | Unit-Tests | Done (User-Test #254) |
 | 87 | Mobility-Routine nach der Einheit (#223) | Routinen je Einheitstyp mit Timer | Beweglichkeit | P3 | S | Zeile 38 | Unit-Tests, Vorschau | Done (User-Test #264) |
-| 88 | Radwetter: Kleidungsempfehlung (#224) | Stufen nach gefühlter Temperatur, Regen, Licht | passend angezogen | P3 | S | Zeile 29 | Unit-Tests | In Progress (Thread Trainingslast und Analysen) |
+| 88 | Radwetter: Kleidungsempfehlung (#224) | Stufen nach gefühlter Temperatur, Regen, Licht | passend angezogen | P3 | S | Zeile 29 | Unit-Tests | Done (User-Test #274) |
 | 89 | Training nach der Erholungsampel (#226) | Strain je Erholungszone, Treffer-Quote | hörst du auf deinen Körper? | P2 | S | Zeile 3 | Unit-Tests, Vorschau | Done (User-Test #234) |
 | 90 | MyWhoosh automatisch synchronisieren (#267) | nur offizielle Wege (z. B. Intervals.icu), Recherche dann Provider unter `providers/<anbieter>/` | kein manueller FIT-Upload | P1 | M | Zeile 6; kein Scraping | neue MyWhoosh-Fahrt erscheint ohne Duplikat | In Progress (Thread „MyWhoosh automatisch synchronisieren“) |
 | 91 | Abschnitte suchen und hinspringen (#269) | Suchfeld in der Kopfzeile, Treffer mit Tab, Sprung klappt auf | über 50 Abschnitte schnell finden | P2 | S | Zeile 60 | Vorschau-Test, User-Test | In Progress |
