@@ -13,7 +13,7 @@ Ablauf:
 3. Antworten in user-task-Issues und neue idea-inbox-Issues übernehmen (IDEAS.md, Labels planned/done).
 4. Sonst oberste Ready-Zeile aus IDEAS.md, Issue auf in-progress.
 5. Umsetzen, alle Checks ausführen, nur bei grünen Checks committen.
-6. Wenn sinnvoll [USERTEST]-Issue anlegen; IDEAS.md und PROJECT_STATUS.md aktualisieren.
+6. Im Feature-Issue Label auto-user-test und einen Kommentar „## Testschritte“ setzen (PR mit „Refs #“); IDEAS.md und PROJECT_STATUS.md aktualisieren.
 7. Branch pushen, PR nach main öffnen, NICHT selbst mergen.
 8. Kurze Zusammenfassung: erledigt, offen, anstehende User-Tests.
 
