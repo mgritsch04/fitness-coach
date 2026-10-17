@@ -24,7 +24,7 @@ _Stand 2026-10-16 · übernommen und angepasst aus `mgritsch04/wohnungsplaner-3d
 - **User-Test im Feature-Issue (seit 2026-10-17; keine eigenen `[USERTEST]`-Issues mehr):** nach dem Merge Label `auto-user-test` und ein Kommentar, der mit `## Testschritte` beginnt: optional `**Voraussetzung:** …`, dann nummerierte Schritte, je Schritt darunter `→ Erwartet: …` (Format und Ablauf: [`scripts/usertest/README.md`](../scripts/usertest/README.md)). Der automatische User-Test klickt die Schritte durch:
   - **eindeutig bestanden** → Kommentar „Automatisch BESTANDEN“ mit Bildbericht, Label `done`, Issue schließen (`completed`), Vermerk „automatisch bestätigt (Datum)“ in `PROJECT_STATUS.md`;
   - **unklar oder fehlgeschlagen** → Label `user-test` und ein Kommentar, was du dir anschauen sollst; du antwortest im selben Issue mit `BESTANDEN` bzw. `FEHLGESCHLAGEN: …`.
-  Bestehende `[USERTEST]`-Issues laufen nach dem alten Muster zu Ende.
+  Die alten `[USERTEST]`-Issues sind am 2026-10-17 in ihre Feature-Issues umgezogen; alle Tests laufen im neuen Modell.
 - **Parallele Threads/Agents** arbeiten auf eigenem `claude/…`-Branch, ändern `IDEAS.md` und `PROJECT_STATUS.md` nicht und fassen fremde Dateien nicht an. `IDEAS.md`, `PROJECT_STATUS.md`, Labels, Testschritte-Kommentare und die Pflege des Entwicklungs-Dashboards (features, agents, usertests, forecast) macht der Haupt-Thread.
 
 ## Verboten
@@ -44,7 +44,7 @@ Force-Push, History-Rewrite, Löschen ungemergter Branches, direkter Push auf `m
 | `planned` | geprüft und in `docs/IDEAS.md` aufgenommen |
 | `in-progress` | wird umgesetzt |
 | `auto-user-test` | gemergt, Testschritte im Issue; wird automatisch getestet |
-| `user-test` | manuelle Prüfung durch dich offen (Feature-Issue nach unklarem automatischem Test oder altes `[USERTEST]`-Issue) |
+| `user-test` | manuelle Prüfung durch dich offen (Feature-Issue nach unklarem automatischem Test) |
 | `needs-fix` | dein User-Test ist fehlgeschlagen (Issue bleibt offen) |
 | `done` | vollständig abgeschlossen (Test automatisch eindeutig bestanden oder von dir bestanden) |
 | `user-task` | `[AUFGABE]`-Issue: Claude braucht etwas von dir (Entwickler-App, Freigabe, Entscheidung, Datei) |
@@ -60,7 +60,7 @@ Zusatzlabels: `priority: high` (Blocker/dringend, vor neuen Ideen), `info` (erle
 
 **Ablauf je Durchlauf (ohne konkreten Auftrag)**
 1. `git status`/`git fetch`; fremde uncommittete Änderungen nie überschreiben. Offene PRs von `claude/…`-Branches: CI grün und konfliktfrei → mit Merge-Commit integrieren; rot → zuerst beheben.
-2. `user-test`-Issues (Feature-Issues und alte `[USERTEST]`): `BESTANDEN` → in `PROJECT_STATUS.md` vermerken, Label `done`, schließen. `FEHLGESCHLAGEN` → `needs-fix`, beheben, erneut um Test bitten. Nie einen fehlgeschlagenen Test als bestanden markieren.
+2. `user-test`-Issues: `BESTANDEN` → in `PROJECT_STATUS.md` vermerken, Label `done`, schließen. `FEHLGESCHLAGEN` → `needs-fix`, beheben, erneut um Test bitten. Nie einen fehlgeschlagenen Test als bestanden markieren.
 3. `user-task`-Issues auf Antworten prüfen und umsetzen (z. B. „App angelegt, Secrets in .env“ → Anbindung von `Blocked` nach `Ready`); erledigte schließen.
 4. Neue `idea-inbox`-Issues: Duplikate prüfen → Zeile in `IDEAS.md` (mit `#Nummer`, Priorität, Nutzen, Abhängigkeiten, Abnahme) → Label `planned`. Ungeeignet/schon da → im Issue begründen und schließen.
 5. Oberste unblockierte `Ready`-Aufgabe (höchstens 1–2 gleichzeitig), Label `in-progress`, umsetzen, Checks, PR, nach grüner CI mergen.

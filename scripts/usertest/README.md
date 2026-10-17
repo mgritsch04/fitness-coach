@@ -1,10 +1,8 @@
 # Automatische User-Tests
 
 Klickt die Schritte eines User-Tests automatisch im Dashboard durch, macht je Schritt ein Bild und entscheidet,
-ob der Test **eindeutig bestanden** ist. Quellen:
-
-- Feature-Issues mit Label `auto-user-test` (Testschritte als Kommentar) – der Normalfall für neue Features.
-- Ältere `[USERTEST]`-Issues mit Label `user-test` – dürfen genauso automatisch getestet werden.
+ob der Test **eindeutig bestanden** ist. Quelle: Feature-Issues mit Label `auto-user-test` (Testschritte als Kommentar).
+Die alten `[USERTEST]`-Issues sind am 2026-10-17 in ihre Feature-Issues umgezogen.
 
 ```bash
 node scripts/usertest/run.mjs 301          # Test laufen lassen (Cloud, Port 4391)
