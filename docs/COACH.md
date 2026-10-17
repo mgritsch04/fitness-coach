@@ -143,3 +143,7 @@ Ist heute eine Schlüsseleinheit geplant und sagt die Tagesform „Ruhe“ oder 
 ## Kraft pro kg Körpergewicht (#203)
 
 `core/strength-standards.ts`: bestes geschätztes 1RM (Epley) der letzten 90 Tage je Grundübung (Kniebeuge, Kreuzheben, Bankdrücken, Schulterdrücken, Klimmzug) ÷ Körpergewicht; beim Klimmzug zählt Körpergewicht plus Zusatzgewicht. Stufen Einstieg / Grundlage / Fortgeschritten / Stark / Sehr stark mit groben Grenzen (z. B. Kniebeuge 0,75 / 1,25 / 1,5 / 2,0 × KG), dazu das 1RM für die nächste Stufe. Ohne Körpergewicht ein Hinweis statt Tabelle. Feld `standards` in `get_strength`, Tabelle „Kraft pro kg Körpergewicht“ im Abschnitt Krafttraining. Grobe Richtwerte, keine Norm.
+
+## Übung tauschen im Gym-Modus (#204)
+
+Ist ein Gerät belegt, tauscht „Tauschen“ eine offene Übung gegen eine gleichwertige Alternative (gleiches Bewegungsmuster, ähnliche Muskeln). Die Satzzahl bleibt, das Startgewicht kommt aus deinem letzten Top-Satz dieser Alternative, sonst wählst du selbst. Tool: `get_exercise_alternatives {exercise, exclude?}` (Logik in `worker/src/core/exercises.ts`). Die Reihenfolge der Alternativen ist eine Faustregel.

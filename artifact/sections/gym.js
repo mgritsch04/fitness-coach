@@ -22,6 +22,7 @@ FC.section({
     .gy-ex.done { opacity: .75; }
     .gy-exh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
     .gy-exh h3 { margin: 0; }
+    .gy-swapbox { border-top: 1px dashed var(--line); padding-top: 8px; }
     .gy-set { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 8px; align-items: center; }
     .gy-set input { width: 100%; min-width: 0; font-size: 1rem; padding: 8px; text-align: center; }
     .gy-plates { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 2px 0 8px; font-size: .9rem; }
@@ -201,8 +202,38 @@ FC.section({
     less.onclick = () => { x.sets.pop(); this.persist(); this.draw(); };
     const row = el("div", { class: "gy-row" }, more, less);
     if (i !== st.cur) { const sel = el("button", { type: "button", class: "linkish", text: "Jetzt diese Übung" }); sel.onclick = () => { st.cur = i; this.persist(); this.draw(); }; row.append(sel); }
+    // Übung tauschen (#204): gleichwertige Alternative, Satzzahl bleibt.
+    if (x.name && !x.sets.every((t) => t.done)) {
+      const sw = el("button", { type: "button", class: "linkish gy-swap", text: "Tauschen", "aria-expanded": String(this.swapAt === i) });
+      sw.onclick = () => this.loadSwap(i, x);
+      row.append(sw);
+    }
     card.append(row);
+    if (this.swapAt === i) card.append(this.swapPanel(x));
     return card;
+  },
+  async loadSwap(i, x) {
+    if (this.swapAt === i) { this.swapAt = null; this.draw(); return; }
+    this.swapAt = i; this.swapList = null; this.draw();
+    try { this.swapList = await FC.call("get_exercise_alternatives", { exercise: x.name, exclude: this.st.exercises.map((e) => e.name).filter(Boolean) }); }
+    catch { this.swapList = { alternatives: [], note: "Alternativen gerade nicht ladbar." }; }
+    if (this.swapAt === i) this.draw();
+  },
+  swapPanel(x) {
+    const { el, de } = FC, r = this.swapList;
+    if (!r) return el("p", { class: "muted gy-swapbox", text: "Lädt Alternativen …" });
+    const opts = r.alternatives.map((a) => {
+      const b = el("button", { type: "button", text: `${a.name}${a.startKg != null ? ` · ${de(a.startKg, a.startKg % 1 ? 1 : 0)} kg` : ""}` });
+      b.onclick = () => {
+        x.name = a.name; x.rest = this.restFor(a.name);
+        for (const t of x.sets) if (!t.done) t.kg = a.startKg ?? null;
+        this.swapAt = null; this.persist(); this.draw();
+      };
+      return b;
+    });
+    return el("div", { class: "gy-swapbox", role: "group", "aria-label": `Alternativen zu ${x.name}` },
+      opts.length ? el("div", { class: "gy-row" }, ...opts) : el("p", { class: "muted", text: "Keine passende Alternative bekannt." }),
+      el("p", { class: "fine muted", text: r.note ?? "" }));
   },
   plateRow(x) {
     const { el } = FC;
