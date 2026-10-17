@@ -2,6 +2,7 @@
 // („Beine + Rumpf“, „Oberkörper (Zug)“ …). Gewichte aus den gespeicherten Einheiten (gleiche Regel wie
 // Vorlagen: alle Sätze geschafft → etwas mehr), sonst „Gewicht mit 2 Wdh. Reserve wählen“. Schätzung.
 import { suggestFromTemplate, type StrengthSession, type TemplateExercise } from "./strength";
+import { seasonItems, seasonWeightFactor, type StrengthSeasonPhase } from "./strength-season";
 
 export interface StrengthExercise {
   exercise: string;
@@ -22,6 +23,8 @@ export interface StrengthWorkout {
   durationMin: number;
   exercises: StrengthExercise[];
   text: string;
+  /** Saisonphase, nach der Sätze und Wiederholungen angepasst sind (#213). */
+  season?: StrengthSeasonPhase | null;
 }
 
 type Item = TemplateExercise & { unit?: "s" };
@@ -43,14 +46,16 @@ const FALLBACK = BY_FOCUS[2].items;
 const countFor = (min: number) => (min <= 30 ? 3 : min <= 45 ? 4 : 5);
 const round25 = (kg: number) => Math.round(kg / 2.5) * 2.5;
 
-export function strengthWorkout(day: string, s: { durationMin: number; focus: string }, sessions: StrengthSession[]): StrengthWorkout {
+export function strengthWorkout(day: string, s: { durationMin: number; focus: string }, sessions: StrengthSession[], season?: StrengthSeasonPhase | null): StrengthWorkout {
   const light = /leicht/.test(s.focus);
-  const items = (BY_FOCUS.find((f) => f.match.test(s.focus))?.items ?? FALLBACK).slice(0, countFor(s.durationMin));
+  const base = (BY_FOCUS.find((f) => f.match.test(s.focus))?.items ?? FALLBACK).slice(0, countFor(s.durationMin));
+  const items = season ? seasonItems(base, season) : base;
+  const factor = season ? seasonWeightFactor(season) : 1;
   const sugg = suggestFromTemplate(items, sessions);
   const exercises: StrengthExercise[] = items.map((it, i) => {
     const g = sugg[i];
     const hold = it.unit === "s";
-    const weight = hold || g.basis === "template" || !g.weightKg ? null : light ? round25(g.weightKg * 0.6) : g.weightKg;
+    const weight = hold || g.basis === "template" || !g.weightKg ? null : light ? round25(g.weightKg * 0.6) : factor !== 1 ? round25(g.weightKg * factor) : g.weightKg;
     return {
       exercise: g.exercise,
       name: g.name,
@@ -65,7 +70,7 @@ export function strengthWorkout(day: string, s: { durationMin: number; focus: st
   const lines = exercises.map((e) => `${e.name} ${e.sets} × ${e.reps}${e.unit === "s" ? " s" : ""}${e.weightKg != null ? ` mit ${String(e.weightKg).replace(".", ",")} kg${e.basis === "increase" ? " (+)" : ""}` : ""}`);
   const open = exercises.some((e) => e.weightKg == null && e.unit === "Wdh");
   const text = `${lines.join(" · ")}.${open ? " Ohne Vorwert: Gewicht so wählen, dass noch 2 Wiederholungen gehen würden." : ""}${light ? " Leicht: etwa 60 % der üblichen Gewichte, Fokus Technik." : ""}`;
-  return { day, focus: s.focus, durationMin: s.durationMin, exercises, text };
+  return { day, focus: s.focus, durationMin: s.durationMin, exercises, text, season: season ?? null };
 }
 
 export const STRENGTH_PLAN_NOTE = "Übungsvorschlag nach Faustregeln; Gewichte aus deinen gespeicherten Einheiten (alle Sätze geschafft → etwas mehr). Übungen gleichwertig tauschen ist in Ordnung. Bei Schmerzen abbrechen.";
