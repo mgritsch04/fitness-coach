@@ -75,6 +75,7 @@ const payloads = {
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
   save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
   save_workout_rpe: (i) => { window.__rpeSaved = i; return { saved: i }; },
+  save_recommendation_feedback: (i) => { window.__fbSaved = i; return { saved: { day: window.__MOCK__.get_dashboard.today, verdict: i.verdict }, today: i.verdict, count: 4, scoreDelta: 0, text: "" }; },
   get_week_review: (i) => window.__MOCK__.get_week_review[i.week ?? "previous"],
   save_coach_note: (i) => ({ id: 1, ...i }),
   import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.get_dashboard.today, startTime: window.__MOCK__.get_dashboard.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
@@ -249,6 +250,15 @@ for (const [name, vp, scheme, tab] of shots) {
       if (!on) errors.push(`${name}: Heute dran startet den Gym-Modus nicht`);
       await p.evaluate(() => localStorage.removeItem("fc-gym"));
     } else errors.push(`${name}: Heute dran ohne Gym-Knopf am Krafttag`);
+    // Rückmeldung zur Empfehlung (#216): nach erledigter Einheit drei Knöpfe, Auswahl bleibt markiert.
+    await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(300);
+    const fbBtn = p.locator("#agBody .ag-fb button:nth-child(2)");
+    if (!(await fbBtn.count())) errors.push(`${name}: Heute dran fragt nicht nach der Rückmeldung zur Empfehlung`);
+    else {
+      await fbBtn.click(); await p.waitForTimeout(300);
+      const fbr = await p.evaluate(() => [window.__fbSaved?.verdict, document.querySelector("#agBody .ag-fb button:nth-child(2)")?.getAttribute("aria-pressed")]);
+      if (fbr[0] !== "too_hard" || fbr[1] !== "true") errors.push(`${name}: Rückmeldung falsch gespeichert ${JSON.stringify(fbr)}`);
+    }
     // Mobility (#223): Abschnitt öffnen, Timer starten und stoppen.
     await p.evaluate(() => FC.goTo("mobility")); await p.waitForTimeout(300);
     const moN = await p.$$eval("#moList li", (l) => l.length);
