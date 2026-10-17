@@ -276,7 +276,11 @@ for (const [name, vp, scheme, tab] of shots) {
       // Doppeltag (#298): heute Rad und Kraft, Hinweis zur Reihenfolge.
       if (!/Doppeltag/.test(await p.textContent("#agBody .ag-both").catch(() => ""))) errors.push(`${name}: kein Doppeltag-Hinweis`);
       // Schweißrate (#282): nach der Radeinheit messen, Rate wird gespeichert und angezeigt.
-      await p.click("#agBody .ag-sw summary"); await p.fill("#swBefore", "70"); await p.fill("#swAfter", "69,2".replace(",", ".")); await p.fill("#swDrank", "0.6"); await p.fill("#swDur", "60");
+      await p.click("#agBody .ag-sw summary"); await p.fill("#swBefore", "70");
+      // Aufklappen ändert die Höhe → ResizeObserver zeichnet neu; Formular muss offen bleiben und Werte behalten.
+      await p.waitForTimeout(400);
+      const swk = await p.evaluate(() => ({ open: document.querySelector("#agBody .ag-sw")?.open, v: document.getElementById("swBefore")?.value }));
+      if (!(swk.open && swk.v === "70")) errors.push(`${name}: Schweißrate-Formular klappt zu ${JSON.stringify(swk)}`); await p.fill("#swAfter", "69,2".replace(",", ".")); await p.fill("#swDrank", "0.6"); await p.fill("#swDur", "60");
       await p.click("#agBody .ag-sw .primary"); await p.waitForFunction(() => /l\/h/.test(document.getElementById("swOut")?.textContent ?? ""), null, { timeout: 3000 }).catch(() => {});
       const swr = await p.evaluate(() => ({ in: window.__sweatIn, out: document.getElementById("swOut")?.textContent ?? "", open: document.querySelector("#agBody .ag-sw")?.open, n: document.querySelectorAll("#swOut").length, msg: document.getElementById("agMsg")?.textContent }));
       if (!(swr.in?.weightBeforeKg === 70 && swr.in.indoor === true && /1,4 l\/h/.test(swr.out))) errors.push(`${name}: Schweißrate falsch ${JSON.stringify(swr)}`);

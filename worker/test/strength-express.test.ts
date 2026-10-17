@@ -38,6 +38,15 @@ describe("Express-Krafteinheit (#281)", () => {
     expect(row?.superset).toBe(incline?.superset); // Ziehen mit Drücken gepaart
   });
 
+  it("30 min: bleibt nur eine Hilfsübung, kein Supersatz-Hinweis und normale Pause", () => {
+    const r = strengthExpress(session, 30);
+    expect(r.exercises.filter((x) => x.priority === 2)).toHaveLength(1);
+    expect(r.exercises.some((x) => x.superset)).toBe(false);
+    expect(r.changes.join(" ")).not.toContain("Supersatz");
+    expect(r.text).not.toContain("Supersatz");
+    expect(r.exercises.find((x) => x.priority === 2)?.restS).toBe(75);
+  });
+
   it("20 min: nur noch Grundübungen mit 2–3 Sätzen, Weggelassenes wird genannt", () => {
     const r = strengthExpress(session, 20);
     expect(r.exercises.every((x) => x.priority === 1)).toBe(true);

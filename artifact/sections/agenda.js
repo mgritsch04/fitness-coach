@@ -197,7 +197,17 @@ FC.section({
       el("div", { class: "ag-swf" }, num("swBefore", "Gewicht vorher (kg)", { min: 30, max: 250, step: 0.1 }), num("swAfter", "Gewicht nachher (kg)", { min: 30, max: 250, step: 0.1 }), num("swDrank", "Getrunken (l)", { min: 0, max: 10, step: 0.1 }), dur,
         el("label", { class: "ag-swc" }, indoor, " Auf der Rolle")),
       el("div", { class: "ag-swa" }, save), out);
-    box.open = Boolean(last);
+    // Das Dashboard zeichnet bei Größenänderungen neu (auch durchs Aufklappen); Offen-Zustand, Eingaben und Fokus bleiben erhalten.
+    const keep = this.swKeep?.day === d.today ? this.swKeep : (this.swKeep = { day: d.today, open: false, vals: {} });
+    for (const i of box.querySelectorAll("input[id]")) {
+      if (i.id in keep.vals) { if (i.type === "checkbox") i.checked = keep.vals[i.id]; else i.value = keep.vals[i.id]; }
+      i.addEventListener("input", () => { keep.vals[i.id] = i.type === "checkbox" ? i.checked : i.value; });
+      i.addEventListener("focus", () => { keep.focus = i.id; });
+      i.addEventListener("blur", () => { if (keep.focus === i.id) keep.focus = null; });
+    }
+    box.open = keep.open || Boolean(last);
+    box.addEventListener("toggle", () => { keep.open = box.open; });
+    if (keep.focus) queueMicrotask(() => { const f = box.isConnected && FC.$(keep.focus); if (f && document.activeElement !== f) f.focus(); });
     return box;
   },
   /** Zum Abschnitt springen (am Handy erst den Tab wechseln). */
