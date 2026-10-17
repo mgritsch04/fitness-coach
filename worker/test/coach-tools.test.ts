@@ -61,6 +61,9 @@ describe("Coach-Werkzeuge", () => {
     // Erholungs-Prognose immer als Objekt (ohne genug Daten mit Grund statt Wert).
     expect(typeof ctx.value.recoveryForecast.available).toBe("boolean");
     if (!ctx.value.recoveryForecast.available) expect(ctx.value.recoveryForecast.reason).toBeTruthy();
+    // Analyse-Highlights (#179): Liste von Befunden, jeder mit Ton und Detail-Tool.
+    expect(Array.isArray(ctx.value.analysisHighlights.highlights)).toBe(true);
+    for (const h of ctx.value.analysisHighlights.highlights) expect(["warn", "good", "neutral"]).toContain(h.tone);
   });
 });
 

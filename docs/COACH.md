@@ -95,3 +95,7 @@ Für jeden Plantag ab heute mit Kraft liefert `training.strengthWorkouts` passen
 
 ## HRV-Trend in der Tagesempfehlung (#132, `core/hrv-cap.ts`)
 Die Deutung des HRV-Trends aus `core/hrv-trend.ts` (Analyse-Thread, 7-Tage-Mittel gegen den 60-Tage-Normalbereich) dämpft die Tagesempfehlung. Bei „Ermüdung“ oder „Sättigung“ gilt höchstens locker, bei „unter dem Normalbereich“ höchstens normal. Ein Trend „über dem Normalbereich“ erscheint nur als Begründung. Die Empfehlung wird dadurch nie härter. Für den Trend liest das Dashboard die HRV der letzten 70 Tage, unabhängig vom gewählten Zeitraum. `get_dashboard` gibt das Ergebnis als `hrvTrend` aus ({pattern, label, advice} oder null).
+
+## Analyse-Highlights im Coach-Kontext (#179)
+
+`get_coach_context` enthält `analysisHighlights` (aus `get_analysis_highlights`, #175): bis zu sechs Befunde `{topic, title, text, tone, tool}`, Auffälliges zuerst. Der Coach greift im Chat nur die Punkte auf, die zur Frage passen, und holt Details über das genannte Tool. Schlägt die Analyse fehl, ist das Feld `null`; der restliche Kontext bleibt verfügbar.

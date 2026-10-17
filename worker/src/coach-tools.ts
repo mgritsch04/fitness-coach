@@ -3,7 +3,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { addDays, weekStart } from "./core/analysis";
-import { analysisContext, recoveryForecastView } from "./core/analytics";
+import { analysisContext, analysisHighlightsView, recoveryForecastView } from "./core/analytics";
 import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
 import { normalizePlan } from "./core/plan";
@@ -282,9 +282,11 @@ export function registerCoachTools(server: McpServer, env: Env) {
     },
     async ({ days }) => {
       // Erholungs-Prognose für morgen (core/forecast.ts, Analyse-Thread) für Fragen wie „heute Abend noch trainieren?“.
-      const [dash, forecast] = await Promise.all([
+      // Analyse-Highlights (#175/#179): wichtigste Befunde aller Analysen als ein Aufruf statt zehn.
+      const [dash, forecast, highlights] = await Promise.all([
         dashboard(),
         analysisContext(db, { days: 90 }).then((c) => recoveryForecastView(c)).catch(() => null),
+        analysisHighlightsView(db, 6).catch(() => null),
       ]);
       const n = days ?? 14;
       const t = dash.training;
@@ -314,6 +316,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         ftpTest: t.ftpTest,
         fuelingToday: t.fueling.days.find((f) => f.day === dash.today) ?? null,
         recoveryForecast: forecast,
+        analysisHighlights: highlights,
         strengthWorkouts: t.strengthWorkouts.days.slice(0, 2).map((w) => ({ day: w.day, focus: w.focus, text: w.text })),
         eventProjection: t.projection
           ? { goal: t.projection.goal.title, date: t.projection.goal.targetDate, daysLeft: t.projection.daysLeft, atEvent: t.projection.atEvent, targetTsb: t.projection.targetTsb, verdict: t.projection.verdict, advice: t.projection.advice, weeks: t.projection.weeks }
@@ -329,6 +332,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
           "Kraft und Rad zusammen denken: keine schweren Beine vor Intervallen oder der langen Fahrt; harte Tage hart, lockere Tage locker.",
           "Das Tagebuch (Befinden, Muskelkater, Stress, Tags wie krank/Reise/Alkohol) ist so wichtig wie die Messwerte; tagEffects sind Beobachtungen, keine Ursachen.",
           "recoveryForecast ist eine statistische Schätzung der Erholung von morgen aus deinen eigenen Daten: Spanne (low–high) nennen und nur nutzen, wenn available = true.",
+          "analysisHighlights sind die wichtigsten Befunde der Analysen (tone warn zuerst); bei Bedarf mit dem genannten tool Details holen. Nicht jeden Punkt aufzählen, nur was zur Frage passt.",
           "Planänderungen mit save_plan speichern, dauerhafte Erkenntnisse mit save_coach_note, Ziele mit set_goals.",
         ],
       });
