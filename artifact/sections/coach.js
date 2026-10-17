@@ -172,6 +172,7 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
       via("fahrertyp", "Fahrertyp", "Stärken und Schwächen der Leistungskurve relativ zur FTP, Trainingsschwerpunkt.", days(90, 365), "get_rider_profile", (i) => ({ days: clamp(i.tage, 28, 365, 90) })),
       via("ausdauerprofil", "Ausdauer-Profil", "Critical Power, W′, haltbare Wattzahlen und Effizienz-Faktor lockerer Fahrten.", undefined, "get_endurance_profile", () => ({})),
       via("trainingszeit", "Trainingszeit", "Tageszeit des Trainings gegen Schlaf, Erholung und Leistung.", days(120, 365), "get_training_timing", (i) => ({ days: clamp(i.tage, 28, 365, 120) })),
+      via("erholungskurve", "Erholungskurve", "Erholung, HRV und Ruhepuls an harten Tagen und den 4 Tagen danach, Tag der Rückkehr zum Normalwert.", days(180, 365), "get_recovery_curve", (i) => ({ days: clamp(i.tage, 60, 365, 180) })),
       via("kraft_und_rad", "Kraft und Rad", "Wie Beineinheiten Erholung und Radleistung der Folgetage beeinflussen, empfohlener Abstand.", days(180, 365), "get_strength_cycling_interference", (i) => ({ days: clamp(i.tage, 28, 365, 180) })),
       via("radwetter", "Radwetter", "Wetter für heute und morgen am eingestellten Ort mit bestem Zeitfenster und Empfehlung draußen oder Rolle.", undefined, "get_ride_weather", () => ({})),
       { name: "workouts", description: "Workouts eines Zeitraums aus den geladenen Daten (Sport, Dauer, Puls, Leistung, Belastung, Strain, RPE).",
