@@ -107,6 +107,7 @@ FC.section({
     const fuel = (t.fueling?.days ?? []).find((f) => f.day === x.day);
     const nut = (t.nutrition?.days ?? []).find((n) => n.day === x.day);
     const ftp = t.ftpTest?.day === x.day ? t.ftpTest : null;
+    const both = (t.sameDay?.days ?? []).find((s) => s.day === x.day);
     const det = el("div", { class: "ag-det" },
       el("div", { class: "ag-head" }, el("h3", { text: `${isToday ? "Heute" : fmtDayLong(x.day)}: ${x.title}` }),
         el("span", { class: "ag-meta", text: x.type === "rest" ? "" : `${x.durationMin ? `${x.durationMin} min · ` : ""}~${de(x.targetLoad)} Belastung` })),
@@ -115,6 +116,7 @@ FC.section({
       el("p", { text: x.description }),
       kraft ? el("p", { text: `Kraft, ${kraft.durationMin} min: ${kraft.exercises.map((e) => `${e.name} ${e.sets}×${e.reps}${e.unit === "s" ? " s" : ""}${e.weightKg != null ? ` ${de(e.weightKg, e.weightKg % 1 ? 1 : 0)} kg` : ""}`).join(", ")}` }) : null,
       ftp ? el("p", {}, el("strong", { text: "Oder FTP-Test: " }), ftp.reason ?? "") : null,
+      both ? el("p", { class: "ag-both" }, el("strong", { text: both.conflict ? "Doppeltag, besser trennen: " : "Doppeltag: " }), both.text) : null,
       fuel && fuel.short !== "nur Wasser" ? el("p", { class: "ag-meta", text: `Verpflegung: ${fuel.short}` }) : null,
       nut ? el("p", { class: "ag-meta", title: nut.text, text: `Essen ${isToday ? "heute" : "am Tag"}: ${nut.short}` }) : null,
       x.actualMin || x.actualLoad ? el("p", { class: "muted", text: `Erledigt: ${de(x.actualMin)} min, Belastung ~${de(x.actualLoad)}${x.actualSports?.length ? ` (${x.actualSports.map(FC.sport).join(", ")})` : ""}.` }) : null);
