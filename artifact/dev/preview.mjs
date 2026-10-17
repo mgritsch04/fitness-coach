@@ -50,6 +50,7 @@ const payloads = {
   get_period_summaries: (i) => window.__MOCK__.get_period_summaries[i.period ?? "month"],
   get_body_history: () => window.__MOCK__.get_body_history,
   get_bike_workout: () => window.__MOCK__.get_bike_workout,
+  list_bike_workouts: (i) => { const m = window.__MOCK__.list_bike_workouts; return { ...m, items: m.items.filter((x) => (!i?.category || x.category === i.category) && (!i?.maxMin || x.durationMin <= i.maxMin)) }; },
   get_ride_weather: () => window.__MOCK__.get_ride_weather,
   set_weather_location: (i) => ({ location: { name: i.name, lat: 47.1, lon: 15.4 } }),
   log_weight: (i) => ({ saved: { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
