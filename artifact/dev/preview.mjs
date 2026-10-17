@@ -33,6 +33,7 @@ const payloads = {
   get_cadence_profile: () => window.__MOCK__.get_cadence_profile,
   get_rider_profile: () => window.__MOCK__.get_rider_profile,
   get_muscle_balance: () => window.__MOCK__.get_muscle_balance,
+  get_recovery_curve: () => window.__MOCK__.get_recovery_curve,
   get_analysis_highlights: () => ({ highlights: [
     { topic: "muscles", title: "Muskelbalance", tool: "get_muscle_balance", tone: "warn", text: "Rücken und Beinbeuger bekommen deutlich weniger Sätze als Brust und Beinstrecker." },
     { topic: "aerobic", title: "Aerobe Basis", tool: "get_aerobic_decoupling", tone: "good", text: "Puls bleibt bei lockeren Fahrten stabil zur Leistung." },

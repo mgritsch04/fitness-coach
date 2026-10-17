@@ -45,6 +45,7 @@ import { riderProfile } from "./rider-profile";
 import { combineCurves } from "./power";
 import { muscleBalance } from "./muscle-balance";
 import { analysisHighlights } from "./highlights";
+import { recoveryCurve } from "./recovery-curve";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -333,7 +334,13 @@ export async function analysisHighlightsView(db: D1Database, limit: number, now?
     timing: trainingTimingView(c, 120),
     interference,
     cadence: cadenceReport(rides, c.settings.ftpW, c.today, 90),
+    recoveryCurve: recoveryCurve(c.series, c.today, 180),
   }, limit);
+}
+
+/** Erholungskurve (#195): Erholung, HRV, Ruhepuls an den Tagen nach harten Tagen, Tage bis zur Rückkehr. */
+export function recoveryCurveView(c: AnalysisContext, days: number) {
+  return recoveryCurve(c.series, c.today, days);
 }
 
 /** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
