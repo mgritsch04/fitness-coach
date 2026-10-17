@@ -62,6 +62,7 @@ FC.section({
       gym ? "Was mache ich heute im Gym?" : "Was soll ich heute trainieren?",
       rec != null && rec < 34 ? "Warum ist meine Erholung heute niedrig?" : "Wie entwickelt sich meine Fitness?",
       "Wie lief meine letzte Woche?",
+      "Was fällt in meinen Analysen auf?",
       "Lohnt sich eine Ausfahrt draußen?",
     ];
     box.replaceChildren(...qs.map((q) => { const b = el("button", { type: "button", class: "chip", text: q }); b.onclick = () => { if (b.disabled) return; $("askInput").value = q; this.ask(); }; return b; }));
@@ -158,6 +159,20 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
       via("zeitraeume", "Monate/Jahre", "Summen je Woche, Monat oder Jahr: Trainingsstunden nach Sport, Belastung, Fitness, Erholung, Schlaf.", { type: "object", properties: { zeitraum: { type: "string", enum: ["week", "month", "year"] }, tage: { type: "integer", description: "Rückblick in Tagen (höchstens 730)" } } }, "get_period_summaries", (i) => ({ period: ["week", "month", "year"].includes(i.zeitraum) ? i.zeitraum : "month", days: clamp(i.tage, 28, 730, 365) })),
       via("leistungsprofil", "Leistungsprofil", "Leistungskurve (Bestwerte je Dauer), FTP-Schätzung, Leistungs- und Pulszonen.", days(42, 730), "get_fitness_profile", (i) => ({ days: clamp(i.tage, 7, 730, 42) })),
       via("koerperwerte", "Körperwerte", "Gewichtsverlauf mit 7-Tage-Mittel, Trend, BMI, W/kg und Gewichtsziel.", days(180, 730), "get_body_history", (i) => ({ days: clamp(i.tage, 7, 730, 180) })),
+      // Analysen (#185): erst „befunde“ für den Überblick, dann gezielt das passende Werkzeug.
+      via("befunde", "Wichtigste Befunde", "Die auffälligsten Befunde aller Analysen in wenigen Sätzen (Auffälliges zuerst), je mit dem Werkzeug für Details. Guter Einstieg.", undefined, "get_analysis_highlights", () => ({ limit: 8 })),
+      via("hrv_trend", "HRV-Trend", "HRV im 7-Tage-Schnitt gegen den Normalbereich, Muster (z. B. Ermüdung) und Rat.", days(90, 365), "get_hrv_trend", (i) => ({ days: clamp(i.tage, 28, 365, 90) })),
+      via("erholung_morgen", "Erholungs-Prognose", "Geschätzte Erholung für morgen mit Spanne, Szenarien (mehr Schlaf, Extra-Training) und Treffsicherheit.", undefined, "get_recovery_forecast", () => ({})),
+      via("trainingslast", "Trainingslast", "Fitness, Ermüdung und Form (CTL/ATL/TSB) im Verlauf, Lastanstieg je Woche.", days(90, 365), "get_training_load", (i) => ({ days: clamp(i.tage, 28, 365, 90) })),
+      via("muskelbalance", "Muskelbalance", "Sätze je Muskelgruppe gegen den Zielbereich, Ziehen/Drücken, Beinbeuger/Beinstrecker, Übungsvorschläge.", { type: "object", properties: { wochen: { type: "integer", description: "Zeitraum in Wochen (Standard 4, höchstens 12)" } } }, "get_muscle_balance", (i) => ({ weeks: clamp(i.wochen, 1, 12, 4) })),
+      via("aerobe_basis", "Aerobe Basis", "Puls-Leistungs-Entkopplung lockerer Fahrten im Verlauf.", days(120, 365), "get_aerobic_decoupling", (i) => ({ days: clamp(i.tage, 28, 365, 120) })),
+      via("intervalle", "Intervall-Qualität", "Leistungsabfall innerhalb von Intervall-Serien je Einheit und Intervallart.", days(90, 365), "get_interval_quality", (i) => ({ days: clamp(i.tage, 14, 365, 90) })),
+      via("ermuedungsresistenz", "Ermüdungsresistenz", "Leistung nach 500, 1000 und 1500 kJ Arbeit im Vergleich zu frisch.", days(90, 365), "get_durability", (i) => ({ days: clamp(i.tage, 14, 365, 90) })),
+      via("trittfrequenz", "Trittfrequenz", "Kadenz je Leistungszone und im Verlauf.", days(90, 365), "get_cadence_profile", (i) => ({ days: clamp(i.tage, 14, 365, 90) })),
+      via("fahrertyp", "Fahrertyp", "Stärken und Schwächen der Leistungskurve relativ zur FTP, Trainingsschwerpunkt.", days(90, 365), "get_rider_profile", (i) => ({ days: clamp(i.tage, 28, 365, 90) })),
+      via("ausdauerprofil", "Ausdauer-Profil", "Critical Power, W′, haltbare Wattzahlen und Effizienz-Faktor lockerer Fahrten.", undefined, "get_endurance_profile", () => ({})),
+      via("trainingszeit", "Trainingszeit", "Tageszeit des Trainings gegen Schlaf, Erholung und Leistung.", days(120, 365), "get_training_timing", (i) => ({ days: clamp(i.tage, 28, 365, 120) })),
+      via("kraft_und_rad", "Kraft und Rad", "Wie Beineinheiten Erholung und Radleistung der Folgetage beeinflussen, empfohlener Abstand.", days(180, 365), "get_strength_cycling_interference", (i) => ({ days: clamp(i.tage, 28, 365, 180) })),
       via("radwetter", "Radwetter", "Wetter für heute und morgen am eingestellten Ort mit bestem Zeitfenster und Empfehlung draußen oder Rolle.", undefined, "get_ride_weather", () => ({})),
       { name: "workouts", description: "Workouts eines Zeitraums aus den geladenen Daten (Sport, Dauer, Puls, Leistung, Belastung, Strain, RPE).",
         inputSchema: { type: "object", properties: { von: { type: "string", description: "JJJJ-MM-TT" }, bis: { type: "string", description: "JJJJ-MM-TT" } } },
@@ -180,7 +195,7 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
     try {
       // Mit Werkzeugen holt sich Claude zur Frage passende Daten selbst (#100); ohne bleibt es bei der Übersicht.
       const tools = (await this.canUseTools()) ? this.tools(a) : null;
-      const hint = tools ? "\nWenn die Übersicht für die Frage nicht reicht, hol dir mit den Werkzeugen gezielt mehr Daten (sparsam, höchstens drei Abrufe). Nenne kurz, worauf sich die Antwort stützt." : "";
+      const hint = tools ? "\nWenn die Übersicht für die Frage nicht reicht, hol dir mit den Werkzeugen gezielt mehr Daten (sparsam, höchstens drei Abrufe; für Analysen zuerst „befunde“). Nenne kurz, worauf sich die Antwort stützt." : "";
       // Verlauf beginnt immer mit einer Frage; Regeln und Daten stehen in dieser ersten Nachricht (nie zwei Nutzer-Nachrichten hintereinander).
       const msgs = this.chat.slice(-9).map((m) => ({ ...m }));
       msgs[0].content = `${this.rules}\n\nBeantworte die Fragen der Person zu ihren Daten.${hint}\n\nDaten (Übersicht):\n${this.data()}\n\nFrage: ${msgs[0].content}`;

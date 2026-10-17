@@ -71,6 +71,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 56 | Sprungleiste am Handy (#168) | Wischbare Abschnittsliste oben in langen Tabs | Training-Tab (über 20 000 px) schnell durchsuchen | P2 | S | Zeile 25 | Vorschau, User-Test | Done (#169, v20; User-Test #172) |
 | 57 | Muskelbalance (#171) | Sätze je Muskelgruppe gegen Zielbereich, Ziehen/Drücken | ausgewogenes Krafttraining | P2 | M | Zeile 24 | Unit-Tests, User-Test | Done ⚙️ (#174, v21; User-Test #176) |
 | 58 | Auf einen Blick (#180) | wichtigste Analyse-Befunde oben auf „Heute“ mit Sprung zu den Details (get_analysis_highlights #175) | Überblick ohne durch alle Tabs zu scrollen | P2 | S | #175 | Vorschau-Test, User-Test | Done (v22; User-Test #183) |
+| 59 | Coach-Chat kennt alle Analysen (#185) | 13 weitere Chat-Werkzeuge (Befunde, HRV-Trend, Prognose, Last, Muskelbalance, Rad-Analysen, Timing, Kraft/Rad) | fundierte Antworten zu jeder Analyse | P2 | S | #175 | Vorschau-Test, User-Test | Done (v23; User-Test #186) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
