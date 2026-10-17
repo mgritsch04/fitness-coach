@@ -93,6 +93,7 @@ FC.section({
     if (t.ftpTest) $("planSummary").textContent += ` ${t.ftpTest.text}`;
     if (d.returnToTraining?.status === "return") $("planSummary").textContent += ` ${d.returnToTraining.text}`;
     if (t.makeUp) $("planSummary").textContent += ` ${t.makeUp.text}`;
+    if (t.strengthDeload?.verdict === "deload") $("planSummary").textContent += ` Kraft: ${t.strengthDeload.text} ${t.strengthDeload.suggestion.text}`;
     const ftpDay = t.ftpTest?.day ?? null;
     const makeUpDay = t.makeUp?.day ?? null;
     const MARK = { done: "✓", missed: "✗", partial: "◐", extra: "+", today: "•", upcoming: "", rest: "" };
