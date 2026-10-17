@@ -2,7 +2,7 @@
 
 * Auftrag: `docs/MASTER_PROMPT.md`. Aktueller Stand: `docs/PROJECT_STATUS.md` – zu Sitzungsbeginn lesen, nach Meilensteinen aktualisieren.
 * Mit dem Nutzer **Deutsch** sprechen.
-* Workflow, Labels, Prioritäten, Modellwahl: `docs/DEVELOPMENT_WORKFLOW.md`. Ohne konkreten Auftrag: dort › „Ablauf je Durchlauf“ (User-Test-Rückmeldungen, `user-task`-Antworten, `idea-inbox`-Issues, dann oberste `Ready`-Zeile in `docs/IDEAS.md`). Konkrete Aufträge haben Vorrang. Nie einen fehlgeschlagenen User-Test als bestanden markieren.
+* Workflow, Labels, Prioritäten, Modellwahl: `docs/DEVELOPMENT_WORKFLOW.md`. Ohne konkreten Auftrag: dort › „Ablauf je Durchlauf“ (User-Test-Rückmeldungen, `user-task`-Antworten, `idea-inbox`-Issues, dann oberste `Ready`-Zeile in `docs/IDEAS.md`). Konkrete Aufträge haben Vorrang. Nie einen fehlgeschlagenen User-Test als bestanden markieren. User-Tests laufen im Feature-Issue (Label `auto-user-test`, Kommentar `## Testschritte`, PRs mit `Refs #` statt `Closes #`); keine neuen `[USERTEST]`-Issues.
 * Ideen-Backlog: `docs/IDEAS.md` (pflegt nur die Session, die gerade integriert; Ideen kommen als Issues mit Label `idea-inbox` rein, Anleitung `docs/IDEA_CAPTURE.md`).
 * Datenquellen: `docs/INTEGRATIONS.md`. Anbieter-Code nur in `src/providers/<anbieter>/`, nie im Kern (Datenmodell, Auswertung, Coach). Alles wird zuerst in ein gemeinsames Datenmodell (Workout, Schlaf, Recovery, Körperwerte) übersetzt.
 * **Gesundheitsdaten sind sensibel:** Keine echten Messwerte, Tokens oder Exporte ins Repository (auch nicht als Testdaten – Fixtures synthetisch erzeugen). `.env` ist in `.gitignore`; Namen der Variablen stehen in `.env.example`.
