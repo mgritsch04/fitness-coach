@@ -65,6 +65,7 @@ const payloads = {
       weeks: [{ week: wk, sessions: 2, sets: 4, tonnageKg: 2740, muscles: [{ muscle: "quads", label: "Oberschenkel vorne", sets: 2, tonnageKg: 1000 }, { muscle: "chest", label: "Brust", sets: 2, tonnageKg: 1160 }, { muscle: "glutes", label: "Gesäß", sets: 1, tonnageKg: 0 }, { muscle: "triceps", label: "Trizeps", sets: 1, tonnageKg: 0 }] }],
       progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress" },
         { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau" }],
+      standards: { available: true, weightKg: 75, note: "Grobe Richtwerte für trainierte Erwachsene, keine Norm.", text: "", exercises: [{ exercise: "back_squat", name: "Kniebeuge", e1rmKg: 116.7, perKg: 1.56, level: "Stark", next: { level: "Sehr stark", e1rmKg: 150 }, day: t }, { exercise: "bench_press", name: "Bankdrücken", e1rmKg: 91.8, perKg: 1.22, level: "Stark", next: { level: "Sehr stark", e1rmKg: 113 }, day: d(-4) }] },
       templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", sets: 3, reps: 5, weightKg: 100 }] }],
       coachNotes: [{ effect: "down", text: "Schwere Beineinheit heute: morgen eher locker radeln, keine Intervalle." }],
       note: "1RM und Belastung sind Schätzungen." }; },
@@ -267,6 +268,10 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#moStart").catch(() => errors.push(`${name}: Mobility ohne Start-Knopf`)); await p.waitForTimeout(1200);
     if (!(await p.evaluate(() => !document.getElementById("moRun").hidden && /\d+ s/.test(document.getElementById("moRun").textContent)))) errors.push(`${name}: Mobility-Timer läuft nicht`);
     await p.click("#moStart").catch(() => {});
+    // Kraft pro kg (#203): Tabelle mit Stufen im Abschnitt Krafttraining.
+    await p.evaluate(() => FC.goTo("strength")); await p.waitForTimeout(800);
+    const stdN = await p.$$eval("#stStd tbody tr", (r) => r.length).catch(() => 0);
+    if (stdN !== 2) errors.push(`${name}: Kraft pro kg zeigt ${stdN} statt 2 Zeilen`);
     await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
     await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
   }

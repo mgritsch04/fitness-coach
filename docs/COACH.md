@@ -139,3 +139,7 @@ Ist heute eine Schlüsseleinheit geplant und sagt die Tagesform „Ruhe“ oder 
 ## Rückmeldung zur Tagesempfehlung (#216)
 
 `core/feedback.ts`, Tabelle `recommendation_feedback` (Migration 0012): eine Rückmeldung je Tag (`ok`, `too_hard`, `too_easy`). `feedbackAdjust` wertet die letzten 30 Tage vor heute aus (ab 4 Rückmeldungen): Faktor = (zu leicht − zu hart) / Anzahl, ab einem Überhang von 25 % eine Korrektur der Bereitschafts-Punktzahl, begrenzt auf −10 … +5. `applyFeedback` ändert die Empfehlung höchstens um eine Stufe; nach oben nie bei Warnungen oder Ruhetag. Läuft vor dem Wiedereinstieg-Deckel (#201). Werkzeug `save_recommendation_feedback`, Feld `recommendationFeedback` im Dashboard und Coach-Kontext; in „Heute dran“ nach erledigter Einheit drei Knöpfe.
+
+## Kraft pro kg Körpergewicht (#203)
+
+`core/strength-standards.ts`: bestes geschätztes 1RM (Epley) der letzten 90 Tage je Grundübung (Kniebeuge, Kreuzheben, Bankdrücken, Schulterdrücken, Klimmzug) ÷ Körpergewicht; beim Klimmzug zählt Körpergewicht plus Zusatzgewicht. Stufen Einstieg / Grundlage / Fortgeschritten / Stark / Sehr stark mit groben Grenzen (z. B. Kniebeuge 0,75 / 1,25 / 1,5 / 2,0 × KG), dazu das 1RM für die nächste Stufe. Ohne Körpergewicht ein Hinweis statt Tabelle. Feld `standards` in `get_strength`, Tabelle „Kraft pro kg Körpergewicht“ im Abschnitt Krafttraining. Grobe Richtwerte, keine Norm.

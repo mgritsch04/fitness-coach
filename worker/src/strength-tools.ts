@@ -2,7 +2,8 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { addDays, todayIn, type WorkoutRow } from "./core/analysis";
-import { readWorkouts } from "./core/repository";
+import { readLatestBody, readWorkouts } from "./core/repository";
+import { strengthStandards } from "./core/strength-standards";
 import { readSettings } from "./core/settings";
 import { strengthDeload } from "./core/strength-deload";
 import {
@@ -140,7 +141,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
     {
       description:
         "Krafttraining-Überblick: Einheiten mit Sätzen, Volumen je Muskelgruppe und Woche (Sätze, Tonnage), geschätztes 1RM je Übung im Verlauf " +
-        "mit Status (progress/plateau/decline/new), Vorlagen und Hinweise zum Zusammenspiel mit dem Radtraining. 1RM nach Epley (Schätzung).",
+        "mit Status (progress/plateau/decline/new), Kraft pro kg Körpergewicht mit groben Stufen (standards), Vorlagen und Hinweise zum Zusammenspiel mit dem Radtraining. 1RM nach Epley (Schätzung).",
       inputSchema: { weeks: z.number().int().min(1).max(52).optional().describe("Zeitraum in Wochen, Standard 8") },
       annotations: { readOnlyHint: true },
     },
@@ -156,6 +157,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         weeks: weeklyVolume(inRange),
         progress: exerciseProgress(all, t),
         deload: strengthDeload(all, t),
+        standards: strengthStandards(all, ((await readLatestBody(env.DB).catch(() => null)) as { weight_kg?: number | null } | null)?.weight_kg ?? null, t),
         templates: await readTemplates(env.DB),
         coachNotes: strengthCoachNotes(all, t),
         note: "1RM und Belastung sind Schätzungen. Volumen: Hauptmuskel zählt einen Satz, Hilfsmuskel einen halben.",
