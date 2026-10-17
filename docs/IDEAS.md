@@ -69,6 +69,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 54 | Trittfrequenz-Profil (#161) | Kadenz-Verteilung, Median je Leistungszone, Verlauf in Zone 2 | Technik auf dem Rad | P3 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#162, v19; User-Test #163) |
 | 55 | Fahrertyp (#164) | Stärken und Schwächen der Leistungskurve relativ zur FTP | Training gezielt auf Schwächen | P3 | M | Zeile 34 | Unit-Tests, User-Test | Done ⚙️ (#167, v20; User-Test #170) |
 | 56 | Sprungleiste am Handy (#168) | Wischbare Abschnittsliste oben in langen Tabs | Training-Tab (über 20 000 px) schnell durchsuchen | P2 | S | Zeile 25 | Vorschau, User-Test | Done (#169, v20; User-Test #172) |
+| 57 | Muskelbalance (#171) | Sätze je Muskelgruppe gegen Zielbereich, Ziehen/Drücken | ausgewogenes Krafttraining | P2 | M | Zeile 24 | Unit-Tests, User-Test | Done ⚙️ (#174, v21; User-Test #176) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
