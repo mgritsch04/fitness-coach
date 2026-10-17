@@ -24,7 +24,7 @@ function tools() {
 describe("Coach-Werkzeuge", () => {
   it("registriert alle Werkzeuge", () => {
     expect([...tools().handlers.keys()].sort()).toEqual(
-      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_plan", "set_goals", "set_training_prefs"].sort(),
+      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_recommendation_feedback", "save_plan", "set_goals", "set_training_prefs"].sort(),
     );
   });
 
@@ -75,6 +75,11 @@ describe("Coach-Werkzeuge", () => {
     const st = await call("get_sleep_target");
     expect(st.value.targetAsleepH).toBeGreaterThan(6);
     expect(st.value.note).toContain("Schätzung");
+    // Rückmeldung (#216): speichern, Zukunft abgelehnt.
+    const fb = await call("save_recommendation_feedback", { verdict: "too_hard" });
+    expect(fb.value.saved.verdict).toBe("too_hard");
+    expect(fb.value.today).toBe("too_hard");
+    expect((await call("save_recommendation_feedback", { verdict: "ok", day: "2999-01-01" })).error).toBe(true);
     // Mobility (#223): ohne Art passend zu heute, mit Art fest.
     expect((await call("get_mobility_routine")).value.exercises.length).toBeGreaterThan(3);
     expect((await call("get_mobility_routine", { kind: "legs" })).value.kind).toBe("legs");

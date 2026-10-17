@@ -12,6 +12,7 @@ import { blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, w
 import { blockView, buildBlock, deleteBlock, readBlock, saveBlock } from "./core/periodization";
 import { readJournal } from "./core/journal";
 import { zoneTargets } from "./core/zone-targets";
+import { feedbackAdjust, readFeedback, saveFeedback } from "./core/feedback";
 import { MOBILITY_KINDS, mobilityKindFor, mobilityRoutine, type MobilityKind } from "./core/mobility";
 import type { Env } from "./env";
 
@@ -295,6 +296,29 @@ export function registerCoachTools(server: McpServer, env: Env) {
   );
 
   server.registerTool(
+    "save_recommendation_feedback",
+    {
+      description:
+        "Rückmeldung zur Tagesempfehlung speichern: ok = passt, too_hard = war zu hart, too_easy = war zu leicht (eine je Tag, überschreibt). " +
+        "Aus den letzten 30 Tagen (ab 4 Rückmeldungen) wird die Empfehlung begrenzt angepasst: häufig zu hart → vorsichtiger. Liefert die aktuelle Auswertung.",
+      inputSchema: {
+        verdict: z.enum(["ok", "too_hard", "too_easy"]),
+        day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Tag (YYYY-MM-DD), Standard heute"),
+        readiness: z.enum(["rest", "easy", "moderate", "hard"]).optional().describe("Empfehlung an dem Tag (Standard: heutige)"),
+        note: z.string().max(300).optional(),
+      },
+    },
+    async ({ verdict, day, readiness, note }) => {
+      const dash = await dashboard();
+      const d = day ?? dash.today;
+      if (d > dash.today) return fail("future_day", "Rückmeldung nur für heute oder vergangene Tage.");
+      await saveFeedback(db, { day: d, verdict, readiness: readiness ?? (d === dash.today ? dash.coach.readiness : null), note: note ?? null });
+      const rows = await readFeedback(db, addDays(dash.today, -30));
+      return json({ saved: { day: d, verdict }, ...feedbackAdjust(rows, dash.today) });
+    },
+  );
+
+  server.registerTool(
     "get_mobility_routine",
     {
       description:
@@ -400,6 +424,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         ftpTest: t.ftpTest,
         makeUp: t.makeUp,
         fuelingToday: t.fueling.days.find((f) => f.day === dash.today) ?? null,
+        recommendationFeedback: { count: dash.recommendationFeedback.count, scoreDelta: dash.recommendationFeedback.scoreDelta, text: dash.recommendationFeedback.text },
         nutritionToday: t.nutrition.days.find((n) => n.day === dash.today) ?? null,
         recoveryForecast: forecast,
         analysisHighlights: highlights,
@@ -422,6 +447,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
           "recoveryForecast ist eine statistische Schätzung der Erholung von morgen aus deinen eigenen Daten: Spanne (low–high) nennen und nur nutzen, wenn available = true.",
           "returnToTraining: Läuft ein Wiedereinstieg nach Krankheit oder Pause, die Stufe (Dauer, Intensität, Kraft) einhalten und bei abort nicht steigern. Bei Fieber, Brustschmerz oder Atemnot nicht trainieren.",
           "makeUp: kind makeUp = ausgefallene Schlüsseleinheit nachholen, kind postpone = heutige Schlüsseleinheit wegen der Tagesform verschieben. Nur am vorgeschlagenen Tag; bei day = null ausfallen lassen statt zwei harte Tage hintereinander.",
+          "recommendationFeedback: Wie gut passten die Empfehlungen zuletzt (Rückmeldungen passt/zu hart/zu leicht); nach einer Einheit nach der Rückmeldung fragen und mit save_recommendation_feedback speichern.",
           "nutritionToday: Eiweiß- und Kohlenhydrat-Richtwert für heute (Faustregel nach Gewicht und Belastung, heute nach Tagesform); als Richtwert nennen, keine Ernährungsberatung.",
           "analysisHighlights sind die wichtigsten Befunde der Analysen (tone warn zuerst); bei Bedarf mit dem genannten tool Details holen. Nicht jeden Punkt aufzählen, nur was zur Frage passt.",
           "Planänderungen mit save_plan speichern, dauerhafte Erkenntnisse mit save_coach_note, Ziele mit set_goals.",

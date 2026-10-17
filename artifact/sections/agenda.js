@@ -22,6 +22,8 @@ FC.section({
     .ag-head h3 { margin: 0; }
     .ag-meta { color: var(--ink-2); font-size: .9rem; }
     .ag-det p { margin: 6px 0; }
+    .ag-fb { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ag-fb button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
     .ag-rpe { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
     .ag-rpe p { margin: 0 0 6px; }
     .ag-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }`,
@@ -138,7 +140,25 @@ FC.section({
     // Heutige Workouts ohne Anstrengung: kurz nachfragen (#134), verbessert die Belastungsschätzung beim Krafttraining.
     const open = isToday && FC.state.rpePicker ? d.workouts.filter((w) => w.day === d.today && !w.rpe && w.durationMin >= 10).slice(0, 2) : [];
     const ask = open.map((w) => el("div", { class: "ag-rpe" }, el("p", { text: `Wie anstrengend war dein ${FC.sport(w.sport)} (${de(w.durationMin)} min)? 1 sehr leicht, 10 maximal.` }), FC.state.rpePicker(w)));
-    $("agBody").replaceChildren(week, det, ...ask, act, el("p", { class: "muted", id: "agMsg", role: "status" }));
+    $("agBody").replaceChildren(week, det, ...ask, isToday && (x.status === "done" || x.status === "partial") ? this.feedback(d) : "", act, el("p", { class: "muted", id: "agMsg", role: "status" }));
+  },
+  /** Rückmeldung zur Tagesempfehlung (#216): passt / zu hart / zu leicht. */
+  feedback(d) {
+    const { el } = FC, cur = d.recommendationFeedback?.today ?? null;
+    const opts = [["ok", "Passte"], ["too_hard", "War zu hart"], ["too_easy", "War zu leicht"]];
+    const row = el("div", { class: "ag-fb", role: "group", "aria-label": "Rückmeldung zur Empfehlung" }, ...opts.map(([v, label]) => {
+      const b = el("button", { type: "button", text: label, "aria-pressed": String(cur === v) });
+      b.onclick = async () => {
+        try {
+          const r = await FC.call("save_recommendation_feedback", { verdict: v, readiness: d.coach?.readiness });
+          d.recommendationFeedback = { ...(d.recommendationFeedback ?? {}), ...r };
+          this.draw();
+          FC.$("agMsg").textContent = "Danke, gespeichert.";
+        } catch { FC.$("agMsg").textContent = "Speichern fehlgeschlagen."; }
+      };
+      return b;
+    }));
+    return el("div", { class: "ag-rpe" }, el("p", { text: "Wie passte die Empfehlung heute?" }), row);
   },
   /** Zum Abschnitt springen (am Handy erst den Tab wechseln). */
   go(tab, id) {
