@@ -22,3 +22,5 @@ test-results/
 # Vorschau des Dashboard-Artefakts (synthetische Daten)
 artifact/dev/out/
 artifact/dev/mock-dashboard.json
+# Automatische User-Tests (Bilder, Berichte)
+usertest-reports/
