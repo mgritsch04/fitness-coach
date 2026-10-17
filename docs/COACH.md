@@ -99,3 +99,7 @@ Die Deutung des HRV-Trends aus `core/hrv-trend.ts` (Analyse-Thread, 7-Tage-Mitte
 ## Analyse-Highlights im Coach-Kontext (#179)
 
 `get_coach_context` enthält `analysisHighlights` (aus `get_analysis_highlights`, #175): bis zu sechs Befunde `{topic, title, text, tone, tool}`, Auffälliges zuerst. Der Coach greift im Chat nur die Punkte auf, die zur Frage passen, und holt Details über das genannte Tool. Schlägt die Analyse fehl, ist das Feld `null`; der restliche Kontext bleibt verfügbar.
+
+## Ausgefallene Schlüsseleinheit nachholen (#194)
+
+`training.makeUp` (auch in `get_coach_context`): Ist eine Schlüsseleinheit der Woche ausgefallen (oder Intervalle nur locker gefahren), sucht `core/make-up.ts` den frühesten lockeren Tag ab heute, an dem sie die Grundlage ersetzen kann. Gesperrt sind Tage direkt nach einem harten Tag, nach der langen Fahrt oder nach Beinkraft, Tage vor einem harten Tag oder einem Beintag, Tage mit Beinkraft sowie heute bei lockerer Tagesform oder wenn heute schon trainiert wurde. Nachgeholt wird höchstens eine Einheit (Schwelle vor VO2max vor langer Fahrt vor Tempo), die übrigen entfallen. Passt kein Tag, lautet der Rat: nicht nachholen. Felder: `{missed {day,title,type}, day|null, replaces|null, text, dropped[]}`. Der Wochenplan markiert den Tag mit „Nachholen“.
