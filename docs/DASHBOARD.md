@@ -30,6 +30,8 @@ Auf Gs Wunsch zeigt das Dashboard beide Projekte: Nutzung einmal oben (gilt für
 
 ## Ohne Updater-Session (#309, ab 17.10.)
 - **GitHub-Stand ohne Modell:** Die Seite ruft über den „Fitness Coach“-Connector das nur lesende Werkzeug `get_dev_board` auf (Worker, `worker/src/devboard-tools.ts`). Der Worker holt die offenen Issues und PRs beider Repos von der öffentlichen GitHub-API und hält das Ergebnis 5 min im KV. Bei einem GitHub-Fehler zeigt er den letzten Stand mit `stale: true`. Ein Token ist nicht nötig. Ein optionales Secret `GITHUB_READ_TOKEN` hebt das Limit an. Die Dokumente `features`, `usertests`, `forecast` und `wp_*` dienen nur noch als Rückfall.
+- **Fertig auf main:** `get_dev_board` liefert je Projekt zusätzlich `done = {at, rows: [{nr, titel, merged, issues, test}]}`. Das sind die letzten 30 in `main` gemergten PRs, ohne `docs:`/`ci:`/`chore:`/`test:`/`build:`, neueste zuerst. Die verknüpften Issues stammen aus `Closes/Fixes/Refs #n` in der PR-Beschreibung. `test` ist `offen`, solange ein verknüpftes Issue offen ist, `getestet`, wenn alle geschlossen sind, sonst `null`. Gemergte PRs werden höchstens alle 30 min abgerufen (eigener KV-Schlüssel), damit das GitHub-Limit ohne Token reicht.
+- **Auto-Modus:** Das Dokument `board/mode = {mode: "idle"|"normal"|"push", since: ISO UTC, note?}` schreibt der Leiter bei jedem Moduswechsel. Die Kachel „Auto-Modus“ zeigt es an; fehlt es, steht dort „–“.
 - **Thread-Zeilen (R2):** Jeder Thread schreibt seine eigene Zeile, ohne Abruf im Takt.
 
 ### Zeile je Thread: Sammlung `threads`
