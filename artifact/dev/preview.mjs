@@ -65,6 +65,7 @@ const payloads = {
       weeks: [{ week: wk, sessions: 2, sets: 4, tonnageKg: 2740, muscles: [{ muscle: "quads", label: "Oberschenkel vorne", sets: 2, tonnageKg: 1000 }, { muscle: "chest", label: "Brust", sets: 2, tonnageKg: 1160 }, { muscle: "glutes", label: "Gesäß", sets: 1, tonnageKg: 0 }, { muscle: "triceps", label: "Trizeps", sets: 1, tonnageKg: 0 }] }],
       progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress" },
         { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau" }],
+      repRecords: [{ exercise: "bench_press", name: "Bankdrücken", marks: [{ kg: 72.5, reps: 8, day: d(-4) }] }],
       standards: { available: true, weightKg: 75, note: "Grobe Richtwerte für trainierte Erwachsene, keine Norm.", text: "", exercises: [{ exercise: "back_squat", name: "Kniebeuge", e1rmKg: 116.7, perKg: 1.56, level: "Stark", next: { level: "Sehr stark", e1rmKg: 150 }, day: t }, { exercise: "bench_press", name: "Bankdrücken", e1rmKg: 91.8, perKg: 1.22, level: "Stark", next: { level: "Sehr stark", e1rmKg: 113 }, day: d(-4) }] },
       templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", sets: 3, reps: 5, weightKg: 100 }] }],
       coachNotes: [{ effect: "down", text: "Schwere Beineinheit heute: morgen eher locker radeln, keine Intervalle." }],
@@ -332,6 +333,12 @@ for (const [name, vp, scheme, tab] of shots) {
     const rir = await p.evaluate(() => ({ kg: document.querySelectorAll("#gyBody .gy-ex")[0]?.querySelectorAll(".gy-set input[aria-label$='Gewicht in kg']")[1]?.value, note: document.querySelector("#gyBody .gy-note")?.textContent ?? "" }));
     if (rir.kg !== "107.5" || !/Bestwert/.test(rir.note) || !/107,5 kg/.test(rir.note)) errors.push(`${name}: Reserve passt das Gewicht nicht an ${JSON.stringify(rir)}`);
     await p.screenshot({ path: join(out, "phone-gym.png") });
+    // Wiederholungsrekord (#299): Bankdrücken 70 kg × 9, bisher bei ≥ 70 kg höchstens 8 Wdh. (1RM bleibt unter dem Bestwert).
+    const bench = "#gyBody .gy-ex:last-of-type .gy-set";
+    await p.fill(`${bench} input[aria-label$='Gewicht in kg']`, "70"); await p.fill(`${bench} input[aria-label$='Wiederholungen']`, "9");
+    await p.click(`${bench} .ok`); await p.waitForTimeout(100);
+    const repNote = await p.textContent("#gyBody .gy-note").catch(() => "");
+    if (!/Wiederholungsrekord: erstmals 9 Wdh\. mit 70 kg \(bisher höchstens 8\)/.test(repNote)) errors.push(`${name}: kein Wiederholungsrekord „${repNote}“`);
     // Übung tauschen (#204): letzte Übung gegen Alternative tauschen, Satzzahl bleibt.
     const before = await p.$$eval("#gyBody .gy-ex", (l) => { const c = l[l.length - 1]; return c.querySelectorAll(".gy-set").length; });
     await p.click("#gyBody .gy-ex:last-of-type .gy-swap"); await p.waitForSelector("#gyBody .gy-swapbox button", { timeout: 2000 }).catch(() => {});

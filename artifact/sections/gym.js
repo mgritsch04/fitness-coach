@@ -287,6 +287,7 @@ FC.section({
       if (x.sets.every((y) => y.done)) { const next = st.exercises.findIndex((y, k) => k > i && y.sets.some((z) => !z.done)); st.cur = next >= 0 ? next : i; }
       else st.cur = i;
       this.checkBest(x, s);
+      if (!this.note) this.checkReps(x, s);
       this.audio(); // AudioContext nach einer Berührung anlegen, damit der Ton am Pausenende spielen darf
     }
     this.persist(); this.draw();
@@ -317,7 +318,7 @@ FC.section({
       const kg = this.nextKg(s.kg, rir, this.isBar(x.name));
       if (kg !== s.kg) { for (const t of x.sets) if (!t.done) t.kg = kg; }
       const d = FC.de(kg, kg % 1 ? 1 : 0);
-      const best = this.note?.startsWith("Neuer Bestwert") ? this.note : null;
+      const best = /^(Neuer Bestwert|Wiederholungsrekord)/.test(this.note ?? "") ? this.note : null;
       this.note = [best, rir === "1-2" ? `Reserve passt: nächster Satz wieder ${d} kg.` : `Nächster Satz: ${d} kg (${rir === "0" ? "am Limit, etwas leichter" : "noch viel drin, etwas schwerer"}).`].filter(Boolean).join(" ");
     }
     this.persist(); this.draw();
@@ -330,6 +331,18 @@ FC.section({
     if (e1 <= best || e1 <= (x.pr ?? 0)) return;
     x.pr = e1;
     this.note = `Neuer Bestwert bei ${x.name}: geschätztes 1RM ${FC.de(e1, 1)} kg (bisher ${FC.de(best, 1)} kg).`;
+  },
+  /** Wiederholungsrekord je Gewicht (#299, spiegelt core/rep-records.ts): bei diesem oder höherem Gewicht noch nie so viele Wdh. */
+  checkReps(x, s) {
+    if (x.unit === "s" || !(s.kg > 0) || !(s.reps > 0)) return;
+    const n = x.name.trim().toLowerCase();
+    const marks = this.data?.repRecords?.find((r) => r.name.toLowerCase() === n || r.exercise === n)?.marks;
+    if (!marks) return;
+    let prev = null;
+    for (const m of marks) if (m.kg >= s.kg) prev = Math.max(prev ?? 0, m.reps);
+    for (const t of x.sets) if (t !== s && t.done && t.kg >= s.kg) prev = Math.max(prev ?? 0, t.reps); // schon heute geschafft
+    if (prev == null || s.reps <= prev) return;
+    this.note = `Wiederholungsrekord: erstmals ${s.reps} Wdh. mit ${FC.de(s.kg, s.kg % 1 ? 1 : 0)} kg (bisher höchstens ${prev}).`;
   },
   shiftRest(d) { const st = this.st; if (!st.restEnd) st.restEnd = Date.now(); st.restEnd = Math.max(Date.now(), st.restEnd + d * 1000); this.beeped = false; this.persist(); this.tickNow(); },
   tickNow() {
