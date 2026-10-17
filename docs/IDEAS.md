@@ -104,6 +104,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 89 | Training nach der Erholungsampel (#226) | Strain je Erholungszone, Treffer-Quote | hörst du auf deinen Körper? | P2 | S | Zeile 3 | Unit-Tests, Vorschau | Done (User-Test #234) |
 | 90 | MyWhoosh automatisch synchronisieren (#267) | nur offizielle Wege (z. B. Intervals.icu), Recherche dann Provider unter `providers/<anbieter>/` | kein manueller FIT-Upload | P1 | M | Zeile 6; kein Scraping | neue MyWhoosh-Fahrt erscheint ohne Duplikat | In Progress (Thread „MyWhoosh automatisch synchronisieren“) |
 | 91 | Abschnitte suchen und hinspringen (#269) | Suchfeld in der Kopfzeile, Treffer mit Tab, Sprung klappt auf | über 50 Abschnitte schnell finden | P2 | S | Zeile 60 | Vorschau-Test, User-Test #287 | Done |
+| 92 | Lieblingsabschnitte anheften (#291) | Stern je Überschrift, Favoriten-Leiste oben auf „Heute“ | eigene Startseite | P3 | S | Zeile 91 | Vorschau-Test, User-Test #292 | Done |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
