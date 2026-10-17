@@ -266,6 +266,29 @@ export function registerCoachTools(server: McpServer, env: Env) {
   );
 
   server.registerTool(
+    "get_sleep_target",
+    {
+      description:
+        "Schlafziel für heute Nacht: Schlafdauer aus eigenem Grundbedarf (Nächte vor guter Erholung) plus Zuschläge für Belastung heute, Schlafschuld und harte Einheit morgen; " +
+        "Zubettgehzeit aus der üblichen Aufwachzeit und der Schlafeffizienz. Dazu die Erholungs-Prognose für morgen mit Ziel gegen üblichen Schlaf (falls verfügbar). Schätzung.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const [dash, c] = await Promise.all([dashboard(), analysisContext(db, { days: 90 }).catch(() => null)]);
+      const t = dash.sleepTarget;
+      const scenario = c ? (() => {
+        const withTarget = recoveryForecastView(c, { sleepH: t.targetAsleepH });
+        const usual = recoveryForecastView(c);
+        return withTarget.available && usual.available
+          ? { usualSleepH: usual.typicalSleepH, recoveryUsual: usual.forecast.recovery, recoveryWithTarget: withTarget.forecast.recovery, note: "Erholung morgen laut Prognose (Schätzung)." }
+          : null;
+      })() : null;
+      return json({ ...t, forecast: scenario });
+    },
+  );
+
+  server.registerTool(
     "delete_coach_note",
     { description: "Löscht einen gespeicherten Coach-Text per id.", inputSchema: { id: z.number().int() }, annotations: { readOnlyHint: false, destructiveHint: true } },
     async ({ id }) => json({ id, deleted: await deleteNote(db, id) }),
@@ -298,6 +321,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         readiness: dash.coach,
         earlyWarning: dash.earlyWarning,
         returnToTraining: dash.returnToTraining,
+        sleepTarget: dash.sleepTarget,
         planToday: t.today,
         trends: trendBrief,
         recentDays: dash.days.slice(-n).map((d) => ({

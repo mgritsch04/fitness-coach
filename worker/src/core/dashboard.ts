@@ -22,6 +22,8 @@ import { applyWarning } from "./warning-cap";
 import { applyHrvTrend } from "./hrv-cap";
 import { hrvTrend } from "./hrv-trend";
 import { applyReturn, returnToTraining } from "./return-to-training";
+import { sleepReport } from "./sleep";
+import { sleepTarget } from "./sleep-need";
 import { earlyWarning } from "./warnings";
 import { estimateFtp, flattenCurves, hrZoneReport, parseZones, powerCurve } from "./performance";
 import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
@@ -165,5 +167,9 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     tagEffects: tagEffects(journal, series),
   };
   // Coach-Gedächtnis: Ziele, Wochenplan mit Soll/Ist, Abgleich heutige Einheit ↔ Tagesform.
-  return { ...result, journal: journalOut, training: await trainingOverview(db, result) };
+  const training = await trainingOverview(db, result);
+  // Schlafziel für heute Nacht (sleep-need.ts, #205) mit der Einheit von morgen aus dem Plan.
+  const nights = sleepReport(sleeps, settings.timezone ?? "Europe/Berlin", addDays(today, -60), today, settings.sleepNeedH).nights;
+  const tomorrowPlan = training.thisWeek.plan.days.find((x) => x.day === addDays(today, 1)) ?? null;
+  return { ...result, journal: journalOut, training, sleepTarget: sleepTarget({ today, nights, series, sleepNeedH: settings.sleepNeedH, tomorrow: tomorrowPlan }) };
 }
