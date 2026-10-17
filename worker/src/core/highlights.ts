@@ -23,6 +23,7 @@ export interface HighlightInputs {
   timing?: { hints: string[] } | null;
   interference?: { suggestion?: { hours: number | null; text: string } } | null;
   cadence?: { pedalingMinutes: number; hints: string[] } | null;
+  recoveryCurve?: { available: boolean; hints?: string[]; backToNormalDays?: number | null } | null;
 }
 
 const ORDER: Record<Tone, number> = { warn: 0, good: 1, neutral: 2 };
@@ -75,6 +76,10 @@ export function analysisHighlights(x: HighlightInputs, limit = 6) {
   const c = x.cadence;
   if (c && c.pedalingMinutes && c.hints.length && !c.hints[0].includes("unauffällig") && !c.hints[0].startsWith("Ohne FTP"))
     add({ topic: "cadence", title: "Trittfrequenz", tool: "get_cadence_profile", text: c.hints[0], tone: c.hints[0].includes("nur") ? "warn" : "neutral" });
+
+  const rc = x.recoveryCurve;
+  if (rc?.available && rc.hints?.length)
+    add({ topic: "recoveryCurve", title: "Erholung nach harten Tagen", tool: "get_recovery_curve", text: rc.hints[0], tone: rc.backToNormalDays == null ? "warn" : "neutral" });
 
   const sorted = all.map((h, k) => ({ h, k })).sort((p, q) => ORDER[p.h.tone] - ORDER[q.h.tone] || p.k - q.k).map((p) => p.h);
   return {

@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -544,6 +544,21 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ limit }) => json(await analysisHighlightsView(env.DB, limit ?? 6)),
+  );
+
+  server.registerTool(
+    "get_recovery_curve",
+    {
+      description:
+        "Erholungskurve: Erholung, HRV und Ruhepuls an den Tagen 0 bis +4 nach harten Tagen (Strain ab dem 80. Perzentil) gegenüber dem eigenen Mittel, " +
+        "Tage bis zur Rückkehr aufs Normalniveau und Einfluss des Schlafs danach. Nur Tageswerte (WHOOP). Beobachtungen, keine Diagnose.",
+      inputSchema: { days: z.number().int().min(60).max(365).optional().describe("Zeitraum in Tagen, Standard 180") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => {
+      const days = d ?? 180;
+      return json(recoveryCurveView(await analysisContext(env.DB, { days, maxDays: 365 }), days));
+    },
   );
 
   server.registerTool(

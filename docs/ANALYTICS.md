@@ -239,7 +239,16 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 
 ## Analyse-Highlights (`get_analysis_highlights`, #175)
 
-`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad und Trittfrequenz. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
+`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz und Erholungskurve. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
 
 - Der View (`analysisHighlightsView`) liest Kontext (180 Tage) und Sekundenwerte (120 Tage) nur einmal und füttert damit alle Berichte.
 - Kein eigener Dashboard-Abschnitt; gedacht als Einstieg für den Coach und für Briefing oder Wochenrückblick.
+
+## Erholungskurve (`get_recovery_curve`, #195)
+
+`core/recovery-curve.ts` nutzt nur Tageswerte (WHOOP). Harte Tage haben einen Strain ab dem 80. Perzentil des Zeitraums (mindestens 14); bevorzugt werden harte Tage ohne weiteren harten Tag in den zwei Tagen danach, sonst alle. Ab 4 harten Tagen gibt es eine Kurve.
+
+- `curve[]`: Tag 0 (Morgen des harten Tags) bis +4 mit Erholung (Punkte), HRV (%) und Ruhepuls (Schläge) gegenüber dem Mittel im Zeitraum.
+- `backToNormalDays`: erster Tag ab +1 mit Erholung höchstens 3 Punkte unter dem Mittel; `sleepEffect`: Erholung am Morgen danach bei längerem gegen kürzeren Schlaf als üblich (je mindestens 2 Fälle).
+- `hints[]`: Tage bis zur Rückkehr und daraus lockere Tage nach harten Einheiten, Schlaf-Effekt ab 5 Punkten.
+- Dashboard: `sections/recoverycurve.js`, Reiter Verlauf nach dem HRV-Trend. Beobachtungen, keine Ursache-Wirkung.
