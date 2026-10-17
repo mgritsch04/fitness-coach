@@ -72,6 +72,7 @@ const payloads = {
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   save_strength_template: (i) => i,
+  get_exercise_alternatives: (i) => ({ exercise: "bench_press", name: i.exercise, known: true, pattern: "push", alternatives: [{ exercise: "dumbbell_bench", name: "Kurzhantel-Bankdrücken", startKg: 30, lastDay: null, basis: "history" }], note: "Startgewicht aus deiner letzten Einheit." }),
   update_settings: (i) => i,
   save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
@@ -304,6 +305,12 @@ for (const [name, vp, scheme, tab] of shots) {
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
     await p.screenshot({ path: join(out, "phone-gym.png") });
+    // Übung tauschen (#204): letzte Übung gegen Alternative tauschen, Satzzahl bleibt.
+    const before = await p.$$eval("#gyBody .gy-ex", (l) => { const c = l[l.length - 1]; return c.querySelectorAll(".gy-set").length; });
+    await p.click("#gyBody .gy-ex:last-of-type .gy-swap"); await p.waitForSelector("#gyBody .gy-swapbox button", { timeout: 2000 }).catch(() => {});
+    await p.click("#gyBody .gy-swapbox button").catch(() => errors.push(`${name}: Tauschen zeigt keine Alternative`)); await p.waitForTimeout(100);
+    const after = await p.$$eval("#gyBody .gy-ex", (l) => { const c = l[l.length - 1]; return { h: c.querySelector("h3")?.textContent ?? "", n: c.querySelectorAll(".gy-set").length }; });
+    if (!after.h.includes("Kurzhantel-Bankdrücken") || after.n !== before) errors.push(`${name}: Tauschen ersetzt die Übung nicht richtig ${JSON.stringify({ before, after })}`);
     await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(7)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
     const saved = await p.evaluate(() => window.__gymSaved);
     if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);

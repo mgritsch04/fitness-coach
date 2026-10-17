@@ -4,6 +4,7 @@ import { z } from "zod";
 import { addDays, todayIn, type WorkoutRow } from "./core/analysis";
 import { readLatestBody, readWorkouts } from "./core/repository";
 import { strengthStandards } from "./core/strength-standards";
+import { exerciseAlternatives } from "./core/exercises";
 import { readSettings } from "./core/settings";
 import { strengthDeload } from "./core/strength-deload";
 import {
@@ -162,6 +163,24 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         coachNotes: strengthCoachNotes(all, t),
         note: "1RM und Belastung sind Schätzungen. Volumen: Hauptmuskel zählt einen Satz, Hilfsmuskel einen halben.",
       });
+    },
+  );
+
+  server.registerTool(
+    "get_exercise_alternatives",
+    {
+      description:
+        "Gleichwertige Alternativen zu einer Übung (gleiche Muskelgruppe, ähnliches Bewegungsmuster), z. B. wenn das Gerät belegt ist: " +
+        "Kniebeuge ↔ Beinpresse ↔ Ausfallschritt usw. Mit Startgewicht aus deiner letzten Einheit der Alternative (sonst selbst wählen).",
+      inputSchema: {
+        exercise: z.string().min(1).max(80).describe("Übung als Name (z. B. Kniebeuge) oder Schlüssel (back_squat)"),
+        exclude: z.array(z.string().max(80)).max(20).optional().describe("Übungen, die schon in der Einheit sind"),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ exercise, exclude }) => {
+      const t = await today();
+      return json(exerciseAlternatives(exercise, await readStrengthSessions(env.DB, addDays(t, -180)), exclude ?? []));
     },
   );
 
