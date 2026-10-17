@@ -86,7 +86,11 @@ export function musclesOf(key: string, custom?: Muscle[] | null): { primary: Mus
   return { primary: custom?.length ? custom : ["other"], secondary: [] };
 }
 
-export const exerciseName = (key: string, fallback?: string) => EXERCISES[key]?.name ?? fallback ?? key;
+/** Anzeigename; unbekannte Übungen, die nur noch als kleingeschriebener Schlüssel vorliegen, mit großem Anfangsbuchstaben. */
+export const exerciseName = (key: string, fallback?: string) => {
+  const name = EXERCISES[key]?.name ?? fallback ?? key;
+  return name && name === name.toLowerCase() ? name[0].toUpperCase() + name.slice(1) : name;
+};
 
 // --- Datentypen ---------------------------------------------------------------------------------
 

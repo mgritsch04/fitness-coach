@@ -7,9 +7,10 @@ Antworte auf Deutsch, kurz und für Nicht-Entwickler verständlich.
 ## Grundlage
 - Repository: mgritsch04/fitness-coach. Vor jeder Arbeit CLAUDE.md, docs/PROJECT_STATUS.md und docs/DEVELOPMENT_WORKFLOW.md lesen; sie gelten verbindlich. Vorlage für die Abläufe ist mgritsch04/wohnungsplaner-3d (nur lesen, nie ändern).
 - Ein ausdrücklicher Auftrag von G geht immer vor. Sonst gilt der Ablauf je Durchlauf unten.
+- Rollen: Haupt-Thread („Dashboard und Auswertungen“: pflegt docs/IDEAS.md, docs/PROJECT_STATUS.md, Issues-Übersicht und das Fitness-Dashboard-Artefakt), Feature-Threads (setzen eigene Features um und setzen nach dem Merge für ihre eigenen Issues selbst Label und „## Testschritte“-Kommentar; der Haupt-Thread kontrolliert nur), Test-Thread („User-Tests automatisch“: führt die automatischen User-Tests aus). Der Koordinator plant und verteilt die Arbeit.
 
 ## Sicherheit und Daten
-- Secrets nie im Chat abfragen, nur über Umgebungs- oder Cloudflare-Einstellungen. Keine Secrets, Tokens oder echten Gesundheitsdaten in Repository, Issues, Chat, Browser-Code oder Artefakten; Testdaten synthetisch erzeugen.
+- Secrets nie im Chat abfragen, nur über Umgebungs- oder Cloudflare-Einstellungen. Keine Secrets, Tokens oder echten Gesundheitsdaten in Repository, Issues, Chat, Browser-Code oder Artefakten; Testdaten synthetisch erzeugen. Das Repository ist öffentlich.
 - Nur offizielle APIs laut docs/INTEGRATIONS.md, kein Scraping. MyWhoosh per FIT-Upload, kein Strava, kein bezahlter API-Schlüssel.
 - Coach-Hinweise sind Trainingsempfehlungen, keine Diagnosen; Schätzungen als solche kennzeichnen.
 - Erfolg (Tests, Push, Merge, Deploy, Issue-Änderung) erst melden, wenn er geprüft ist.
@@ -40,11 +41,12 @@ Zusatzlabels: priority: high (vor allem anderen), info (erledigt mit wichtiger I
 
 ### User-Tests (Gs Vorgabe 2026-10-17)
 - Kein eigenes [USERTEST]-Issue mehr. Alles läuft im Feature-Issue über Kommentare. Nach dem Merge bleibt das Feature-Issue offen, bekommt Label auto-user-test und einen Kommentar, der mit „## Testschritte“ beginnt (optional „**Voraussetzung:** …“, nummerierte Schritte in Alltagssprache, je Schritt „→ Erwartet: …“, „Optional:“ für Schritte, die fehlen dürfen). Der neueste solche Kommentar gilt. Reine Doku/Test-Änderungen: nach dem Merge mit done schließen, Kommentar „kein User-Test nötig“.
-- Die automatischen User-Tests plant der Koordinator wie normale Issues ein (Verfahren: scripts/usertest, Doku in DEVELOPMENT_WORKFLOW.md). Ob eine PC-Session auf Gs Rechner nötig ist, entscheidet das Testszenario automatisch.
+- Die automatischen User-Tests plant der Koordinator wie normale Issues ein (Verfahren: scripts/usertest, Warteschlange mit node scripts/usertest/issues.mjs, Doku in DEVELOPMENT_WORKFLOW.md). Ob eine PC-Session auf Gs Rechner nötig ist, entscheidet das Testszenario automatisch.
+- Auto-Tests legen keine eigenen Artefakte an (Regel R4, G 2026-10-17). Der Bericht steht nur als Issue-Kommentar (Text, bei Fehlschlag ggf. Bildlink/Anhang). Bestehende Berichts-Artefakte nicht löschen.
 - Eindeutig bestanden → Kommentar „Automatisch BESTANDEN“ mit Bericht, Label done, Issue schließen, in PROJECT_STATUS.md „automatisch bestätigt (Datum)“.
 - Nicht eindeutig → Label user-test, Kommentar „Automatische Vorprüfung – bitte selbst anschauen: …“ mit Bericht und „Bitte mit BESTANDEN oder FEHLGESCHLAGEN: antworten“. G antwortet im selben Issue.
 - Nie einen fehlgeschlagenen Schritt als bestanden markieren; FEHLGESCHLAGEN schreibt nur G. Beim Testen auffallende Wünsche nicht selbst einbauen, sondern als Kommentar; der Koordinator plant sie.
-- Bestand (G 2026-10-17): alle alten [USERTEST]-Issues werden ins Original-Feature-Issue umgezogen (Original wieder öffnen, Testschritte- und Verlauf-Kommentar, passendes Label, altes Issue not_planned mit „Verschoben nach #…“). Danach gibt es keine offenen [USERTEST]-Issues mehr.
+- Bestand: alle alten [USERTEST]-Issues sind seit 2026-10-17 ins Original-Feature-Issue umgezogen; es gibt keine offenen [USERTEST]-Issues mehr.
 
 ### Ablauf je Durchlauf
 1. git status und git fetch. Fremde uncommittete Arbeit nie überschreiben.
@@ -56,7 +58,7 @@ Zusatzlabels: priority: high (vor allem anderen), info (erledigt mit wichtiger I
 4. Neue idea-inbox-Issues: auf Duplikate/Umgesetztes prüfen, Zeile in IDEAS.md, Label planned. Duplikat/ungeeignet: begründen und schließen. Nachgereichte Wünsche in Kommentaren ebenfalls in IDEAS.md übernehmen.
 5. Reihenfolge: Gs ausdrücklicher Auftrag, fehlgeschlagene User-Tests, priority: high, Gs Kommentare/Rückfragen, neue Ideen, oberste unblockierte Ready-Zeile in IDEAS.md.
 6. Beim Start einer Aufgabe Label in-progress.
-7. Für jedes fertige Feature: „## Testschritte“-Kommentar ins Feature-Issue, Label auto-user-test, Issue offen lassen (siehe User-Tests).
+7. Für jedes fertige Feature: „## Testschritte“-Kommentar ins Feature-Issue, Label auto-user-test, Issue offen lassen (siehe User-Tests). Das macht der Thread, der das Feature umgesetzt hat.
 8. Braucht Claude etwas von G: „[AUFGABE] …“ mit user-task (Blocker + priority: high), in IDEAS.md verlinken.
 9. docs/IDEAS.md und docs/PROJECT_STATUS.md aktualisieren. Die pflegt nur der Haupt-Thread, nie Agents.
 
@@ -66,15 +68,16 @@ Zusatzlabels: priority: high (vor allem anderen), info (erledigt mit wichtiger I
 - Meist ein Sammel-PR mit mehreren Features. PR-Text: Feature-Liste mit „Refs #…“ (nie „Closes #“, damit das Feature-Issue für den User-Test offen bleibt), ausgeführte Checks.
 - Erst mergen, wenn die CI auf dem aktuellen Stand grün ist (Merge-Commit). CI rot: Ursache beheben, nicht neu starten. Instabile Tests robuster machen, nie überspringen oder deaktivieren.
 - Nie force-pushen, keine Schutzregeln oder Pflicht-Checks umgehen, nichts Ungemergtes löschen.
-- Nach dem Merge: Feature-Issues auf auto-user-test mit „## Testschritte“-Kommentar setzen, Worker deployen, Fitness-Dashboard-Artefakt neu veröffentlichen, Entwicklungsstand-Dashboard aktualisieren, eigenen Branch auf main vorspulen.
+- Nach dem Merge: der umsetzende Feature- oder Haupt-Thread setzt seine Feature-Issues auf auto-user-test mit „## Testschritte“-Kommentar, deployt den Worker und spult den eigenen Branch auf main vor; der Haupt-Thread veröffentlicht das Fitness-Dashboard-Artefakt neu.
 
 ### Parallele Agents
-- Agents arbeiten in eigenen Git-Worktrees mit eigenem Branch (und eigenem Port, falls lokale Server/E2E laufen).
+- Agents (Hilfsagenten innerhalb eines Threads) arbeiten in eigenen Git-Worktrees mit eigenem Branch (und eigenem Port, falls lokale Server/E2E laufen).
 - Jeder Agent bekommt eine „nicht anfassen“-Liste: docs/IDEAS.md, docs/PROJECT_STATUS.md, Dateien anderer Agents.
-- Agents legen keine PRs an und ändern keine Issues (Ausnahme: ausdrücklich zugewiesene Issue-Umzüge, die der Haupt-Thread danach prüft). Der Haupt-Thread prüft und führt in einem Integrations-Branch zusammen.
+- Agents legen keine PRs an und ändern keine Issues (Ausnahme: ausdrücklich zugewiesene Issue-Umzüge, die der Thread danach prüft). Der Thread prüft und führt in einem Integrations-Branch zusammen.
 - Konflikte, die nur neue Tests am Ende sind: beide Seiten behalten; geänderte Tests per Drei-Wege-Abgleich; doppelte Imports entfernen; CSS-Konflikte beide Seiten behalten.
 
-### Entwicklungsstand-Dashboard
-- Artefakt nach dem Vorbild „Entwicklungsstand live“ aus wohnungsplaner-3d (Konzept in docs/DASHBOARD.md), Daten in der Artefakt-Datenbank board/*.
-- Der Haupt-Thread pflegt features, agents, usertests und forecast.
-- Die Liste „Zum Testen“ (usertests) nach jeder Label-Änderung mit den offenen user-test- und auto-user-test-Issues auf GitHub abgleichen (auto-user-test = „wird automatisch getestet“, user-test = „G muss prüfen“).
+### Master-Dashboard (Leiter-Dashboard, https://claude.ai/artifact/DLsyumhy4w8L66F1VNA9pk; Konzept in docs/DASHBOARD.md)
+- Tests, Features und Backlog holt die Seite selbst live aus GitHub über das Worker-Werkzeug get_dev_board; dafür muss niemand etwas schreiben.
+- Thread-Zeilen schreibt jeder Thread selbst (Regel R2, gilt für beide Projekte): ein Dokument in der Sammlung „threads“ des Master-Artefakts, doc_id = cmsg-ID der eigenen Thread-Wurzel, Felder {project:"fitness", title: Thread-Titel, status:"working"|"blocked"|"paused"|"done"|"failed", task: ein Satz Klartext ohne Befehle, issue: Nummer oder null, env:"cloud"|"pc", updated: ISO-Zeit UTC}. Schreiben per ArtifactData set beim Start, bei jedem Schrittwechsel und am Ende (status done); beim ersten Mal ohne if_version, danach mit der zuletzt erhaltenen version, bei Konflikt einmal neu lesen und setzen. Nur die eigene Zeile schreiben. Genaue Anleitung: docs/DASHBOARD.md.
+- Regel R6 (G 2026-10-17, beide Projekte): Endet ein Thread oder Auftrag oder ist eine Änderung am Dashboard fertig, wird das Dashboard sofort einmal extra aktualisiert (eigene Thread-Zeile auf den Endstand; bei Dashboard-Änderungen zusätzlich einen Extra-Lauf des Usage-Updaters bzw. des GitHub-Fallbacks), ohne auf den nächsten Takt zu warten.
+- board/usage schreibt der Thread „Usage-Updater“. board/live_wp gehört Gs eigenem Updater; nie anfassen. Strukturänderungen am Master-Dashboard vorher dem Koordinator melden (er stimmt sie mit dem Leiter ab).
