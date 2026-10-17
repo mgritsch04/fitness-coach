@@ -239,6 +239,14 @@ for (const [name, vp, scheme, tab] of shots) {
       if (!on) errors.push(`${name}: Heute dran startet den Gym-Modus nicht`);
       await p.evaluate(() => localStorage.removeItem("fc-gym"));
     } else errors.push(`${name}: Heute dran ohne Gym-Knopf am Krafttag`);
+    // Mobility (#223): Abschnitt öffnen, Timer starten und stoppen.
+    await p.evaluate(() => FC.goTo("mobility")); await p.waitForTimeout(300);
+    const moN = await p.$$eval("#moList li", (l) => l.length);
+    if (moN < 4) errors.push(`${name}: Mobility zeigt ${moN} Übungen`);
+    await p.click("#moStart").catch(() => errors.push(`${name}: Mobility ohne Start-Knopf`)); await p.waitForTimeout(1200);
+    if (!(await p.evaluate(() => !document.getElementById("moRun").hidden && /\d+ s/.test(document.getElementById("moRun").textContent)))) errors.push(`${name}: Mobility-Timer läuft nicht`);
+    await p.click("#moStart").catch(() => {});
+    await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
     await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
   }
   if (tab === "training") {
