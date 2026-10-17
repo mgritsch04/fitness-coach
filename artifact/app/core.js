@@ -290,12 +290,13 @@
   const wanted = (s) => (!phone?.matches || (s.tab ?? "mehr") === tab) && !folded(s);
   // Handy: lange Tabs einklappbar (#188). Offen sind die ersten zwei Abschnitte und was man selbst aufklappt;
   // eingeklappte zeigen nur ihre Überschrift als Leiste und laden ihre Daten erst beim Aufklappen.
-  const FOLD_TABS = new Set(["training", "verlauf"]), FOLD_MIN = 6, FOLD_OPEN = 2, FOLD_KEY = "fc-fold";
+  // Je Tab: wie viele Abschnitte oben standardmäßig offen sind (Heute: bis „Heute dran“, #191).
+  const FOLD_TABS = { heute: 5, training: 2, verlauf: 2 }, FOLD_MIN = 6, FOLD_KEY = "fc-fold";
   let folds = {};
   try { folds = JSON.parse(localStorage.getItem(FOLD_KEY) ?? "{}") ?? {}; } catch {}
   const shown = (t) => live().filter((x) => (x.tab ?? "mehr") === t && !$(`sec-${x.id}`)?.hidden);
-  const foldable = (s) => !!phone?.matches && FOLD_TABS.has(s.tab ?? "mehr") && shown(s.tab ?? "mehr").length >= FOLD_MIN;
-  const isOpen = (s) => (typeof folds[s.id] === "boolean" ? folds[s.id] : shown(s.tab ?? "mehr").indexOf(s) < FOLD_OPEN);
+  const foldable = (s) => !!phone?.matches && (s.tab ?? "mehr") in FOLD_TABS && shown(s.tab ?? "mehr").length >= FOLD_MIN;
+  const isOpen = (s) => (typeof folds[s.id] === "boolean" ? folds[s.id] : shown(s.tab ?? "mehr").indexOf(s) < FOLD_TABS[s.tab ?? "mehr"]);
   const folded = (s) => foldable(s) && !isOpen(s);
   function applyFolds() {
     for (const s of sections) {

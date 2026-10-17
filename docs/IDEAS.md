@@ -73,6 +73,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 58 | Auf einen Blick (#180) | wichtigste Analyse-Befunde oben auf „Heute“ mit Sprung zu den Details (get_analysis_highlights #175) | Überblick ohne durch alle Tabs zu scrollen | P2 | S | #175 | Vorschau-Test, User-Test | Done (v22; User-Test #183) |
 | 59 | Coach-Chat kennt alle Analysen (#185) | 13 weitere Chat-Werkzeuge (Befunde, HRV-Trend, Prognose, Last, Muskelbalance, Rad-Analysen, Timing, Kraft/Rad) | fundierte Antworten zu jeder Analyse | P2 | S | #175 | Vorschau-Test, User-Test | Done (v23; User-Test #186) |
 | 60 | Lange Tabs einklappbar (#188) | Handy: in Training/Verlauf nur die ersten zwei Abschnitte offen, Rest als Überschriften-Liste, lädt erst beim Aufklappen | Training-Tab 23 500 → 2 600 px, 16 → 1 Werkzeug-Aufruf beim Öffnen | P1 | S | #69, #168 | Vorschau-Test, User-Test | Done (v24; User-Test #189) |
+| 61 | Heute unten einklappbar (#191) | Handy: in „Heute“ bis „Heute dran“ offen, Radwetter/Check-in/Bestleistungen/Prognose eingeklappt | Heute 6 300 → 4 050 px | P2 | S | #188 | Vorschau-Test, User-Test | Done (v25; User-Test #192) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 

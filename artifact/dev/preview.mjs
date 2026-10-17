@@ -122,6 +122,9 @@ for (const [name, vp, scheme, tab] of shots) {
   }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "heute") {
+    // Heute (#191): bis „Heute dran“ offen, darunter eingeklappt.
+    const hf = await p.evaluate(() => [...document.querySelectorAll("#sections > section.on.foldable")].map((x) => `${x.id.slice(4)}:${x.classList.contains("folded") ? "zu" : "auf"}`));
+    if (!hf.includes("agenda:auf") || !hf.includes("weather:zu") || !hf.includes("forecast:zu")) errors.push(`${name}: Heute-Einklappen falsch ${JSON.stringify(hf)}`);
     // „Neu im Dashboard“ (#152): Liste da, Sprung in den Training-Tab, „Alles gesehen“ bleibt nach Neuladen.
     const news = await p.$$eval("#wnList li", (l) => l.length);
     await p.screenshot({ path: join(out, "phone-news.png") });
