@@ -31,6 +31,8 @@ Keine offizielle Entwickler-API gefunden. Strava wird **nicht** genutzt (Entsche
 
 **Workouts zu MyWhoosh (#63):** Der Coach baut aus einer geplanten Radeinheit eine ZWO-Datei (`get_bike_workout`, Download im Dashboard). Die lädt man selbst im offiziellen MyWhoosh Workout Builder (workout.mywhoosh.com) hoch und überträgt sie mit „Export to MyWhoosh“ in die App (MyWorkouts). Es gibt keinen automatischen Weg und keinen Login im Worker. Quelle: https://mywhoosh.com/everything-you-need-to-know-about-the-new-mywhoosh-workout-builder/
 
+**Workout-Bibliothek (#221):** `list_bike_workouts` liefert Vorlagen je Art (Locker, Grundlage, Sweet Spot, Schwelle, VO2max) in Stufen 1–4, gefiltert nach Zeit (`maxMin`) und Art (`category`); `suited` sagt, ob die Einheit zur heutigen WHOOP-Erholung passt (rot nur locker, gelb ohne VO2max und Stufe 4). `get_bike_workout` mit `templateId` gibt die Vorlage als ZWO-Datei, gleicher Weg in die App wie oben. Im Dashboard: „Aus der Bibliothek wählen“ im Abschnitt Workout für MyWhoosh.
+
 Duplikate: Dieselbe Fahrt kann über MyWhoosh-FIT, Wahoo (wenn ein KICKR-Workout dort landet) und WHOOP (als Workout) kommen → Abgleich über Startzeit ± Toleranz und Dauer.
 
 ## Quellen
