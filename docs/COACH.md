@@ -131,3 +131,7 @@ Ist heute eine Schlüsseleinheit geplant und sagt die Tagesform „Ruhe“ oder 
 ## Krafttraining nach Saisonphase (#213)
 
 `core/strength-season.ts`: `strengthSeason(Planphase, Woche, Einstellung)` wählt Aufbau, Erhalt oder Wettkampf. Feste Einstellung `strengthPhase` (Trainingsvorlieben) gewinnt; sonst Spitze/Tapering/Wettkampfwoche → Wettkampf, Aufbau auf ein Ziel → Erhalt, ohne Ziel nach Jahreszeit (Oktober–Februar Aufbau, März–September Erhalt). `seasonItems` passt die Krafteinheiten an: Aufbau +1 Satz bei den ersten zwei Grundübungen; Erhalt höchstens 4 Übungen, 1 Satz weniger (mind. 2), Grundübungen höchstens 6 Wdh.; Wettkampf 3 Übungen à 2 Sätze, höchstens 5 Wdh., Gewichte −10 %. Ohne feste Häufigkeit begrenzt Wettkampf auf 1 und fest eingestellter Erhalt auf 2 Einheiten pro Woche; sonst bleibt die gewohnte Häufigkeit. Die Phase steht als Hinweis im Wochenplan, im Feld `training.strengthSeason` und im Coach-Kontext.
+
+## Mobility nach der Einheit (#223)
+
+`core/mobility.ts`: fünf Routinen (nach langer Fahrt, nach Intervallen, nach Beintag, nach Oberkörper, allgemein) mit je 5–6 Übungen, Dauer in Sekunden (je Seite), insgesamt 5–10 min. `mobilityKindFor(Planeinheit)` wählt die Routine: Bein-/Ganzkörperkraft → Beintag, lange Fahrt → Hüfte/Rücken, Intervalle → Beine lockern, Oberkörper → Schultern. Feld `training.mobilityToday`, Werkzeug `get_mobility_routine {kind?}`. Abschnitt `sections/mobility.js` (Heute) mit Timer je Übung; in „Heute dran“ nach erledigter Einheit oder am Ruhetag der Knopf „Mobility starten“.

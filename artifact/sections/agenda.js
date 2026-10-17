@@ -125,6 +125,11 @@ FC.section({
       };
       act.append(b);
     }
+    if (isToday && (x.status === "done" || x.status === "partial" || x.type === "rest") && t.mobilityToday) {
+      const b = el("button", { type: "button", text: "Mobility starten" });
+      b.onclick = () => { (FC.goTo ?? ((id) => this.go("heute", id)))("mobility"); if (!FC.state.mobilityRunning) FC.$("moStart")?.click(); };
+      act.append(b);
+    }
     const all = el("button", { type: "button", text: "Ganzer Wochenplan" });
     all.onclick = () => this.go("coach", "plan");
     act.append(all);

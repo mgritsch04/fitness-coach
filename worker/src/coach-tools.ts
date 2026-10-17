@@ -12,6 +12,7 @@ import { blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, w
 import { blockView, buildBlock, deleteBlock, readBlock, saveBlock } from "./core/periodization";
 import { readJournal } from "./core/journal";
 import { zoneTargets } from "./core/zone-targets";
+import { MOBILITY_KINDS, mobilityKindFor, mobilityRoutine, type MobilityKind } from "./core/mobility";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -290,6 +291,22 @@ export function registerCoachTools(server: McpServer, env: Env) {
           : null;
       })() : null;
       return json({ ...t, forecast: scenario });
+    },
+  );
+
+  server.registerTool(
+    "get_mobility_routine",
+    {
+      description:
+        "Kurze Mobility-Routine (5–10 min) nach der Einheit: ohne kind passend zur heutigen Planeinheit, sonst ride_long (Hüfte/Rücken nach langer Fahrt), " +
+        "ride_intervals, legs (nach Beintag), upper (Schultern) oder general. Übungen mit Dauer in Sekunden (sides = je Seite). Faustregeln, keine Physiotherapie.",
+      inputSchema: { kind: z.enum(MOBILITY_KINDS as [MobilityKind, ...MobilityKind[]]).optional().describe("Art der Routine; leer = passend zu heute") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ kind }) => {
+      if (kind) return json(mobilityRoutine(kind));
+      const t = (await dashboard()).training;
+      return json(t.mobilityToday ?? mobilityRoutine(mobilityKindFor(null)));
     },
   );
 
