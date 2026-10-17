@@ -200,7 +200,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     notes,
     intensity: intensityCheck(inp),
     ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null, next),
-    makeUp: makeUpPlan(thisWeek.comparison, inp.today, inp.coach?.readiness ?? null),
+    makeUp: makeUpPlan(thisWeek.comparison, inp.today, inp.coach?.readiness ?? null, next.days[0] ?? null),
     strengthWorkouts: {
       days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions)),
       note: STRENGTH_PLAN_NOTE,

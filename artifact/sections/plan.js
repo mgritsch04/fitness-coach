@@ -107,14 +107,14 @@ FC.section({
         el("span", { class: "m", text: x.type === "rest" ? "" : `${x.durationMin ? `${x.durationMin} min · ` : ""}~${de(x.targetLoad)}` }),
         x.strength && x.type !== "strength" ? el("span", { class: "k", text: `+ Kraft ${x.strength.durationMin} min${x.strengthDone ? " ✓" : ""}` }) : null,
         x.day === ftpDay ? el("span", { class: "k", text: "oder FTP-Test" }) : null,
-        x.day === makeUpDay ? el("span", { class: "k", text: "Nachholen" }) : null,
+        x.day === makeUpDay ? el("span", { class: "k", text: t.makeUp.kind === "postpone" ? "Verschoben" : "Nachholen" }) : null,
       ].filter(Boolean));
       box.onclick = () => {
         const out = $("planDetail"); out.classList.remove("muted"); out.replaceChildren(...[
           el("p", {}, el("strong", { text: `${fmtDayLong(x.day)}: ${x.title}` })),
           x.intensity ? el("p", { text: x.intensity }) : null,
           el("p", { text: x.description }),
-          x.day === makeUpDay ? el("p", {}, el("strong", { text: `Vorschlag: „${t.makeUp.missed.title}“ statt dieser Einheit nachholen.` })) : null,
+          x.day === makeUpDay ? el("p", {}, el("strong", { text: `Vorschlag: „${t.makeUp.missed.title}“ statt dieser Einheit ${t.makeUp.kind === "postpone" ? "fahren (von heute verschoben)" : "nachholen"}.` })) : null,
           ...(x.day === ftpDay ? [el("p", {}, el("strong", { text: "Vorschlag: FTP-Test statt dieser Einheit. " }), t.ftpTest.reason), el("ul", {}, ...t.ftpTest.howTo.map((h) => el("li", { text: h })))] : []),
           ...(kraft.get(x.day) ? [
             el("p", {}, el("strong", { text: `Kraft, ${kraft.get(x.day).durationMin} min: ${kraft.get(x.day).focus}` })),
