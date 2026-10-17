@@ -8,7 +8,7 @@ import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
 import { personalizeFueling, readSweatTests, sweatSummary, type SweatSummary } from "./sweat";
 import { makeUpPlan, type MakeUpPlan } from "./make-up";
-import { mobilityKindFor, mobilityRoutine, type MobilityRoutine } from "./mobility";
+import { mobilityKindForActual, mobilityRoutine, type MobilityRoutine } from "./mobility";
 import { NUTRITION_NOTE, dailyNutrition, type DailyNutrition } from "./nutrition";
 import { blockView, buildBlock, readBlock, type BlockView, type TrainingBlock } from "./periodization";
 import { readStrengthSessions } from "./strength";
@@ -213,7 +213,7 @@ export interface TrainingOverview {
   /** Persönliche Schweißrate (#282), fließt in die Trinkmenge von fueling ein. */
   sweat: SweatSummary;
   /** Mobility-Routine nach der heutigen Einheit (#223). */
-  mobilityToday: MobilityRoutine;
+  mobilityToday: MobilityRoutine & { basis: "actual" | "plan" };
   /** Eiweiß und Kohlenhydrate je Tag der laufenden Woche (#222, Faustregeln; heute nach Tagesform). */
   nutrition: { days: DailyNutrition[]; note: string };
   disclaimer: string;
@@ -250,7 +250,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     },
     fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null).map((f) => personalizeFueling(f, sweat)), note: FUELING_NOTE },
     sweat,
-    mobilityToday: mobilityRoutine(mobilityKindFor(planned)),
+    mobilityToday: (() => { const m = mobilityKindForActual(inp.today, inp.workouts, sessions, planned); return { ...mobilityRoutine(m.kind), basis: m.basis }; })(),
     nutrition: {
       days: thisWeek.plan.days.map((d) => dailyNutrition(d, inp.body?.weightKg ?? null, d.day === inp.today ? (inp.coach?.readiness ?? null) : null)),
       note: NUTRITION_NOTE,
