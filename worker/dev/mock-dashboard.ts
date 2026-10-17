@@ -1,7 +1,7 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { ftpHistory, ftpTestSuggestion, readFtpTests, saveFtpTest } from "../src/core/ftp-test";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
@@ -17,6 +17,12 @@ import { weekStart } from "../src/core/analysis";
 import { buildBikeWorkout, toZwo, zwoFileName } from "../src/core/bike-workout";
 import { bestWindow, parseForecast, rideAdvice } from "../src/core/weather";
 import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
+import { durabilityReport } from "../src/core/durability";
+import { aerobicReport } from "../src/core/aerobic";
+import { intervalReport } from "../src/core/intervals";
+import { cadenceReport } from "../src/core/cadence";
+import { riderProfile } from "../src/core/rider-profile";
+import { muscleBalance } from "../src/core/muscle-balance";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -94,6 +100,63 @@ process.stdout.write(JSON.stringify({
   get_recovery_forecast: recoveryForecastView(await ctx(90)),
   get_strength_cycling_interference: await interferenceView(db, await ctx(180), 180),
   get_hrv_trend: hrvTrendView(await ctx(157), 90),
+  get_training_timing: trainingTimingView(await ctx(120), 120),
+  // Synthetische Sekundenreihen (keine Datenbank): 3 h Grundlage mit harten Blöcken früh und spät, Leistung fällt mit der Arbeit leicht ab.
+  get_durability: durabilityReport([0, 1, 2].map((k) => ({
+    day: addDays("2026-03-31", -7 * k - 2), source: "mywhoosh", sourceId: `d${k}`,
+    power: Array.from({ length: 3 * 3600 - k * 1800 }, (_, t) => {
+      const fade = 1 - t / 3600 * (0.025 + k * 0.01);
+      const hard = (t >= 900 && t < 2100) || (t >= 7200 && t < 8400) ? 1.45 : t % 2400 < 300 ? 1.75 : 1;
+      return Math.round(175 * hard * fade);
+    }),
+  })), "2026-03-31", 90),
+  // Synthetische Sekundenreihen: zehn ruhige Fahrten (75–150 min), der Puls driftet mit der Zeit immer weniger.
+  get_aerobic_decoupling: aerobicReport(Array.from({ length: 10 }, (_, k) => {
+    const len = (75 + (k % 4) * 25) * 60, drift = 0.22 - k * 0.019;
+    return {
+      day: addDays("2026-03-31", -6 * (9 - k) - 1), source: "mywhoosh", sourceId: `a${k}`,
+      power: Array.from({ length: len }, (_, t) => 165 + ((t * 7) % 23)),
+      heartRate: Array.from({ length: len }, (_, t) => Math.round(128 * (1 + drift * (t / len)))),
+    };
+  }), "2026-03-31", 120),
+  // Synthetische Intervalltrainings: abwechselnd 5 × 4 min VO2max und 3 × 12 min Schwelle, Leistung steigt über die Wochen.
+  get_interval_quality: intervalReport(Array.from({ length: 8 }, (_, k) => {
+    const vo2 = k % 2 === 0, reps = vo2 ? 5 : 3, work = vo2 ? 240 : 720, rest = vo2 ? 180 : 300;
+    const target = (vo2 ? 300 : 265) * (1 + k * 0.006), fade = k === 6 ? 0.025 : 0.004;
+    const power: number[] = [], heartRate: number[] = [];
+    for (let t = 0; t < 900; t++) { power.push(160); heartRate.push(125); }
+    for (let r = 0; r < reps; r++) {
+      for (let t = 0; t < work; t++) { power.push(Math.round(target * (1 - fade * r))); heartRate.push(160 + r * 2 + Math.round(t / 60)); }
+      for (let t = 0; t < rest; t++) { power.push(120); heartRate.push(130); }
+    }
+    for (let t = 0; t < 600; t++) { power.push(150); heartRate.push(122); }
+    return { day: addDays("2026-03-31", -5 * (7 - k) - 1), source: "mywhoosh", sourceId: `i${k}`, power, heartRate, cadence: null };
+  }), 285, "2026-03-31", 90),
+  // Synthetische Fahrten: Grundlage mit langsam steigender Kadenz, dazu harte Blöcke mit höherer Kadenz.
+  get_cadence_profile: cadenceReport(Array.from({ length: 10 }, (_, k) => {
+    const n = 75 * 60, power: number[] = [], cadence: number[] = [];
+    for (let t = 0; t < n; t++) {
+      const hard = t % 900 >= 720, z = Math.sin(t / 7) * 4;
+      power.push(hard ? 300 : t % 900 >= 600 ? 240 : 185);
+      cadence.push(t % 600 === 0 ? 0 : Math.round((hard ? 94 : t % 900 >= 600 ? 82 : 78 + k * 0.6) + z));
+    }
+    return { day: addDays("2026-03-31", -7 * (9 - k) - 1), source: "mywhoosh", sourceId: `c${k}`, power, heartRate: null, cadence };
+  }), 285, "2026-03-31", 90),
+  // Synthetische Leistungskurve: guter Antritt, schwächerer Sprint.
+  get_rider_profile: riderProfile({
+    curve: { "5": 980, "60": 640, "300": 355, "1200": 300 }, previousCurve: { "5": 1000, "60": 610, "300": 340, "1200": 292 },
+    ftpW: 285, ftpOrigin: "user", weightKg: 76,
+  }, "2026-03-31", 90),
+  // Synthetische Krafteinheiten: zweimal pro Woche, viel Drücken und Beinstrecker, wenig Rücken und Beinbeuger.
+  get_muscle_balance: muscleBalance(Array.from({ length: 8 }, (_, k) => {
+    const set = (exercise: string, n: number, reps: number, weightKg: number) => Array.from({ length: n }, () => ({ exercise, exerciseName: exercise, reps, weightKg }));
+    return {
+      id: `m${k}`, day: addDays("2026-03-31", -3.5 * k | 0), startTime: null, durationMin: 50, rpe: 7, name: null, notes: null, linkedSource: null, linkedSourceId: null,
+      sets: k % 2
+        ? [...set("bench_press", 4, 8, 70), ...set("overhead_press", 3, 8, 40), ...set("triceps_extension", 3, 12, 25), ...set("lat_pulldown", 2, 10, 55)]
+        : [...set("back_squat", 4, 6, 90), ...set("leg_extension", 3, 12, 45), ...set("leg_curl", 1, 12, 35), ...set("plank", 2, 1, 0)],
+    };
+  }), "2026-03-31", 4),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];

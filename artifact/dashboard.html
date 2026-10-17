@@ -135,6 +135,10 @@ section { display: grid; gap: 14px; }
 .coach-out p { margin: 0 0 8px; }
 .coach-out ul { margin: 0 0 8px; padding-left: 20px; }
 .ask { display: flex; gap: 8px; }
+.rpe-pick { display: grid; grid-template-columns: repeat(10, minmax(0, 2.6em)); gap: 4px; align-items: center; }
+.rpe-pick button { min-width: 0; padding: 7px 0; }
+.rpe-pick > span { grid-column: 1 / -1; }
+.rpe-pick button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink, #fff); }
 .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ask-chips .chip { text-align: left; border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; background: var(--accent-wash); border-color: transparent; color: var(--accent); }
 #chatClear { justify-self: start; border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; font-size: 0.88rem; }
@@ -208,6 +212,9 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
     padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
   .tabbar button { border: 0; background: none; padding: 8px 2px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; color: var(--ink-3); display: grid; justify-items: center; gap: 2px; }
   .tabbar button svg { width: 22px; height: 22px; }
+  .jump:not([hidden]) { display: flex; gap: 6px; overflow-x: auto; margin: -6px calc(-1 * max(16px, env(safe-area-inset-right, 0px))) -6px 0; padding: 2px 16px 4px 0; scrollbar-width: none; }
+  .jump::-webkit-scrollbar { display: none; }
+  .jump button { flex: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
   .tabbar button[aria-current="page"] { color: var(--accent); background: var(--accent-wash); }
   .display { padding: 16px; gap: 12px; }
   .dial { width: 84px; height: 84px; }
@@ -240,6 +247,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
     </div>
   </header>
   <div id="banner" class="banner" hidden></div>
+  <nav id="jump" class="jump" aria-label="Abschnitte in diesem Bereich" hidden></nav>
   <div id="sections"></div>
   <footer id="foot"><span>Trainingsempfehlungen, keine medizinischen Diagnosen. Belastung, Fitness, Ermüdung und Form sind Schätzungen.</span></footer>
 </div>
@@ -247,6 +255,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
 
 <script src="app/core.js"></script>
 <!-- Abschnitte: je Thema eine Datei; Reihenfolge auf der Seite steht in der Datei (order). -->
+<script src="sections/whatsnew.js"></script>
 <script src="sections/warning.js"></script>
 <script src="sections/briefing.js"></script>
 <script src="sections/today.js"></script>
@@ -272,6 +281,13 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
 <script src="sections/hrzones.js"></script>
 <script src="sections/endurance.js"></script>
 <script src="sections/interference.js"></script>
+<script src="sections/timing.js"></script>
+<script src="sections/durability.js"></script>
+<script src="sections/aerobic.js"></script>
+<script src="sections/intervals.js"></script>
+<script src="sections/cadence.js"></script>
+<script src="sections/riderprofile.js"></script>
+<script src="sections/musclebalance.js"></script>
 <script src="sections/weeks.js"></script>
 <script src="sections/periods.js"></script>
 <script src="sections/year.js"></script>

@@ -21,7 +21,49 @@ FC.section({
     .ag-head h3 { margin: 0; }
     .ag-meta { color: var(--ink-2); font-size: .9rem; }
     .ag-det p { margin: 6px 0; }
+    .ag-rpe { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+    .ag-rpe p { margin: 0 0 6px; }
     .ag-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }`,
+  async ready() {
+    this.dl = await window.claude?.use?.("downloads").catch(() => null);
+    // Knopf nachreichen statt neu zu zeichnen, sonst ginge ein gerade laufender Tipp verloren.
+    const act = FC.$("agBody")?.querySelector(".ag-act");
+    if (act && !act.querySelector(".ag-cal")) { const b = this.calButton(); if (b) act.append(b); }
+  },
+  /** Restliche Woche als Kalenderdatei (#157), nur wenn der Download-Dialog verfügbar ist. */
+  calButton() {
+    const d = FC.state.data, t = d?.training, days = t?.thisWeek?.comparison?.days ?? [];
+    if (!this.dl || !days.some((y) => y.day >= d.today && y.type !== "rest")) return null;
+    const cal = FC.el("button", { type: "button", class: "ag-cal", text: "In den Kalender (.ics)" });
+    cal.onclick = async () => {
+      try { await this.dl.save({ filename: `trainingsplan-${t.thisWeek.week ?? d.today}.ics`, data: new Blob([this.ics(days, d.today, t)], { type: "text/calendar;charset=utf-8" }) }); FC.$("agMsg").textContent = "Kalenderdatei gespeichert. Öffnen und in den Kalender übernehmen."; }
+      catch { FC.$("agMsg").textContent = "Nicht gespeichert."; }
+    };
+    return cal;
+  },
+  /** Kalenderdatei (RFC 5545) mit ganztägigen Terminen ab heute, ohne Ruhetage. */
+  ics(days, today, t) {
+    const esc = (v) => String(v ?? "").replace(/[\\;,]/g, (c) => "\\" + c).replace(/\r?\n/g, "\\n");
+    // Zeilen auf höchstens 74 Byte falten (Umlaute zählen doppelt), Folgezeilen beginnen mit Leerzeichen.
+    const enc = new TextEncoder();
+    const fold = (line) => {
+      const out = []; let cur = "", n = 0;
+      for (const c of line) { const b = enc.encode(c).length; if (n + b > 73) { out.push(cur); cur = ""; n = 0; } cur += c; n += b; }
+      return [...out, cur].join("\r\n ");
+    };
+    const ymd = (day) => day.replaceAll("-", "");
+    const next = (day) => { const x = new Date(day + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    const ev = days.filter((x) => x.day >= today && x.type !== "rest").map((x) => {
+      const kraft = (t.strengthWorkouts?.days ?? []).find((k) => k.day === x.day);
+      const head = x.type === "strength" ? "Kraft" : this.RIDES.includes(x.type) ? "Rad" : this.short(x);
+      const extra = x.strength && x.type !== "strength" ? ` + Kraft ${x.strength.durationMin} min` : "";
+      const desc = [x.intensity, x.description, kraft ? `Kraft: ${kraft.exercises.map((e) => `${e.name} ${e.sets}×${e.reps}${e.unit === "s" ? " s" : ""}${e.weightKg != null ? ` ${String(e.weightKg).replace(".", ",")} kg` : ""}`).join(", ")}` : null, "Aus deinem Fitness-Coach-Wochenplan (Trainingsempfehlung, keine medizinische Diagnose)."].filter(Boolean).join("\n");
+      return ["BEGIN:VEVENT", `UID:fc-plan-${x.day}@fitness-coach`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(x.day)}`, `DTEND;VALUE=DATE:${ymd(next(x.day))}`,
+        `SUMMARY:${esc(`${head}: ${x.title}${x.durationMin ? `, ${x.durationMin} min` : ""}${extra}`)}`, `DESCRIPTION:${esc(desc)}`, "TRANSP:TRANSPARENT", "END:VEVENT"];
+    });
+    return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Fitness Coach//Wochenplan//DE", "CALSCALE:GREGORIAN", ...ev.flat(), "END:VCALENDAR"].map(fold).join("\r\n") + "\r\n";
+  },
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-agenda">Heute dran</h2><span class="muted" id="agPhase"></span></div>
@@ -83,7 +125,12 @@ FC.section({
     const all = el("button", { type: "button", text: "Ganzer Wochenplan" });
     all.onclick = () => this.go("coach", "plan");
     act.append(all);
-    $("agBody").replaceChildren(week, det, act);
+    const cal = this.calButton();
+    if (cal) act.append(cal);
+    // Heutige Workouts ohne Anstrengung: kurz nachfragen (#134), verbessert die Belastungsschätzung beim Krafttraining.
+    const open = isToday && FC.state.rpePicker ? d.workouts.filter((w) => w.day === d.today && !w.rpe && w.durationMin >= 10).slice(0, 2) : [];
+    const ask = open.map((w) => el("div", { class: "ag-rpe" }, el("p", { text: `Wie anstrengend war dein ${FC.sport(w.sport)} (${de(w.durationMin)} min)? 1 sehr leicht, 10 maximal.` }), FC.state.rpePicker(w)));
+    $("agBody").replaceChildren(week, det, ...ask, act, el("p", { class: "muted", id: "agMsg", role: "status" }));
   },
   /** Zum Abschnitt springen (am Handy erst den Tab wechseln). */
   go(tab, id) {

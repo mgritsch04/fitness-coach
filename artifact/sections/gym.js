@@ -24,6 +24,10 @@ FC.section({
     .gy-exh h3 { margin: 0; }
     .gy-set { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 8px; align-items: center; }
     .gy-set input { width: 100%; min-width: 0; font-size: 1rem; padding: 8px; text-align: center; }
+    .gy-plates { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 2px 0 8px; font-size: .9rem; }
+    .gy-warm { margin: -4px 0 8px; font-size: .85rem; color: var(--ink-2); }
+    .gy-warm ol { margin: 2px 0 0; padding-left: 1.4em; }
+    .gy-plates strong { font-variant-numeric: tabular-nums; }
     .gy-set .n { color: var(--ink-3); font-size: .85rem; }
     .gy-set .ok { height: 44px; border-radius: 10px; font-size: 1.2rem; padding: 0; }
     .gy-set.on .ok { background: var(--good); border-color: var(--good); color: var(--panel); }
@@ -59,6 +63,22 @@ FC.section({
   restFor(name) { return /kniebeuge|kreuzheben|bankdr|schulterdr|rudern|klimmzug|beinpresse|hip thrust|dips|squat|deadlift|bench|press|row|pull/i.test(name) ? 180 : 90; },
   /** Verlauf einer Übung aus get_strength (nach Name, da Vorlagen und Plan Namen liefern). */
   prog(name) { const n = name.trim().toLowerCase(); return this.data?.progress?.find((p) => p.name.toLowerCase() === n || p.exercise === n) ?? null; },
+  /** Langhantel-Übung? Dann zeigt der Scheibenrechner (#143) die Scheiben je Seite. */
+  isBar(name) { return !/kurzhantel|dumbbell|maschine|kabel|beinpresse|leg press/i.test(name) && /kniebeuge|kreuzheben|bankdr|schulterdr|langhantel|hip thrust|squat|deadlift|bench|overhead|military/i.test(name); },
+  PLATES: [25, 20, 15, 10, 5, 2.5, 1.25],
+  BARS: [20, 15, 10],
+  bar() { try { const b = Number(localStorage.getItem("fc-gym-bar")); return this.BARS.includes(b) ? b : 20; } catch { return 20; } },
+  /** Scheiben je Seite für ein Gesamtgewicht (gierig, größte zuerst). */
+  plates(kg, bar) {
+    if (!(kg > 0)) return null;
+    if (kg < bar) return { text: `leichter als die Stange (${bar} kg)` };
+    let side = (kg - bar) / 2;
+    const out = [];
+    for (const p of this.PLATES) while (side >= p - 1e-9) { out.push(p); side -= p; }
+    const f = (n) => (Math.round(n * 100) / 100).toLocaleString("de-DE");
+    const rest = side > 0.01 ? ` (Rest ${f(side)} kg je Seite nicht steckbar)` : "";
+    return { text: out.length ? `${out.map(f).join(" + ")} kg${rest}` : `nur die Stange${rest}` };
+  },
   mmss(s) { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; },
   msg(t) { FC.$("gyMsg").textContent = t ?? ""; },
 
@@ -155,6 +175,7 @@ FC.section({
         const kg = last.topSet.weightKg ? ` mit ${FC.de(last.topSet.weightKg, last.topSet.weightKg % 1 ? 1 : 0)} kg` : "";
         return el("div", { class: "muted gy-last", text: `Letztes Mal (${FC.fmtDayLong(last.day)}): ${last.sets} ${last.sets === 1 ? "Satz" : "Sätze"}, bester Satz ${last.topSet.reps}${x.unit === "s" ? " s" : ""}${kg}` });
       })(),
+      i === st.cur && this.isBar(x.name) ? this.plateRow(x) : null,
       el("div", { class: "gy-head", "aria-hidden": "true" }, el("span", { text: "Satz" }), el("span", { text: x.unit === "s" ? "Sekunden" : "Wdh" }), el("span", { text: "kg" }), el("span", { text: "" })));
     const kgs = [];
     x.sets.forEach((s, j) => {
@@ -163,6 +184,7 @@ FC.section({
       reps.value = s.reps ?? ""; kg.value = s.kg ?? ""; kgs[j] = kg;
       const num = (v) => { const n = Number(String(v).replace(",", ".")); return v === "" || !Number.isFinite(n) ? null : n; };
       reps.onchange = () => { s.reps = num(reps.value); this.persist(); };
+      kg.oninput = () => { if (x.sets.findIndex((t) => !t.done) === j) this.showPlates(num(kg.value)); };
       kg.onchange = () => {
         s.kg = num(kg.value);
         // Folgesätze übernehmen das neue Gewicht (ohne Neuzeichnen, sonst ginge ein Tipp auf den Haken verloren)
@@ -181,6 +203,37 @@ FC.section({
     if (i !== st.cur) { const sel = el("button", { type: "button", class: "linkish", text: "Jetzt diese Übung" }); sel.onclick = () => { st.cur = i; this.persist(); this.draw(); }; row.append(sel); }
     card.append(row);
     return card;
+  },
+  plateRow(x) {
+    const { el } = FC;
+    const barB = el("button", { type: "button", class: "linkish", "aria-label": "Stangengewicht ändern" });
+    const out = el("strong", { id: "gyPlates" });
+    const row = el("div", { class: "gy-plates", role: "status" }, el("span", { class: "muted", text: "Je Seite:" }), out, barB);
+    const upd = () => { barB.textContent = `Stange ${this.bar()} kg`; this.showPlates(x.sets.find((t) => !t.done)?.kg ?? x.sets.at(-1)?.kg); };
+    barB.onclick = () => { const b = this.BARS; try { localStorage.setItem("fc-gym-bar", String(b[(b.indexOf(this.bar()) + 1) % b.length])); } catch { /* nur Komfort */ } upd(); };
+    queueMicrotask(upd);
+    // Aufwärm-Treppe (#148) nur vor dem ersten Arbeitssatz.
+    return x.sets.some((t) => t.done) ? row : el("div", {}, row, el("div", { class: "gy-warm", id: "gyWarm" }));
+  },
+  /** Aufwärmsätze zum Arbeitsgewicht: Stange × 10, dann ~40/60/80 % (Faustregel, auf 5 kg gerundet). */
+  warmup(kg, bar) {
+    if (!(kg >= 40) || kg <= bar) return [];
+    const out = [{ kg: bar, reps: 10 }];
+    [[0.4, 5], [0.6, 3], [0.8, 2]].forEach(([f, reps]) => {
+      const w = Math.round((kg * f) / 5) * 5; // 5-kg-Schritte: ohne 1,25er-Scheiben
+      if (w > out.at(-1).kg && w < kg) out.push({ kg: w, reps });
+    });
+    return out;
+  },
+  showPlates(kg) {
+    const out = FC.$("gyPlates"); if (!out) return;
+    const p = this.plates(kg, this.bar());
+    out.textContent = p ? p.text : "Gewicht eintragen";
+    const warm = FC.$("gyWarm"); if (!warm) return;
+    const bar = this.bar(), steps = this.warmup(kg, bar);
+    warm.hidden = !steps.length;
+    const f = (n) => n.toLocaleString("de-DE");
+    warm.replaceChildren(FC.el("span", { text: "Aufwärmen (Faustregel, nicht gespeichert):" }), FC.el("ol", {}, ...steps.map((w) => FC.el("li", { text: w.kg === bar ? `Leere Stange × ${w.reps}` : `${f(w.kg)} kg × ${w.reps} (je Seite ${this.plates(w.kg, bar).text})` }))));
   },
   toggle(x, i, s, reps, kg) {
     const st = this.st;

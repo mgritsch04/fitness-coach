@@ -173,3 +173,73 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `current`: Lage (`within`/`above`/`below`), Abstand zur Bandmitte, Veränderung in 14 Tagen, CV jetzt, eine Woche vorher und üblich.
 - `pattern`: `stable`, `high`, `unsettled` (CV ≥ 1,5 × üblich), `fatigue` (unter dem Band, CV steigt um ≥ 1 Punkt oder ≥ 1,3 × üblich), `saturation` (unter dem Band, CV sinkt oder ≤ 0,6 × üblich; Schätzung), `low`; dazu `label` und `advice`.
 - Dashboard: `sections/hrvtrend.js`, Reiter Verlauf. Trainingshinweis, keine Diagnose.
+
+## Beste Trainingszeit (`get_training_timing`, #131)
+
+`core/timing.ts`: Einheiten ab 15 min nach Tageszeit (lokal): morgens (bis 10 Uhr), mittags (10–14), nachmittags (14–18), abends (18–21), spät (ab 21).
+
+- `slots[]`: Anzahl Einheiten (nach Startzeit); Effizienz der Radeinheiten nach Startzeit, also (normierte) Leistung je Herzschlag gegenüber dem Mittel ähnlich harter Fahrten (locker bzw. ab IF 0,85). Dazu Schlafdauer (min), Schlafleistung und Erholung der folgenden Nacht bzw. des nächsten Morgens, zugeordnet nach der Endzeit des letzten Trainings am Tag und gegenüber dem Mittel aller Nächte. Verglichen erst ab 3 Fällen.
+- `hints[]`: effizientestes Fenster (ab +1 %), Abend- bzw. Spätfenster mit mindestens 20 min weniger Schlaf oder 5 Punkten weniger Erholung.
+- Dashboard: `sections/timing.js`, Reiter Training. Beobachtungen, keine Ursache-Wirkung.
+
+## Ermüdungsresistenz (`get_durability`, #139)
+
+`core/durability.ts` nutzt die Sekundenwerte der FIT-Dateien (`workout_streams.power`, höchstens 120 Fahrten im Zeitraum). Je Fahrt wird die Sekunde bestimmt, ab der 500, 1000 bzw. 1500 kJ geleistet sind. Danach wird die beste 5- und 20-min-Leistung gesucht, die frühestens dort beginnt. „Frisch“ ist die beste Leistung der ganzen Fahrt.
+
+- `table[]`: je Dauer und Arbeitsschwelle die beste Leistung über alle Fahrten, die Anzahl der Fahrten mit genug Arbeit und der Anteil an der frischen Leistung.
+- `verdict`: Einordnung über 5 min nach 1000 kJ (ersatzweise 500 kJ): ab 95 % sehr ermüdungsresistent, ab 88 % solide, darunter ausbaufähig.
+- Dashboard: `sections/durability.js`, Reiter Training. Schätzung, nur aussagekräftig mit harten Phasen spät in langen Fahrten.
+
+## Aerobe Basis (`get_aerobic_decoupling`, #145)
+
+`core/aerobic.ts` nutzt Fahrten mit Leistung und Puls je Sekunde (FIT-Upload, höchstens 120 im Zeitraum). Je Fahrt ab 50 min werden die ersten 10 min als Aufwärmen verworfen. Gleichmäßig ist eine Fahrt mit Variabilitätsindex (NP / Ø-Leistung) bis 1,10; Intervalltrainings zählen nicht. Für sie wird die Pa:HR-Entkopplung berechnet (Leistung je Herzschlag, zweite gegen erste Hälfte, wie im Workout-Detail).
+
+- `rides[]`: Tag, Dauer, Ø-Leistung, Variabilitätsindex, Entkopplung und Einordnung (`good` unter 5 %, `ok` bis 8 %, sonst `high`).
+- `current`: Median der letzten 4 Fahrten und der 4 davor; `trend` ab 1 Prozentpunkt Unterschied besser oder schlechter.
+- `longestGood`: längste Fahrt mit unter 5 %; `skipped`: zu kurze bzw. ungleichmäßige Fahrten.
+- Dashboard: `sections/aerobic.js`, Reiter Training. Schätzung; Hitze auf der Rolle und wenig Trinken erhöhen die Entkopplung.
+
+## Intervall-Qualität (`get_interval_quality`, #155)
+
+`core/intervals.ts` erkennt in jeder Fahrt mit Sekundenwerten die Intervalle wie das Workout-Detail (`detectIntervals`, mit wirksamer FTP). Die Hauptserie ist die Dauerklasse mit den meisten Wiederholungen (kurz unter 2,5 min, VO2max bis 8 min, Schwelle bis 30 min, lang), ab 3 Wiederholungen.
+
+- `sessions[]` (neueste zuerst, höchstens 12): Serie, Ø-Leistung und % FTP, Leistung je Wiederholung, Abfall (erste gegen letzte Wiederholungen, ab 4 je zwei), CV, Pulsanstieg und Einordnung (`even` bis 3 %, `slight` bis 8 %, `strong` darüber, `building` bei Anstieg über 3 %).
+- `classes[]`: je Intervallart Anzahl, letzte und beste Einheit, Veränderung seit der ersten Einheit im Zeitraum, mittlerer Abfall.
+- `hints[]`: zu hart angegangen (2 der letzten 3 stark nachgelassen), Steigerung möglich (letzte gleichmäßig), Pulsanstieg ab 10 Schlägen, Veränderung je Art ab 3 %.
+- Dashboard: `sections/intervals.js`, Reiter Training. Trainingshinweise, keine Diagnose.
+
+## Trittfrequenz-Profil (`get_cadence_profile`, #161)
+
+`core/cadence.ts` nutzt Fahrten mit Leistung und Trittfrequenz je Sekunde (gelesen wie die Intervall-Qualität). Gezählt werden nur Sekunden mit Tritt und Leistung.
+
+- `bands[]`: Zeit und Anteil je Kadenzbereich (unter 70, 70–80, 80–90, 90–100, über 100 U/min).
+- `zones[]` (nur mit FTP): Zeit und Median-Kadenz je Coggan-Zone (Z1 bis Z5+), ab 5 min.
+- `weeks[]`: Median-Kadenz in Zone 2 je Woche, ab 5 min.
+- `hints[]`: Schwelle unter 80 U/min, Grundlage unter 75 U/min, deutlich höhere Kadenz bei harten Belastungen, Veränderung in Zone 2 ab 3 U/min (erste gegen letzte zwei Wochen).
+- Dashboard: `sections/cadence.js`, Reiter Training. Trainingshinweise, keine Diagnose.
+
+## Fahrertyp (`get_rider_profile`, #164)
+
+`core/rider-profile.ts` nimmt die beste 5-s-, 1-min- und 5-min-Leistung der Leistungskurve im Zeitraum (`readPowerCurves`, `combineCurves`) und teilt sie durch die wirksame FTP. Dieses Verhältnis wird mit dem typischen Verhältnis aus der Mitte von Coggans Leistungsprofil verglichen (5 s: 4,14 × FTP, 1 min: 2,07, 5 min: 1,20). 100 Punkte sind typisch, ab 106 eine Stärke, unter 94 eine Schwäche. Das ist gewichtsunabhängig; W/kg wird nur angezeigt.
+
+- `type`/`label`/`text`: Sprinter, Puncheur, Kletterer (VO2max-stark) nach der stärksten Dauer; Zeitfahrer, wenn alle drei schwach sind; Allrounder, wenn alle typisch sind.
+- `durations[]`: Watt, W/kg, Verhältnis zur FTP, Punkte, Einordnung und Veränderung zum gleich langen Vorzeitraum.
+- `focus`: Training für die schwächste Dauer (nur wenn wirklich schwach), sonst Schwellenarbeit.
+- `hints[]`: beste 20 min deutlich über der FTP (FTP vermutlich zu niedrig), geschätzte FTP.
+- Dashboard: `sections/riderprofile.js`, Reiter Training. Schätzung, nur mit echten Maximalbelastungen in jeder Dauer aussagekräftig.
+
+## Muskelbalance (`get_muscle_balance`, #171)
+
+`core/muscle-balance.ts` zählt die Arbeitssätze der gespeicherten Krafteinheiten je Muskelgruppe (wie `muscleVolume`: Hauptmuskel ganz, Hilfsmuskel halb) und teilt durch die Wochenzahl (Standard 4).
+
+- `muscles[]`: Sätze pro Woche, Zielbereich (große Gruppen 6–12, Schultern und Rumpf 4–10, Arme und Waden 2–8, gedacht für zwei Einheiten neben dem Radtraining) und Status `none`/`low`/`ok`/`high`.
+- `ratios`: Ziehen (Rücken, Bizeps) zu Drücken (Brust, Schultern, Trizeps), Ziel ab 0,8; Beinbeuger zu Beinstrecker, Ziel ab 0,6.
+- `hints[]`: gar nicht trainierte und zu schwach trainierte Gruppen mit Übungen aus dem Katalog, unausgewogene Verhältnisse, sehr viel Beinvolumen.
+- Dashboard: `sections/musclebalance.js`, Reiter Training nach dem Krafttraining. Trainingsempfehlungen, keine Diagnose.
+
+## Analyse-Highlights (`get_analysis_highlights`, #175)
+
+`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad und Trittfrequenz. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
+
+- Der View (`analysisHighlightsView`) liest Kontext (180 Tage) und Sekundenwerte (120 Tage) nur einmal und füttert damit alle Berichte.
+- Kein eigener Dashboard-Abschnitt; gedacht als Einstieg für den Coach und für Briefing oder Wochenrückblick.

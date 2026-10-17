@@ -26,6 +26,13 @@ const payloads = {
   get_records: () => window.__MOCK__.get_records,
   get_endurance_profile: () => window.__MOCK__.get_endurance_profile,
   get_hrv_trend: () => window.__MOCK__.get_hrv_trend,
+  get_training_timing: () => window.__MOCK__.get_training_timing,
+  get_durability: () => window.__MOCK__.get_durability,
+  get_aerobic_decoupling: () => window.__MOCK__.get_aerobic_decoupling,
+  get_interval_quality: () => window.__MOCK__.get_interval_quality,
+  get_cadence_profile: () => window.__MOCK__.get_cadence_profile,
+  get_rider_profile: () => window.__MOCK__.get_rider_profile,
+  get_muscle_balance: () => window.__MOCK__.get_muscle_balance,
   get_strength_cycling_interference: () => ({ today: "2026-03-31", range: { from: "2025-10-03", to: "2026-03-31", days: 180 }, legSessions: 24, nextDay: { avgRecovery: 61, avgHrv: 58, groups: [{ group: "afterLegs", label: "Nach Beineinheit", days: 24, recovery: 52.5, hrv: 55, recoveryVsAvg: -7.5, hrvVsAvgPct: -6.2 },{ group: "afterRide", label: "Nach Radeinheit (ohne Beine)", days: 80, recovery: 61.2, hrv: 55, recoveryVsAvg: 1.2, hrvVsAvgPct: 0.8 },{ group: "afterOther", label: "Nach anderem Training", days: 10, recovery: 60, hrv: 55, recoveryVsAvg: null, hrvVsAvgPct: null },{ group: "afterRest", label: "Nach Ruhetag", days: 40, recovery: 63.1, hrv: 55, recoveryVsAvg: 3.1, hrvVsAvgPct: 2.4 }] }, nextRide: [{ bucket: "lt24", label: "unter 24 h", rides: 2, hardRides: 0, efVsTypicalPct: null, hardIntensity: null, hardIntensityVsTypical: null },{ bucket: "24to48", label: "24–48 h", rides: 12, hardRides: 4, efVsTypicalPct: -4.8, hardIntensity: 0.86, hardIntensityVsTypical: null },{ bucket: "48to72", label: "48–72 h", rides: 15, hardRides: 6, efVsTypicalPct: -0.9, hardIntensity: 0.93, hardIntensityVsTypical: null },{ bucket: "gt72", label: "3–7 Tage", rides: 20, hardRides: 8, efVsTypicalPct: 0.6, hardIntensity: 0.95, hardIntensityVsTypical: null },{ bucket: "none", label: "ohne Beine (7 Tage)", rides: 9, hardRides: 3, efVsTypicalPct: 0.3, hardIntensity: 0.94, hardIntensityVsTypical: null }], suggestion: { hours: 48, text: "In deinen Daten ist die Radeinheit ab etwa 48 h nach Beinen wieder so effizient wie sonst. Harte Intervalle daher mit mindestens 48 h Abstand planen (Beobachtung, keine Ursache-Wirkung)." }, recentRides: [], notes: ["Beineinheit = Krafteinheit mit mindestens 3 Beinsätzen.", "Beobachtungen aus deinen Daten, keine Diagnose."] }),
   get_recovery_forecast: (a) => ({ today: "2026-03-31", tomorrow: "2026-04-01", observations: 90, typicalSleepH: 7.6, available: true, notes: ["Schätzung aus deinen eigenen Daten.", "Abends ist die Prognose am genauesten."], assumptions: { sleepH: (a && a.sleepH) || 7.6, sleepFromInput: !!(a && a.sleepH), extraLoad: (a && a.extraLoad) || 0, todayRecovery: 81, todayLoad: 74, todayStrain: 12.4, lateTraining: !!(a && a.extraLoad) }, forecast: { recovery: 72, low: 58, high: 86, zone: "green" }, scenarios: [{ label: "1 Stunde mehr Schlaf", recovery: 79, low: 65, high: 93, delta: 7 }, { label: "1 Stunde weniger Schlaf", recovery: 65, low: 51, high: 79, delta: -7 }, { label: "Noch 1 h lockeres Training heute Abend (etwa 50 Punkte)", recovery: 66, low: 52, high: 80, delta: -6 }], effects: { perSleepHour: 7, per10Load: -0.8, perStrainPoint: -1.2, perRecoveryPoint: 0.3, lateTraining: -2 }, quality: { maePct: 6.2, rmsePct: 7.9, maeIfGuessingAverage: 11.1, maeIfSameAsToday: 14.2, recent: [{ day: "2026-03-18", actual: 62, predicted: 58 },{ day: "2026-03-19", actual: 77, predicted: 70 },{ day: "2026-03-20", actual: 66, predicted: 64 },{ day: "2026-03-21", actual: 54, predicted: 60 },{ day: "2026-03-22", actual: 83, predicted: 76 },{ day: "2026-03-23", actual: 49, predicted: 55 },{ day: "2026-03-24", actual: 72, predicted: 68 },{ day: "2026-03-25", actual: 53, predicted: 57 },{ day: "2026-03-26", actual: 60, predicted: 63 },{ day: "2026-03-27", actual: 61, predicted: 59 },{ day: "2026-03-28", actual: 84, predicted: 78 },{ day: "2026-03-29", actual: 86, predicted: 80 },{ day: "2026-03-30", actual: 87, predicted: 82 },{ day: "2026-03-31", actual: 81, predicted: 79 }] } }),
   get_ftp_tests: () => window.__MOCK__.get_ftp_tests,
@@ -58,7 +65,7 @@ const payloads = {
   save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
   save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
-  save_workout_rpe: (i) => ({ saved: i }),
+  save_workout_rpe: (i) => { window.__rpeSaved = i; return { saved: i }; },
   get_week_review: (i) => window.__MOCK__.get_week_review[i.week ?? "previous"],
   save_coach_note: (i) => ({ id: 1, ...i }),
   import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.get_dashboard.today, startTime: window.__MOCK__.get_dashboard.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
@@ -72,7 +79,7 @@ const mcp = {
 const sample = async (input, o = {}) => { if (o.tools) { const t = o.tools.find((x) => x.name === "krafttraining"); window.__toolResult = t ? String(await t.execute({ wochen: 4 }, { signal: new AbortController().signal })).length : -1; } const text = "**Heute normales Training.** Deine Erholung ist gelb und die HRV liegt im Normalbereich.\\n- 45–60 min Grundlage auf dem Rad\\n- danach 10 min Mobility"; o.onText?.({ text, delta: text }); return { text, truncated: false }; };
 sample.limits = async () => ({ tools: {} });
 sample.json = async () => ({ hinweis: "Beispielplan.", tage: [{ tag: "2026-03-31", einheit: "Rad locker", dauerMin: 60, intensitaet: "locker", belastung: 45, ziel: "Grundlage" }] });
-const downloads = { async save() {} };
+const downloads = { async save(f) { window.__saved = { filename: f.filename, text: await f.data.text() }; } };
 window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample : n === "downloads" ? downloads : null) };
 </script>`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
@@ -97,10 +104,39 @@ for (const [name, vp, scheme, tab] of shots) {
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "heute") {
+    // „Neu im Dashboard“ (#152): Liste da, Sprung in den Training-Tab, „Alles gesehen“ bleibt nach Neuladen.
+    const news = await p.$$eval("#wnList li", (l) => l.length);
+    await p.screenshot({ path: join(out, "phone-news.png") });
+    await p.click("#wnList .wn-more").catch(() => errors.push(`${name}: Neu im Dashboard ohne „weitere zeigen“`)); await p.waitForTimeout(100);
+    if ((await p.$$eval("#wnList li", (l) => l.length)) <= news) errors.push(`${name}: „weitere zeigen“ zeigt nicht mehr`);
+    if (!news) errors.push(`${name}: Neu im Dashboard ist leer`);
+    else {
+      await p.click("#wnList li button"); await p.waitForTimeout(300);
+      const at = await p.evaluate(() => document.querySelector("#tabbar [aria-current=page]")?.dataset.tab ?? "alle");
+      if (at !== "training") errors.push(`${name}: Neu im Dashboard springt nach ${at} statt Training`);
+      await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
+      await p.click("#wnSeen"); await p.reload(); await p.waitForTimeout(800);
+      await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(300);
+      if (await p.evaluate(() => !document.getElementById("sec-whatsnew").hidden)) errors.push(`${name}: Neu im Dashboard nach „Alles gesehen“ noch da`);
+    }
+    // Wochenplan als Kalenderdatei (#157): gültiger Aufbau, Zeilen höchstens 75 Byte.
+    const calBtn = await p.$("#agBody .ag-act .ag-cal");
+    if (!calBtn) errors.push(`${name}: Heute dran ohne Kalender-Knopf`);
+    else {
+      await calBtn.click(); await p.waitForTimeout(200);
+      const f = await p.evaluate(() => window.__saved);
+      const lines = f?.text?.split("\r\n") ?? [];
+      const ok = f?.filename?.endsWith(".ics") && lines[0] === "BEGIN:VCALENDAR" && lines.includes("END:VCALENDAR") && lines.some((l) => l.startsWith("DTSTART;VALUE=DATE:")) && lines.every((l) => Buffer.byteLength(l) <= 75);
+      if (!ok) errors.push(`${name}: Kalenderdatei fehlerhaft ${JSON.stringify(f?.text?.slice(0, 300))}`);
+    }
     // „Heute dran“ (#122): Wochenstreifen da, Knopf startet den Gym-Modus mit der Planeinheit.
     const n = await p.$$eval("#agBody .ag-day", (d) => d.length);
     if (n !== 7) errors.push(`${name}: Heute dran zeigt ${n} statt 7 Tage`);
     await p.screenshot({ path: join(out, "phone-heute.png"), fullPage: false });
+    await p.evaluate(() => document.querySelector("#agBody .ag-rpe")?.scrollIntoView({ block: "center" }));
+    const rpeBtn = p.locator("#agBody .ag-rpe .rpe-pick button:nth-child(7)");
+    if (!(await rpeBtn.count())) errors.push(`${name}: Heute dran fragt nicht nach der Anstrengung`);
+    else { await rpeBtn.click(); await p.waitForTimeout(300); const r = await p.evaluate(() => window.__rpeSaved); if (!(r?.rpe === 7 && r.source && r.sourceId)) errors.push(`${name}: Anstrengung falsch gespeichert ${JSON.stringify(r)}`); }
     const gymBtn = await p.$("#agBody .ag-act .primary");
     if (gymBtn && (await gymBtn.textContent()).includes("Gym")) {
       await gymBtn.click(); await p.waitForTimeout(400);
@@ -111,13 +147,30 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
   }
   if (tab === "training") {
+    // Sprungleiste (#168): Abschnittsnamen oben, Tippen scrollt zum Abschnitt.
+    const jumps = await p.$$eval("#jump:not([hidden]) button", (b) => b.map((x) => x.textContent));
+    if (jumps.length < 4 || !jumps.includes("Trittfrequenz")) errors.push(`${name}: Sprungleiste fehlt oder unvollständig ${JSON.stringify(jumps)}`);
+    else {
+      await p.click("#jump button:text-is('Trittfrequenz')"); await p.waitForTimeout(900);
+      const top = await p.evaluate(() => document.getElementById("sec-cadence").getBoundingClientRect().top);
+      if (Math.abs(top) > 40) errors.push(`${name}: Sprungleiste springt nicht (top ${top})`);
+      await p.evaluate(() => window.scrollTo(0, 0));
+    }
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     const plan = await p.$eval("#gySrc", (s) => s.value);
     if (!plan.startsWith("p:")) errors.push(`${name}: Gym-Modus bietet die Krafteinheit aus dem Wochenplan nicht an (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
     await p.fill("#gyBody .gy-set input[aria-label$='Gewicht in kg']", "105"); await p.press("#gyBody .gy-set input[aria-label$='Gewicht in kg']", "Tab");
+    // Scheibenrechner (#143): 105 kg an der 20-kg-Stange = je Seite 25 + 15 + 2,5.
+    const plates = await p.textContent("#gyPlates").catch(() => "");
+    if (plates !== "25 + 15 + 2,5 kg") errors.push(`${name}: Scheibenrechner zeigt „${plates}“`);
+    // Aufwärmsätze (#148): Stange, 40 / 65 / 85 kg vor dem ersten Arbeitssatz.
+    const warm = await p.$$eval("#gyWarm li", (l) => l.map((x) => x.textContent)).catch(() => []);
+    if (warm.length !== 4 || !warm[3].startsWith("85 kg × 2")) errors.push(`${name}: Aufwärmsätze ${JSON.stringify(warm)}`);
+    await p.screenshot({ path: join(out, "phone-gym-warm.png") });
     await p.click("#gyBody .gy-set .ok"); await p.waitForTimeout(100);
+    if (await p.$("#gyWarm")) errors.push(`${name}: Aufwärmsätze nach dem ersten Satz noch sichtbar`);
     if (!/Neuer Bestwert/.test(await p.textContent("#gyBody .gy-note"))) errors.push(`${name}: Gym-Modus meldet keinen Bestwert`);
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);

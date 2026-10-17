@@ -74,5 +74,6 @@ describe("Tagebuch in D1", () => {
     const w = dash.workouts.find((x) => x.sourceId === "k1")!;
     expect(w.rpe).toBe(7);
     expect(w.sessionRpe).toBe(420);
+    expect(w.source).toBe("whoop"); // für save_workout_rpe im Dashboard (#134)
   });
 });

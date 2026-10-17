@@ -36,6 +36,15 @@ import { recordsReport } from "./records";
 import { lateTrainingDays, recoveryForecast, type ForecastInput } from "./forecast";
 import { interferenceReport } from "./interference";
 import { hrvTrend } from "./hrv-trend";
+import { timingReport } from "./timing";
+import { durabilityReport, readRideStreams } from "./durability";
+import { aerobicReport, readHrRideStreams } from "./aerobic";
+import { intervalReport, readIntervalRides } from "./intervals";
+import { cadenceReport } from "./cadence";
+import { riderProfile } from "./rider-profile";
+import { combineCurves } from "./power";
+import { muscleBalance } from "./muscle-balance";
+import { analysisHighlights } from "./highlights";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -264,4 +273,72 @@ export async function interferenceView(db: D1Database, c: AnalysisContext, days:
 /** HRV-Trend nach Plews (#125). Der Kontext braucht 67 Tage Vorlauf für Normalband und 7-Tage-Mittel. */
 export function hrvTrendView(c: AnalysisContext, days: number) {
   return hrvTrend(c.series, c.today, days);
+}
+
+/** Beste Trainingszeit (#131): Tageszeit gegen Effizienz, Schlaf der Nacht danach und Erholung. */
+export function trainingTimingView(c: AnalysisContext, days: number) {
+  return timingReport(c.series, c.workouts, c.settings.timezone, c.today, days);
+}
+
+/** Ermüdungsresistenz (#139): beste 5/20 min frisch und nach 500/1000/1500 kJ, aus FIT-Sekundenwerten. */
+export async function durabilityView(db: D1Database, days: number, now?: number) {
+  const settings = await readSettings(db);
+  const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
+  return durabilityReport(await readRideStreams(db, addDays(today, -(days - 1))), today, days);
+}
+
+/** Intervall-Qualität (#155): Abfall je Serie und Verlauf je Intervallart, mit wirksamer FTP. */
+export async function intervalQualityView(db: D1Database, days: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  return intervalReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days);
+}
+
+/** Trittfrequenz-Profil (#161): Kadenz-Verteilung, Median je Leistungszone und Verlauf in Zone 2. */
+export async function cadenceView(db: D1Database, days: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  return cadenceReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days);
+}
+
+/** Fahrertyp (#164): 5 s, 1 min, 5 min im Verhältnis zur FTP gegen Coggans typische Verhältnisse. */
+export async function riderProfileView(db: D1Database, days: number, now?: number) {
+  const c = await analysisContext(db, { days: 7, now });
+  const from = addDays(c.today, -(days - 1)), prevFrom = addDays(from, -days);
+  const rows = await readPowerCurves(db, prevFrom);
+  const curve = combineCurves(rows.filter((r) => r.day >= from && r.day <= c.today).map((r) => r.power_curve));
+  const previousCurve = combineCurves(rows.filter((r) => r.day < from).map((r) => r.power_curve));
+  return riderProfile({ curve, previousCurve, ftpW: c.settings.ftpW, ftpOrigin: c.settings.origin.ftpW ?? null, weightKg: c.weightKg }, c.today, days);
+}
+
+/** Muskelbalance (#171): Sätze je Muskelgruppe gegen Zielbereich, Push/Pull, Beinbeuger/Beinstrecker. */
+export async function muscleBalanceView(db: D1Database, weeks: number, now?: number) {
+  const settings = await readSettings(db);
+  const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
+  return muscleBalance(await readStrengthSessions(db, addDays(today, -(7 * weeks - 1))), today, weeks);
+}
+
+/** Analyse-Highlights (#175): je Analyse höchstens ein Satz; Sekundenwerte werden nur einmal gelesen. */
+export async function analysisHighlightsView(db: D1Database, limit: number, now?: number) {
+  const c = await analysisContext(db, { days: 180, maxDays: 450, now });
+  const rides = await readIntervalRides(db, addDays(c.today, -119));
+  const withHr = rides.flatMap((r) => (r.heartRate ? [{ ...r, heartRate: r.heartRate }] : []));
+  const [interference, rider, muscles] = await Promise.all([interferenceView(db, c, 180), riderProfileView(db, 90, now), muscleBalanceView(db, 4, now)]);
+  return analysisHighlights({
+    forecast: recoveryForecastView(c),
+    hrv: hrvTrendView(c, 90),
+    aerobic: aerobicReport(withHr, c.today, 120),
+    intervals: intervalReport(rides, c.settings.ftpW, c.today, 90),
+    durability: durabilityReport(rides, c.today, 90),
+    rider,
+    muscles,
+    timing: trainingTimingView(c, 120),
+    interference,
+    cadence: cadenceReport(rides, c.settings.ftpW, c.today, 90),
+  }, limit);
+}
+
+/** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
+export async function aerobicView(db: D1Database, days: number, now?: number) {
+  const settings = await readSettings(db);
+  const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
+  return aerobicReport(await readHrRideStreams(db, addDays(today, -(days - 1))), today, days);
 }

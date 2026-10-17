@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -445,6 +445,105 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       const days = d ?? 90;
       return json(hrvTrendView(await analysisContext(env.DB, { days: days + 67, maxDays: 450 }), days));
     },
+  );
+
+  server.registerTool(
+    "get_training_timing",
+    {
+      description:
+        "Beste Trainingszeit: je Tageszeit (morgens bis spät) Anzahl Einheiten, Effizienz der Radeinheiten (Watt je Herzschlag), Schlaf der folgenden Nacht " +
+        "und Erholung am nächsten Morgen gegenüber dem eigenen Mittel, dazu Hinweise. Beobachtungen aus den eigenen Daten, keine Ursache-Wirkung.",
+      inputSchema: { days: z.number().int().min(28).max(365).optional().describe("Zeitraum in Tagen, Standard 120") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => {
+      const days = d ?? 120;
+      return json(trainingTimingView(await analysisContext(env.DB, { days, maxDays: 365 }), days));
+    },
+  );
+
+  server.registerTool(
+    "get_durability",
+    {
+      description:
+        "Ermüdungsresistenz auf dem Rad: beste 5- und 20-min-Leistung frisch und nach 500, 1000 und 1500 kJ geleisteter Arbeit in derselben Fahrt " +
+        "(aus FIT-Sekundenwerten), als Anteil der frischen Leistung, mit Einordnung. Schätzung.",
+      inputSchema: { days: z.number().int().min(14).max(365).optional().describe("Zeitraum in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await durabilityView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_aerobic_decoupling",
+    {
+      description:
+        "Aerobe Basis: Pa:HR-Entkopplung gleichmäßiger Fahrten ab 50 min (ohne 10 min Aufwärmen, aus FIT-Sekundenwerten) im Verlauf, " +
+        "Median der letzten 4 Fahrten gegen die 4 davor, Einordnung und längste Fahrt unter 5 %. Schätzung.",
+      inputSchema: { days: z.number().int().min(28).max(365).optional().describe("Zeitraum in Tagen, Standard 120") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await aerobicView(env.DB, d ?? 120)),
+  );
+
+  server.registerTool(
+    "get_interval_quality",
+    {
+      description:
+        "Intervall-Qualität: Hauptserie je Intervalltraining (aus FIT-Sekundenwerten erkannt), Leistungsabfall von der ersten zur letzten Wiederholung, " +
+        "Gleichmäßigkeit, Pulsanstieg, Verlauf je Intervallart (kurz, VO2max, Schwelle, lang) und Hinweise. Trainingshinweise, keine Diagnose.",
+      inputSchema: { days: z.number().int().min(14).max(365).optional().describe("Zeitraum in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await intervalQualityView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_cadence_profile",
+    {
+      description:
+        "Trittfrequenz-Profil aus FIT-Sekundenwerten: Zeit je Kadenzbereich, Median-Kadenz je Leistungszone (nach FTP), " +
+        "Verlauf der Kadenz in Zone 2 je Woche und Hinweise. Trainingshinweise, keine Diagnose.",
+      inputSchema: { days: z.number().int().min(14).max(365).optional().describe("Zeitraum in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await cadenceView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_rider_profile",
+    {
+      description:
+        "Fahrertyp aus der Leistungskurve: beste 5 s, 1 min und 5 min im Verhältnis zur FTP gegen die typischen Verhältnisse aus Coggans Leistungsprofil, " +
+        "Stärken, Schwächen, Veränderung zum Vorzeitraum und Trainingsvorschlag für die Schwäche. Schätzung.",
+      inputSchema: { days: z.number().int().min(28).max(365).optional().describe("Zeitraum in Tagen, Standard 90") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => json(await riderProfileView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_muscle_balance",
+    {
+      description:
+        "Muskelbalance im Krafttraining: Arbeitssätze je Muskelgruppe im Wochenmittel gegen einen Zielbereich für Radfahrer mit Krafttraining, " +
+        "Verhältnis Ziehen/Drücken und Beinbeuger/Beinstrecker, vernachlässigte Gruppen mit Übungsvorschlägen. Trainingsempfehlungen, keine Diagnose.",
+      inputSchema: { weeks: z.number().int().min(1).max(12).optional().describe("Zeitraum in Wochen, Standard 4") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ weeks }) => json(await muscleBalanceView(env.DB, weeks ?? 4)),
+  );
+
+  server.registerTool(
+    "get_analysis_highlights",
+    {
+      description:
+        "Die wichtigsten Befunde aller Analysen in wenigen Sätzen (Erholungsprognose, HRV-Trend, Aerobe Basis, Intervalle, Ermüdungsresistenz, Fahrertyp, " +
+        "Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz), Auffälliges zuerst, je mit dem Tool für Details. Guter Einstieg für den Coach.",
+      inputSchema: { limit: z.number().int().min(1).max(10).optional().describe("Höchstzahl der Sätze, Standard 6") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ limit }) => json(await analysisHighlightsView(env.DB, limit ?? 6)),
   );
 
   server.registerTool(

@@ -55,8 +55,21 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 40 | Coach-Chat: Fragen zum Antippen, Verlauf bleibt (#118) | 4 Fragen passend zum Tag, Chat übersteht Neuladen (3 Tage) | Coach am Handy schneller fragen | P2 | S | Zeile 36 | Vorschau, User-Test | Done ⚙️ (#117; im Dashboard v12; User-Test #121) |
 | 41 | „Heute dran“ (#122) | geplante Einheit auf „Heute“, Wochenstreifen, Direkt-Start Gym-Modus / MyWhoosh-Workout | am Handy sofort sehen, was dran ist | P1 | S | Zeile 21, 38 | Vorschau, User-Test | Done ⚙️ (#124; im Dashboard v13; User-Test #126) |
 | 42 | Kraft und Rad im Wechselspiel (#113) | Wirkung von Beineinheiten auf Erholung/HRV und die nächste Radeinheit, bewährter Abstand | Kraft und Rad besser kombinieren | P2 | M | Zeile 17 | Unit-Tests, User-Test | Done ⚙️ (#120; im Dashboard v13; User-Test #123) |
-| 43 | Gym-Modus: letztes Mal und Bestwert (#127) | je Übung „Letztes Mal“, Hinweis bei neuem geschätztem 1RM | Motivation, Orientierung im Gym | P2 | S | Zeile 38 | Vorschau, User-Test | In Progress (Haupt-Thread) |
+| 43 | Gym-Modus: letztes Mal und Bestwert (#127) | je Übung „Letztes Mal“, Hinweis bei neuem geschätztem 1RM | Motivation, Orientierung im Gym | P2 | S | Zeile 38 | Vorschau, User-Test | Done ⚙️ (#129; im Dashboard v14; User-Test mit #116) |
 | 44 | HRV-Trend nach Plews (#125) | 7-Tage-Mittel und Schwankung (CV) der HRV gegen den eigenen Normalbereich, Einordnung | Ermüdung früh erkennen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#128; User-Test #130) |
+| 45 | Anstrengung je Workout im Dashboard (#134) | RPE 1–10 in der Workout-Liste und als Frage unter „Heute dran“ | bessere Belastungsschätzung beim Krafttraining | P2 | S | Zeile 16 | Unit-Test, Vorschau, User-Test | Done (#137, v15; User-Test #140) |
+| 46 | Beste Trainingszeit (#131) | Tageszeit des Trainings gegen Schlaf, Erholung und Leistung | Training günstig legen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#135; User-Test #138) |
+| 47 | Ermüdungsresistenz (#139) | Beste 5/20 min nach 500/1000/1500 kJ | Langfahrten realistisch planen | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#141, v16; User-Test #144) |
+| 48 | Scheibenrechner im Gym-Modus (#143) | Scheiben je Seite für Langhantel-Übungen, Stange 20/15/10 kg | weniger Kopfrechnen im Gym | P3 | S | Zeile 38 | Vorschau, User-Test | Done (#142, v16; User-Test #146) |
+| 49 | Aufwärmsätze im Gym-Modus (#148) | Aufwärm-Treppe zum Arbeitsgewicht mit Scheiben je Seite | sicherer und schneller ins Training | P3 | S | Zeile 48 | Vorschau, User-Test | Done (#149, v17; User-Test #151) |
+| 50 | „Neu im Dashboard“ (#152) | Box oben im Heute-Tab mit neuen Abschnitten und Sprung dorthin | neue Funktionen finden | P2 | S | – | Vorschau, User-Test | Done (#153, v18; User-Test #156) |
+| 51 | Aerobe Basis (#145) | Entkopplung lockerer Fahrten im Verlauf | Grundlagenausdauer messbar machen | P2 | M | Zeile 34 | Unit-Tests, User-Test | Done ⚙️ (#150, v18; User-Test #154) |
+| 52 | Wochenplan als Kalenderdatei (#157) | Restliche Woche als .ics über den Download-Dialog | Training im eigenen Kalender | P2 | S | Zeile 41 | Vorschau, User-Test | Done (#159, v19; User-Test #165) |
+| 53 | Intervall-Qualität (#155) | Leistungsabfall je Intervall-Serie und Verlauf je Intervallart | Intervalle richtig dosieren | P2 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#158, v19; User-Test #160) |
+| 54 | Trittfrequenz-Profil (#161) | Kadenz-Verteilung, Median je Leistungszone, Verlauf in Zone 2 | Technik auf dem Rad | P3 | M | Zeile 14 | Unit-Tests, User-Test | Done ⚙️ (#162, v19; User-Test #163) |
+| 55 | Fahrertyp (#164) | Stärken und Schwächen der Leistungskurve relativ zur FTP | Training gezielt auf Schwächen | P3 | M | Zeile 34 | Unit-Tests, User-Test | Done ⚙️ (#167, v20; User-Test #170) |
+| 56 | Sprungleiste am Handy (#168) | Wischbare Abschnittsliste oben in langen Tabs | Training-Tab (über 20 000 px) schnell durchsuchen | P2 | S | Zeile 25 | Vorschau, User-Test | Done (#169, v20; User-Test #172) |
+| 57 | Muskelbalance (#171) | Sätze je Muskelgruppe gegen Zielbereich, Ziehen/Drücken | ausgewogenes Krafttraining | P2 | M | Zeile 24 | Unit-Tests, User-Test | Done ⚙️ (#174, v21; User-Test #176) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
