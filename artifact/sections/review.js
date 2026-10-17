@@ -122,12 +122,12 @@ FC.section({
       ["Schlaf Ø", v.sleepH.value != null ? `${de(v.sleepH.value, 1)} h` : "–", arrow(v.sleepH.delta, false, " h", 1)],
       ["Kraft · Ruhetage", `${r.totals.strengthSessions}× · ${r.totals.restDays}`, null],
     ];
-    const gx = 24, tw = (W - 2 * P - gx) / 2, th = 150, top = P + 180;
+    const gx = 20, tw = (W - 2 * P - gx) / 2, th = 132, top = P + 170;
     tiles.forEach(([label, value, d], i) => {
       const x = P + (i % 2) * (tw + gx), y = top + Math.floor(i / 2) * (th + gx);
       g.fillStyle = panel; rr(x, y, tw, th, 18); g.fill(); g.strokeStyle = line; g.lineWidth = 2; g.stroke();
       g.fillStyle = ink3; g.font = body(26, 600); g.fillText(label.toUpperCase(), x + 26, y + 44);
-      g.fillStyle = ink; g.font = display(64); g.fillText(value, x + 26, y + 112);
+      g.fillStyle = ink; g.font = display(60); g.fillText(value, x + 26, y + 104);
       if (d) { g.fillStyle = col(d.good ? "--good-ink" : "--bad-ink", d.good ? "#0b7a0b" : "#b42f2f"); g.font = body(26, 600); g.textAlign = "right"; g.fillText(d.text, x + tw - 22, y + 44); g.textAlign = "left"; }
     });
     // Sportarten als gestapelter Balken mit Legende
@@ -138,21 +138,21 @@ FC.section({
       const colors = ["--s1", "--s2", "--s3", "--s7"].map((n, i) => col(n, ["#2a78d6", "#eb6834", "#1baf7a", "#6250d6"][i]));
       let x = P; const bw = W - 2 * P;
       sports.slice(0, 4).forEach((sp, i) => { const w = (sp.minutes / total) * bw; g.fillStyle = colors[i]; rr(x, y, Math.max(2, w - 4), 34, 6); g.fill(); x += w; });
-      y += 74; x = P; g.font = body(28);
+      y += 70; x = P; g.font = body(28);
       for (const [i, sp] of sports.slice(0, 4).entries()) {
         const t = `${sport(sp.sport)} ${de(sp.minutes / 60, 1)} h`;
         g.fillStyle = colors[i]; rr(x, y - 22, 22, 22, 4); g.fill(); g.fillStyle = ink2; g.fillText(t, x + 32, y); x += 32 + g.measureText(t).width + 36;
       }
-      y += 60;
+      y += 56;
     }
     // Highlights
     if (r.highlights?.length) {
       g.fillStyle = ink; g.font = display(40); g.fillText("Highlights", P, y); y += 50;
       g.font = body(30); g.fillStyle = ink2;
-      for (const h of r.highlights.slice(0, 3)) { if (y > H - 150) break; g.fillText("•", P, y); y = wrap(h, P + 28, y, W - 2 * P - 28, 40, 2) + 8; }
+      for (const h of r.highlights.slice(0, 3)) { if (y > H - 110) break; g.fillText("•", P, y); y = wrap(h, P + 28, y, W - 2 * P - 28, 40, 2) + 8; }
     }
     g.fillStyle = ink3; g.font = body(24);
-    g.fillText("Fitness Coach · Belastung und Fitness sind Schätzungen, keine medizinische Diagnose.", P, H - P + 20);
+    g.fillText("Fitness Coach · Belastung und Fitness sind Schätzungen, keine medizinische Diagnose.", P, H - 44);
     return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Bild konnte nicht erzeugt werden."))), "image/png"));
   },
   async saveImage() {
