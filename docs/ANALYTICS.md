@@ -239,7 +239,7 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 
 ## Analyse-Highlights (`get_analysis_highlights`, #175)
 
-`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz und Erholungskurve. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
+`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz, Erholungskurve und Training nach der Erholungsampel. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
 
 - Der View (`analysisHighlightsView`) liest Kontext (180 Tage) und Sekundenwerte (120 Tage) nur einmal und füttert damit alle Berichte.
 - Kein eigener Dashboard-Abschnitt; gedacht als Einstieg für den Coach und für Briefing oder Wochenrückblick.
@@ -252,3 +252,12 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `backToNormalDays`: erster Tag ab +1 mit Erholung höchstens 3 Punkte unter dem Mittel; `sleepEffect`: Erholung am Morgen danach bei längerem gegen kürzeren Schlaf als üblich (je mindestens 2 Fälle).
 - `hints[]`: Tage bis zur Rückkehr und daraus lockere Tage nach harten Einheiten, Schlaf-Effekt ab 5 Punkten.
 - Dashboard: `sections/recoverycurve.js`, Reiter Verlauf nach dem HRV-Trend. Beobachtungen, keine Ursache-Wirkung.
+
+## Training nach der Erholungsampel (`get_readiness_alignment`, #226)
+
+`core/readiness-alignment.ts` nutzt nur Tageswerte (WHOOP): Erholung am Morgen (grün ab 67 %, rot unter 34 %) gegen den Strain desselben Tags (leicht unter 10, hart ab 14). Heute zählt nicht. Ab 14 Tagen gibt es eine Auswertung.
+
+- `matrix[]`: Tage je Zone und Strain-Stufe; `score`: Anteil passender Tage (an grünen Tagen ab Strain 10, an roten unter 10) an allen grünen und roten Tagen.
+- `counts.against`: hart an roten Tagen; `redCost`: Erholung am Morgen danach, ruhige gegen harte rote Tage (je mindestens 2 Fälle); `greenUsedPct`, `hardOnGreenPct`.
+- `recent[]`: letzte 14 Tage mit Zone, Strain und Bewertung; `hints[]`: gegen die Ampel trainiert, grüne Tage selten genutzt, harte Tage selten auf grün, sonst Lob.
+- Dashboard: `sections/readiness.js`, Reiter Verlauf nach der Erholungskurve. Auch in `get_analysis_highlights` (Thema `readiness`).
