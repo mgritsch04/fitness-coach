@@ -22,7 +22,8 @@ Kein `playwright install`: genommen wird `/opt/pw-browsers/chromium` (Cloud) bzw
 - **Keine echten Gesundheitsdaten**, keine Secrets. Das Repo ist öffentlich: Berichte enthalten nur synthetische Werte.
 
 Ergebnis in `usertest-reports/<nr>/` (nicht im Git): `report.md` (Issue-Kommentar), `report.html` (Bildbericht,
-als privates Artefakt veröffentlichen und im Kommentar verlinken), `report.json`, `step-*.jpg`.
+nur lokal ansehen), `report.json`, `step-*.jpg`. **Kein Artefakt veröffentlichen:** der Bericht steht nur als Text
+im Issue-Kommentar.
 
 ## Testschritte lesen
 
@@ -65,8 +66,8 @@ für `import_fit`), `calls()`, `text(sel)`, `poll(fn)`, `shot(caption, locator?)
 
 | Urteil | Feature-Issue (`auto-user-test`) |
 |---|---|
-| bestanden | Kommentar „Automatisch BESTANDEN“ + Bildbericht, Label `done`, Issue schließen (`completed`) |
-| pruefen | Label `auto-user-test` → `user-test`, Kommentar beginnt mit „Automatische Vorprüfung – bitte selbst anschauen: …“ + Bildbericht; G antwortet im Issue |
+| bestanden | Kommentar „Automatisch BESTANDEN“ (Text), Label `done`, Issue schließen (`completed`) |
+| pruefen | Label `auto-user-test` → `user-test`, Kommentar beginnt mit „Automatische Vorprüfung – bitte selbst anschauen: …“ (Text); G antwortet im Issue |
 
 - Nie einen `fail` als bestanden werten; `FEHLGESCHLAGEN` schreibt nur G.
 - Wünsche oder Fehler, die beim Testen auffallen, nicht selbst bauen: im Issue nennen, der Koordinator plant sie ein.
@@ -79,4 +80,4 @@ für `import_fit`), `calls()`, `text(sel)`, `poll(fn)`, `shot(caption, locator?)
 Remote-Control-Sitzung auf Gs PC in eigenem Ordner (z. B. `C:\Users\maxim\fitness-tests`), Repo dort klonen,
 `npm ci` in `worker/`, dann `node scripts/usertest/run.mjs <nr> --gpu`. Windows: npx läuft mit `shell: true`,
 die Brücke wird mit `taskkill /T /F` beendet; ein Lauf mit Software-Grafik (SwiftShader/llvmpipe) zählt nicht als
-echte Grafik. Kommentar, Labels und Bildbericht macht die Cloud-Seite.
+echte Grafik. Kommentar und Labels macht die Cloud-Seite.

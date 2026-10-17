@@ -11,7 +11,7 @@
  * synthetischen Daten bis heute. Die Seite ruft die Werkzeuge darüber auf (live); nur WHOOP/Wahoo/Sync und das
  * Wetter (Netz) sowie Claude (`sample`) bleiben Beispielantworten. Dann führt es scenarios/<issue-nr>.mjs
  * Schritt für Schritt in Chromium aus, macht je Schritt ein Bild und schreibt <out>/<nr>/report.json,
- * report.md (Issue-Kommentar) und report.html (Bildbericht, als privates Artefakt veröffentlichen).
+ * report.md (Issue-Kommentar) und report.html (Bildbericht, nur lokal; kein Artefakt, Bericht nur als Issue-Kommentar).
  *
  * Szenario: export default { issue, feature?, title, name, device: 'desktop' | 'phone', scheme?: 'light' | 'dark',
  *   pc?: true (nur wenn ein Schritt Optik auf echter Grafik beurteilt), realDevice?: [..],
