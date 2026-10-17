@@ -147,6 +147,27 @@ for (const [name, vp, scheme, tab] of shots) {
     if ((await wo()).rows.length !== 25) errors.push(`${name}: Zurücksetzen zeigt nicht wieder alle`);
   }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
+  if (tab === "mehr") {
+    // Datenstand je Quelle (#212): Kopfzeile mit WHOOP und MyWhoosh; mit veralteten Daten „veraltet“ als Wort und Hinweis im Briefing.
+    const f0 = await p.$$eval("#fresh button", (b) => b.map((x) => x.textContent));
+    if (f0.length !== 2 || !/^WHOOP/.test(f0[0]) || f0.some((t) => /veraltet/.test(t)) || await p.isHidden("#fresh")) errors.push(`${name}: Datenstand falsch ${JSON.stringify(f0)}`);
+    await p.evaluate(async () => {
+      const d = window.__MOCK__.get_dashboard, h = (n) => new Date(Date.parse(d.generatedAt) - n * 3600e3).toISOString();
+      d.freshness = { stale: true, note: "Daten von WHOOP sind nicht aktuell (abgeglichen vor 2 Tagen). Empfehlungen können darum danebenliegen.",
+        sources: [{ source: "whoop", label: "WHOOP", lastSyncAt: h(50), lastDataAt: h(55), ageH: 50, level: "stale", error: false, text: "abgeglichen vor 2 Tagen" },
+          { source: "wahoo", label: "Wahoo", lastSyncAt: null, lastDataAt: null, ageH: null, level: "none", error: false, text: "nicht verbunden" },
+          { source: "mywhoosh", label: "MyWhoosh", lastSyncAt: null, lastDataAt: h(200), ageH: 200, level: "stale", error: false, text: "letzte Fahrt vor 8 Tagen" }] };
+      await FC.reload();
+    });
+    await p.waitForTimeout(300);
+    const f1 = await p.$$eval("#fresh button", (b) => b.map((x) => x.textContent));
+    if (!f1.length || !f1.every((t) => /veraltet/.test(t))) errors.push(`${name}: veralteter Datenstand ohne Wort ${JSON.stringify(f1)}`);
+    if (!/WHOOP/.test(await p.evaluate(() => document.getElementById("bfStale").textContent))) errors.push(`${name}: kein Datenstand-Hinweis im Briefing`);
+    await p.screenshot({ path: join(out, "phone-fresh-stale.png") });
+    await p.click("#fresh button"); await p.waitForTimeout(600);
+    const at = await p.evaluate(() => { const r = document.getElementById("sec-sources").getBoundingClientRect(); return { top: Math.round(r.top), vis: !document.getElementById("sec-sources").hidden }; });
+    if (!at.vis || at.top < -5 || at.top > 200) errors.push(`${name}: Datenstand-Tippen springt nicht zu Datenquellen ${JSON.stringify(at)}`);
+  }
   if (tab === "verlauf") {
     // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.
     const box = p.locator("#sections > section.on:not(.folded) .chart svg").first();
