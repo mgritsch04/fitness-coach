@@ -159,3 +159,7 @@ Nach jedem abgehakten Satz fragt der Gym-Modus „Noch drin: 0 / 1–2 / 3+“. 
 ## Express-Krafteinheit bei wenig Zeit (#281)
 
 Im Gym-Modus gibt es neben „Was trainierst du?“ die Auswahl „Zeit: Nur 45/30/20 min“. Dann kürzt `get_express_session {minutes, exercises|template}` die Einheit in dieser Reihenfolge: Hilfsübungen als Supersatz (Drücken mit Ziehen, 60 s Pause), Pausen bei Grundübungen 2 min, Isolationsübungen 2 Sätze und dann streichen, Hilfsübungen 2 Sätze und dann streichen, Grundübungen 3 und dann 2 Sätze. Die Dauer ist geschätzt aus Sätzen, Pausen und 5 min Aufwärmen. Weggelassene Übungen werden genannt, damit sie bei der nächsten Einheit zuerst drankommen. Logik in `worker/src/core/strength-express.ts`.
+
+## Schweißrate auf der Rolle (#282)
+
+Unter „Heute dran“ gibt es nach einer Radeinheit „Schweißrate messen“: Gewicht vorher und nachher (ohne Kleidung), getrunkene Menge und Dauer. Die Rate ist (vorher − nachher + getrunken) / Stunden und wird getrennt nach Rolle und draußen gespeichert (`log_sweat_test`, `get_sweat_rate`, Tabelle `sweat_tests`, Migration 0013). Unplausible Werte werden abgelehnt (unter 30 min, mehr als 6 % Gewichtsunterschied, außerhalb 0,1–3,5 l/h). Die Trinkempfehlung liegt bei etwa 75 % der Rate (0,4–1,5 l/h) und ersetzt in `training.fueling` die Faustregel, bevorzugt mit der Rate von der Rolle. Logik in `worker/src/core/sweat.ts`.

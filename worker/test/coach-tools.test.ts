@@ -24,7 +24,7 @@ function tools() {
 describe("Coach-Werkzeuge", () => {
   it("registriert alle Werkzeuge", () => {
     expect([...tools().handlers.keys()].sort()).toEqual(
-      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_consistency", "get_event_projection", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_recommendation_feedback", "save_plan", "set_goals", "set_training_prefs"].sort(),
+      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_consistency", "get_event_projection", "get_sweat_rate", "log_sweat_test", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_recommendation_feedback", "save_plan", "set_goals", "set_training_prefs"].sort(),
     );
   });
 
@@ -83,6 +83,12 @@ describe("Coach-Werkzeuge", () => {
     // Mobility (#223): ohne Art passend zu heute, mit Art fest.
     expect((await call("get_mobility_routine")).value.exercises.length).toBeGreaterThan(3);
     expect((await call("get_mobility_routine", { kind: "legs" })).value.kind).toBe("legs");
+    // Schweißrate (#282): speichern, unplausibel abgelehnt, löschen.
+    const sw = await call("log_sweat_test", { durationMin: 60, weightBeforeKg: 70, weightAfterKg: 69, drankL: 0.5 });
+    expect(sw.value.indoor.rateLph).toBe(1.5);
+    expect((await call("log_sweat_test", { durationMin: 60, weightBeforeKg: 70, weightAfterKg: 50 })).error).toBe(true);
+    expect((await call("get_sweat_rate")).value.indoor.tests).toBe(1);
+    expect((await call("log_sweat_test", { delete: sw.value.saved.id })).value.indoor).toBeNull();
     // Konstanz (#209): 12 Wochen mit Ziel und Serie.
     const cons = await call("get_consistency");
     expect(cons.value.weeks).toHaveLength(12);
