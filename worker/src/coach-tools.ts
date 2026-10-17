@@ -11,6 +11,7 @@ import { weekReview } from "./core/review";
 import { blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, weekView } from "./core/training";
 import { blockView, buildBlock, deleteBlock, readBlock, saveBlock } from "./core/periodization";
 import { readJournal } from "./core/journal";
+import { zoneTargets } from "./core/zone-targets";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -121,7 +122,9 @@ export function registerCoachTools(server: McpServer, env: Env) {
       const view = await weekView(db, dash, ws);
       const isCurrent = ws === weekStart(dash.today);
       const planned = view.plan.days.find((d) => d.day === dash.today) ?? null;
-      return json({ ...view, today: isCurrent ? todayCheck(planned, dash.coach, view.plan) : null, readiness: isCurrent ? dash.coach : null });
+      const zoneWeek = dash.hrZones.weeks.find((w) => w.week === ws) ?? null;
+      return json({ ...view, today: isCurrent ? todayCheck(planned, dash.coach, view.plan) : null, readiness: isCurrent ? dash.coach : null,
+        zoneTargets: zoneTargets(view.plan, zoneWeek, dash.today) });
     },
   );
 

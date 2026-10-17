@@ -287,3 +287,11 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `get_workout_detail` liefert additiv `wbal`: `cpW`, `wPrimeKj`, `modelSource` (`cp`/`ftp`), `minKj`, `minPct`, `minAtS`, `below25PctS`, `series` (tiefster Wert je Abschnitt in kJ, gleiches Raster wie `series.points`), `verdict`, `note`.
 - `get_interval_quality` liefert je Einheit `wbalMinPct`; der Abschnitt Intervall-Qualität zeigt ihn als „W′ min“.
 - Modellschätzung, keine Messung.
+
+## Zeit-in-Zone-Ziele je Woche (`get_dashboard.zoneTargets`, `get_plan.zoneTargets`, #214)
+
+`core/zone-targets.ts` rechnet aus dem Wochenplan Soll-Minuten locker (Zone 1–3), mittel (Zone 4) und hart (Zone 5). Grundlage sind grobe Anteile je Einheitstyp (`SHARE`, z. B. Schwelle 60/30/10, VO2max 65/10/25); Kraft und Ruhe zählen nicht. Ist sind die WHOOP-Pulszonen dieser Woche (`hrZones.weeks`).
+
+- `rows[]`: je Bereich `targetMin` (ganze Woche), `targetSoFarMin` (geplante Einheiten bis heute), `actualMin`.
+- `hints[]`: zu viel mittlerer Bereich (≥ 20 min und 1,5 × Soll bis heute), harte Minuten unter der Hälfte, Grundlage unter 60 %; sonst „passt“.
+- Dashboard: Block „Diese Woche: Plan gegen Ist“ im bestehenden Abschnitt Pulszonen (kein neuer Abschnitt).
