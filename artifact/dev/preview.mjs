@@ -104,6 +104,8 @@ window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
 writeFileSync(join(out, "preview.html"), html);
 for (const d of ["app", "sections"]) cpSync(join(here, "..", d), join(out, d), { recursive: true });
+// Nur die Seite bauen (für die automatischen User-Tests, scripts/usertest/run.mjs), ohne Browser.
+if (process.argv.includes("--build-only")) process.exit(0);
 
 const pw = await import("playwright").catch(() => import("/opt/node22/lib/node_modules/playwright/index.js"));
 const chromium = pw.chromium ?? pw.default.chromium;
