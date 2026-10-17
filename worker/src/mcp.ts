@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, indoorOutdoorView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -532,6 +532,21 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ weeks }) => json(await eftpView(env.DB, weeks ?? 26)),
+  );
+
+  server.registerTool(
+    "get_indoor_outdoor",
+    {
+      description:
+        "Rolle gegen Straße: Radfahrten drinnen (MyWhoosh, Rolle) gegen draußen (mit Strecke). Anzahl, Stunden, Effizienz (NP pro Herzschlag), " +
+        "Puls bei gleicher Leistung, Intensität und Trittfrequenz, mit Hinweisen zu Pulszonen auf der Rolle. Beobachtungen, keine Diagnose.",
+      inputSchema: { days: z.number().int().min(28).max(730).optional().describe("Zeitraum in Tagen, Standard 180") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ days: d }) => {
+      const days = d ?? 180;
+      return json(indoorOutdoorView(await analysisContext(env.DB, { days, maxDays: 730 }), days));
+    },
   );
 
   server.registerTool(

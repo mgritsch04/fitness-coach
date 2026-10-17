@@ -24,6 +24,7 @@ import { cadenceReport } from "../src/core/cadence";
 import { riderProfile } from "../src/core/rider-profile";
 import { muscleBalance } from "../src/core/muscle-balance";
 import { eftpTrend } from "../src/core/eftp";
+import { indoorOutdoor } from "../src/core/indoor-outdoor";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -168,6 +169,12 @@ process.stdout.write(JSON.stringify({
     }).flat(),
     ftpW: 280, tests: [{ day: "2026-01-20", ftpW: 280 }], weightKg: 76,
   }, "2026-03-31", 26),
+  // Synthetische Fahrten: Rolle im Winter mit höherem Puls und höherer Kadenz, draußen ab März.
+  get_indoor_outdoor: indoorOutdoor(Array.from({ length: 30 }, (_, k) => {
+    const out = k % 3 === 0, p = 180 + (k % 5) * 12;
+    return { day: addDays("2026-03-31", -5 * k - 1), source: out ? "wahoo" : "mywhoosh", sport: "cycling", duration_s: out ? 7200 : 3600, distance_m: out ? 60000 : 30000,
+      avg_hr: Math.round(p / (out ? 1.48 : 1.4)), avg_power_w: p - 8, normalized_power_w: p, avg_cadence_rpm: out ? 84 : 91 };
+  }), 285, "2026-03-31", 180),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];

@@ -25,6 +25,7 @@ export interface HighlightInputs {
   cadence?: { pedalingMinutes: number; hints: string[] } | null;
   recoveryCurve?: { available: boolean; hints?: string[]; backToNormalDays?: number | null } | null;
   readiness?: { available: boolean; hints?: string[]; score?: number | null; counts?: { against: number } } | null;
+  indoorOutdoor?: { comparison: { hrGap: number | null } | null; hints: string[] } | null;
   eftp?: { available: boolean; hints?: string[]; direction?: string | null; suggestTest?: boolean; current?: { stale: boolean } | null } | null;
 }
 
@@ -92,6 +93,10 @@ export function analysisHighlights(x: HighlightInputs, limit = 6) {
   if (e?.available && e.current && e.hints?.length)
     add({ topic: "eftp", title: "FTP-Schätzung", tool: "get_eftp_trend", text: (e.suggestTest ? e.hints.at(-1)! : e.hints.slice(0, 2).join(" ")),
       tone: e.suggestTest || e.direction === "down" ? "warn" : e.direction === "up" ? "good" : "neutral" });
+
+  const io = x.indoorOutdoor;
+  if (io?.comparison && io.hints.length)
+    add({ topic: "indoorOutdoor", title: "Rolle gegen Straße", tool: "get_indoor_outdoor", text: io.hints[0], tone: "neutral" });
 
   const sorted = all.map((h, k) => ({ h, k })).sort((p, q) => ORDER[p.h.tone] - ORDER[q.h.tone] || p.k - q.k).map((p) => p.h);
   return {
