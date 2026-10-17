@@ -236,3 +236,10 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `ratios`: Ziehen (Rücken, Bizeps) zu Drücken (Brust, Schultern, Trizeps), Ziel ab 0,8; Beinbeuger zu Beinstrecker, Ziel ab 0,6.
 - `hints[]`: gar nicht trainierte und zu schwach trainierte Gruppen mit Übungen aus dem Katalog, unausgewogene Verhältnisse, sehr viel Beinvolumen.
 - Dashboard: `sections/musclebalance.js`, Reiter Training nach dem Krafttraining. Trainingsempfehlungen, keine Diagnose.
+
+## Analyse-Highlights (`get_analysis_highlights`, #175)
+
+`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad und Trittfrequenz. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
+
+- Der View (`analysisHighlightsView`) liest Kontext (180 Tage) und Sekundenwerte (120 Tage) nur einmal und füttert damit alle Berichte.
+- Kein eigener Dashboard-Abschnitt; gedacht als Einstieg für den Coach und für Briefing oder Wochenrückblick.

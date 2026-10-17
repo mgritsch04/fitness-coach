@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -532,6 +532,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ weeks }) => json(await muscleBalanceView(env.DB, weeks ?? 4)),
+  );
+
+  server.registerTool(
+    "get_analysis_highlights",
+    {
+      description:
+        "Die wichtigsten Befunde aller Analysen in wenigen Sätzen (Erholungsprognose, HRV-Trend, Aerobe Basis, Intervalle, Ermüdungsresistenz, Fahrertyp, " +
+        "Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz), Auffälliges zuerst, je mit dem Tool für Details. Guter Einstieg für den Coach.",
+      inputSchema: { limit: z.number().int().min(1).max(10).optional().describe("Höchstzahl der Sätze, Standard 6") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ limit }) => json(await analysisHighlightsView(env.DB, limit ?? 6)),
   );
 
   server.registerTool(
