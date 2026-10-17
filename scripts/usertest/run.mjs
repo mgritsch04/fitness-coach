@@ -11,7 +11,7 @@
  * synthetischen Daten bis heute. Die Seite ruft die Werkzeuge darüber auf (live); nur WHOOP/Wahoo/Sync und das
  * Wetter (Netz) sowie Claude (`sample`) bleiben Beispielantworten. Dann führt es scenarios/<issue-nr>.mjs
  * Schritt für Schritt in Chromium aus, macht je Schritt ein Bild und schreibt <out>/<nr>/report.json,
- * report.md (Issue-Kommentar) und report.html (Bildbericht, als privates Artefakt veröffentlichen).
+ * report.md (Issue-Kommentar) und report.html (Bildbericht, nur lokal; kein Artefakt, Bericht nur als Issue-Kommentar).
  *
  * Szenario: export default { issue, feature?, title, name, device: 'desktop' | 'phone', scheme?: 'light' | 'dark',
  *   pc?: true (nur wenn ein Schritt Optik auf echter Grafik beurteilt), realDevice?: [..],
@@ -47,7 +47,7 @@ if (args.includes("--plan")) {
 const port = Number(opt("port", process.env.USERTEST_PORT ?? 4391));
 const outDir = resolve(root, opt("out", "usertest-reports"), issue);
 mkdirSync(outDir, { recursive: true });
-const LABEL = { ok: "✅ erfüllt", fail: "❌ nicht erfüllt", look: "👁 bitte am Bild beurteilen", device: "📱 nur am echten Gerät / im Alltag prüfbar", skip: "⏭ nicht geprüft (optional)" };
+const LABEL = { ok: "✅ erfüllt", fail: "❌ nicht erfüllt", look: "👁 bitte selbst anschauen", device: "📱 nur am echten Gerät / im Alltag prüfbar", skip: "⏭ nicht geprüft (optional)" };
 
 if (args.includes("--report-only")) {
   const r = { ...JSON.parse(readFileSync(join(outDir, "report.json"), "utf8")), name: scenario.name, realDevice: scenario.realDevice ?? [] };
@@ -290,7 +290,7 @@ function markdown(r) {
     "",
     `Stand: \`${r.commit}\` (${r.branch}) · Chromium ${r.gpu ? "auf dem PC, echte Grafikkarte" : "in der Cloud"}, ${r.device === "phone" ? `Handy-Ansicht ${r.viewport.width}×${r.viewport.height}` : `Desktop ${r.viewport.width}×${r.viewport.height}`} · echte Worker-Werkzeuge mit synthetischen Daten (keine echten Messwerte) · ${r.date.slice(0, 16).replace("T", " ")} UTC`,
     "",
-    `Ergebnis: ${c.ok} erfüllt · ${c.fail} nicht erfüllt · ${c.look} nur am Bild beurteilbar · ${c.device} nur am echten Gerät / im Alltag${c.skip ? ` · ${c.skip} optional übersprungen` : ""}`,
+    `Ergebnis: ${c.ok} erfüllt · ${c.fail} nicht erfüllt · ${c.look} selbst anschauen · ${c.device} nur am echten Gerät / im Alltag${c.skip ? ` · ${c.skip} optional übersprungen` : ""}`,
     "",
     "| Schritt | Ergebnis | Beobachtet |",
     "|---|---|---|",
