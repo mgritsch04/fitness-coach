@@ -5,6 +5,9 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 39, id: "riderprofile", title: "Leistungskurve im Vergleich", text: "Beim Fahrertyp zwei Zeiträume übereinander legen und die Differenz je Dauer sehen." },
+    { n: 38, id: "bikewo", title: "Workout-Bibliothek", text: "Unter „Workout für MyWhoosh“: fertige Einheiten wie Sweet Spot oder VO2max, an deine FTP angepasst." },
+    { n: 37, id: "mobility", title: "Mobility nach der Einheit", text: "Passende Dehn- und Mobility-Übungen nach Rad oder Kraft, mit Timer." },
     { n: 36, id: "review", title: "Wochenbilanz als Bild", text: "Im Wochenrückblick „Als Bild speichern“: Kennzahlen, Sportarten und Highlights der Woche als PNG." },
     { n: 35, id: "indooroutdoor", title: "Rolle gegen Straße", text: "Puls, Leistung und Belastung auf der Rolle im Vergleich zu Fahrten draußen." },
     { n: 34, id: "block", title: "Trainingsblock", text: "4-Wochen-Block mit Aufbau und Entlastungswoche; bei schlechten Werten wird die Entlastung vorgezogen." },

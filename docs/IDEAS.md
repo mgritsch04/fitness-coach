@@ -76,31 +76,34 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 61 | Heute unten einklappbar (#191) | Handy: in „Heute“ bis „Heute dran“ offen, Radwetter/Check-in/Bestleistungen/Prognose eingeklappt | Heute 6 300 → 4 050 px | P2 | S | #188 | Vorschau-Test, User-Test | Done (v25; User-Test #192) |
 | 62 | Ausgefallene Schlüsseleinheit nachholen (#194) | Wochenplan schlägt einen Ersatztag vor | Schlüsseleinheiten gehen nicht verloren | P2 | S | Zeile 15 | Unit-Tests, User-Test | Done (User-Test #197) |
 | 63 | Erholungskurve (#195) | Erholung, HRV, Ruhepuls nach harten Tagen bis zur Rückkehr | Wie viele lockere Tage nach harten Tagen | P2 | M | — | Unit-Tests | Done (PR #199) |
-| 64 | Schlüsseleinheit bei schlechter Tagesform verschieben (#198) | späteren Tag vorschlagen statt nur Ruhe | Plan bleibt erfüllbar | P2 | S | Zeile 62 | Unit-Tests | In Progress (PR #217) |
-| 65 | eFTP-Verlauf (#200) | FTP-Schätzung aus normalen Fahrten je Woche, Testvorschlag bei Abweichung | Formtrend zwischen Tests | P1 | M | Zeile 8 | Unit-Tests, Vorschau | Planned |
-| 66 | Wiedereinstieg nach Krankheit/Pause (#201) | Pause erkennen, gestufter Wiedereinstieg, Tagebuch-Feld krank | sicher zurück ins Training | P1 | M | Zeile 16, 17 | Unit-Tests | Planned |
-| 67 | Kraft-Plateau und Entlastungswoche (#202) | Plateau je Übung, Deload-Vorschlag | Fortschritt statt Stillstand | P2 | S | Zeile 24 | Unit-Tests, Vorschau | Planned |
+| 64 | Schlüsseleinheit bei schlechter Tagesform verschieben (#198) | späteren Tag vorschlagen statt nur Ruhe | Plan bleibt erfüllbar | P2 | S | Zeile 62 | Unit-Tests | Done (User-Test #227) |
+| 65 | eFTP-Verlauf (#200) | FTP-Schätzung aus normalen Fahrten je Woche, Testvorschlag bei Abweichung | Formtrend zwischen Tests | P1 | M | Zeile 8 | Unit-Tests, Vorschau | Done (User-Test #240) |
+| 66 | Wiedereinstieg nach Krankheit/Pause (#201) | Pause erkennen, gestufter Wiedereinstieg, Tagebuch-Feld krank | sicher zurück ins Training | P1 | M | Zeile 16, 17 | Unit-Tests | Done (User-Test #233) |
+| 67 | Kraft-Plateau und Entlastungswoche (#202) | Plateau je Übung, Deload-Vorschlag | Fortschritt statt Stillstand | P2 | S | Zeile 24 | Unit-Tests, Vorschau | Done (User-Test #244) |
 | 68 | Kraftstandards relativ zum Körpergewicht (#203) | e1RM/kg je Grundübung mit groben Stufen | Kraft pro kg wie W/kg | P2 | S | Zeile 23, 24 | Unit-Tests | Planned |
 | 69 | Gym-Modus: Übung tauschen (#204) | Übungsbibliothek mit Alternativen | belegte Geräte | P2 | M | Zeile 38 | Unit-Tests, Vorschau | Planned |
-| 70 | Schlafziel für heute Nacht (#205) | Schlafbedarf aus Belastung und Schlafschuld, Zubettgehzeit | bessere Erholung | P2 | S | Zeile 13 | Unit-Tests | Planned |
-| 71 | 4-Wochen-Blockplanung (#206) | 3 Aufbau- + 1 Entlastungswoche mit CTL-Rampe | planbarer Fortschritt | P2 | M | Zeile 15 | Unit-Tests, Vorschau | Planned |
-| 72 | Rolle gegen Straße (#207) | Leistung/Puls indoor vs. outdoor | Zonen indoor anpassen | P3 | S | Zeile 6 | Unit-Tests | Planned |
-| 73 | W′-Bilanz im Workout-Detail (#208) | W′bal-Verlauf (Skiba) | Intervalle richtig dosieren | P3 | S | Zeile 20, 34 | Unit-Tests | Planned |
+| 70 | Schlafziel für heute Nacht (#205) | Schlafbedarf aus Belastung und Schlafschuld, Zubettgehzeit | bessere Erholung | P2 | S | Zeile 13 | Unit-Tests | Done (User-Test #238) |
+| 71 | 4-Wochen-Blockplanung (#206) | 3 Aufbau- + 1 Entlastungswoche mit CTL-Rampe | planbarer Fortschritt | P2 | M | Zeile 15 | Unit-Tests, Vorschau | Done (User-Test #249) |
+| 72 | Rolle gegen Straße (#207) | Leistung/Puls indoor vs. outdoor | Zonen indoor anpassen | P3 | S | Zeile 6 | Unit-Tests | Done (User-Test #247) |
+| 73 | W′-Bilanz im Workout-Detail (#208) | W′bal-Verlauf (Skiba) | Intervalle richtig dosieren | P3 | S | Zeile 20, 34 | Unit-Tests | Done (User-Test #252) |
 | 74 | Konstanz und Serien (#209) | Wochenziel-Serien, Plan-Treue | Motivation | P3 | S | Zeile 15 | Unit-Tests, Vorschau | Planned |
 | 75 | Diagramme: Tippen zeigt Werte (#210) | Fadenkreuz und Wertbox in FC.chart | Werte am Handy ablesen | P2 | S | — | Vorschau, User-Test #230 | Done |
 | 76 | Vorschau-CI prüft Barrierefreiheit (#211) | axe-core in preview.mjs, Verstöße beheben | Qualität | P2 | M | Zeile 31 | CI, User-Test #251 | Done |
 | 77 | Datenstand je Quelle (#212) | freshness in get_dashboard, Hinweis in Kopfzeile/Briefing | alte Daten erkennen | P3 | S | — | Unit-Tests, Vorschau, User-Test #243 | Done |
-| 78 | Krafttraining nach Saisonphase (#213) | Aufbau/Erhalt/Wettkampf im Wochenplan | Kraft passend zur Radsaison | P3 | S | Zeile 39 | Unit-Tests | Planned |
-| 79 | Zeit-in-Zone-Ziele je Woche (#214) | Soll aus Plan gegen Ist | Intensitätsverteilung steuern | P3 | S | Zeile 12, 15 | Unit-Tests, Vorschau | Planned |
-| 80 | Leistungskurve Zeitraum-Vergleich (#215) | zwei Zeiträume übereinander mit Differenz | Fortschritt sehen | P3 | S | Zeile 8 | Unit-Tests, Vorschau | Planned |
-| 81 | Rückmeldung zur Tagesempfehlung (#216) | passt/zu hart/zu leicht, Korrekturfaktor | Coach lernt | P3 | M | Zeile 9 | Unit-Tests, Vorschau | Planned |
+| 78 | Krafttraining nach Saisonphase (#213) | Aufbau/Erhalt/Wettkampf im Wochenplan | Kraft passend zur Radsaison | P3 | S | Zeile 39 | Unit-Tests | Done (User-Test #258) |
+| 79 | Zeit-in-Zone-Ziele je Woche (#214) | Soll aus Plan gegen Ist | Intensitätsverteilung steuern | P3 | S | Zeile 12, 15 | Unit-Tests, Vorschau | Done (User-Test #257) |
+| 80 | Leistungskurve Zeitraum-Vergleich (#215) | zwei Zeiträume übereinander mit Differenz | Fortschritt sehen | P3 | S | Zeile 8 | Unit-Tests, Vorschau | Done (User-Test #263) |
+| 81 | Rückmeldung zur Tagesempfehlung (#216) | passt/zu hart/zu leicht, Korrekturfaktor | Coach lernt | P3 | M | Zeile 9 | Unit-Tests, Vorschau | In Progress (Thread Trainingscoach) |
 | 82 | Wochenbilanz als Bild (#218) | Canvas-PNG über Downloads | aufheben/teilen | P3 | S | Zeile 33 | Vorschau, User-Test #259 | Done |
-| 83 | Zwei Workouts vergleichen (#219) | Kennzahlen und Kurven nebeneinander | Fortschritt auf gleicher Runde | P3 | M | Zeile 20 | Unit-Tests, Vorschau | Planned |
+| 83 | Zwei Workouts vergleichen (#219) | Kennzahlen und Kurven nebeneinander | Fortschritt auf gleicher Runde | P3 | M | Zeile 20 | Unit-Tests, Vorschau | Blocked (wartet auf MyWhoosh-Upload-Deploy #27) |
 | 84 | Workout-Liste filtern und suchen (#220) | Sport, Zeitraum, Quelle, Suche | lange Historie nutzbar | P3 | S | — | Vorschau, User-Test #236 | Done |
-| 85 | Workout-Bibliothek für MyWhoosh (#221) | Vorlagen je Typ, an FTP angepasst, .zwo | Auswahl für spontane Rolleneinheiten | P2 | M | Zeile 26 | Unit-Tests, Vorschau | Planned |
-| 86 | Eiweiß-/KH-Richtwert je Tag (#222) | aus Gewicht und Tagesbelastung | Essen planen | P3 | S | Zeile 23 | Unit-Tests | Planned |
-| 87 | Mobility-Routine nach der Einheit (#223) | Routinen je Einheitstyp mit Timer | Beweglichkeit | P3 | S | Zeile 38 | Unit-Tests, Vorschau | Planned |
-| 88 | Radwetter: Kleidungsempfehlung (#224) | Stufen nach gefühlter Temperatur, Regen, Licht | passend angezogen | P3 | S | Zeile 29 | Unit-Tests | Planned |
+| 85 | Workout-Bibliothek für MyWhoosh (#221) | Vorlagen je Typ, an FTP angepasst, .zwo | Auswahl für spontane Rolleneinheiten | P2 | M | Zeile 26 | Unit-Tests, Vorschau | Done (User-Test #266) |
+| 86 | Eiweiß-/KH-Richtwert je Tag (#222) | aus Gewicht und Tagesbelastung | Essen planen | P3 | S | Zeile 23 | Unit-Tests | Done (User-Test #254) |
+| 87 | Mobility-Routine nach der Einheit (#223) | Routinen je Einheitstyp mit Timer | Beweglichkeit | P3 | S | Zeile 38 | Unit-Tests, Vorschau | Done (User-Test #264) |
+| 88 | Radwetter: Kleidungsempfehlung (#224) | Stufen nach gefühlter Temperatur, Regen, Licht | passend angezogen | P3 | S | Zeile 29 | Unit-Tests | In Progress (Thread Trainingslast und Analysen) |
+| 89 | Training nach der Erholungsampel (#226) | Strain je Erholungszone, Treffer-Quote | hörst du auf deinen Körper? | P2 | S | Zeile 3 | Unit-Tests, Vorschau | Done (User-Test #234) |
+| 90 | MyWhoosh automatisch synchronisieren (#267) | nur offizielle Wege (z. B. Intervals.icu), Recherche dann Provider unter `providers/<anbieter>/` | kein manueller FIT-Upload | P1 | M | Zeile 6; kein Scraping | neue MyWhoosh-Fahrt erscheint ohne Duplikat | In Progress (Thread „MyWhoosh automatisch synchronisieren“) |
+| 91 | Abschnitte suchen und hinspringen (#269) | Suchfeld in der Kopfzeile, Treffer mit Tab, Sprung klappt auf | über 50 Abschnitte schnell finden | P2 | S | Zeile 60 | Vorschau-Test, User-Test | In Progress |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 
