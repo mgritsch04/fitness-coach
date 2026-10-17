@@ -1,4 +1,5 @@
 // Radwetter (#66): bestes Zeitfenster heute und morgen, Empfehlung draußen oder Rolle (get_ride_weather, set_weather_location).
+// Kleidungsempfehlung (#224) aus clothing: gefühlte Temperatur mit Fahrtwind, Liste und Hinweise.
 FC.section({
   id: "weather",
   tab: "heute",
@@ -17,7 +18,9 @@ FC.section({
     .wx-h b { font-weight: 600; color: var(--ink-2); }
     #sec-weather .linkish { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
     .wx-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
-    .wx-form label { display: grid; gap: 4px; font-size: .88rem; color: var(--ink-2); }`,
+    .wx-form label { display: grid; gap: 4px; font-size: .88rem; color: var(--ink-2); }
+    .wx-cl { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: .92rem; }
+    .wx-cl .wx-clh { color: var(--ink-2); }`,
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-weather">Radwetter</h2><span class="muted" id="wxLoc"></span></div>
@@ -86,9 +89,19 @@ FC.section({
           const bar = el("i"); bar.style.background = col(h.score);
           return el("div", { class: `wx-h${inWin(h.time) ? " in" : ""}`, title: `${h.time.slice(11, 16)} Uhr: ${h.tempC != null ? `${Math.round(h.tempC)} °C` : "–"}, Regen ${h.rainProb ?? "–"} %, Wind ${h.windKmh != null ? Math.round(h.windKmh) : "–"} km/h${h.issues.length ? ` (${h.issues.join(", ")})` : ""}` },
             el("span", { text: h.time.slice(11, 13) }), bar, el("b", { text: h.tempC != null ? `${Math.round(h.tempC)}°` : "–" }));
-        })) : null);
+        })) : null,
+        this.clothing(d));
     })));
     const t = new Date(r.fetchedAt);
-    $("wxCap").textContent = `Balken: grün gut, gelb geht, rot eher Rolle; umrandet das beste Fenster. Wetterdaten Open-Meteo (CC BY 4.0), Stand ${isNaN(t) ? "–" : t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}. Bewertung nach Faustregeln, keine Unwetterwarnung.`;
+    $("wxCap").textContent = `Balken: grün gut, gelb geht, rot eher Rolle; umrandet das beste Fenster. Wetterdaten Open-Meteo (CC BY 4.0), Stand ${isNaN(t) ? "–" : t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}. Bewertung nach Faustregeln, keine Unwetterwarnung.${r.days.some((d) => d.clothing) ? " Kleidung: gefühlte Temperatur bei etwa 25 km/h Fahrtwind, Faustregel, jeder friert anders." : ""}`;
+  },
+  /** Kleidung fürs beste Fenster; bei Empfehlung Rolle als „Falls du rausfährst“. */
+  clothing(d) {
+    const { el } = FC, c = d.clothing;
+    if (!c || d.advice.verdict === "rest" || d.advice.verdict === "no_ride") return null;
+    const head = `${d.advice.verdict === "indoor" ? "Falls du rausfährst: " : "Anziehen: "}${c.label}, gefühlt ${c.feelsC} °C`;
+    return el("div", { class: "wx-cl" }, el("b", { text: head }),
+      el("p", { style: "margin:2px 0 0", text: c.items.join(", ") }),
+      ...c.hints.map((h) => el("p", { class: "wx-clh", style: "margin:4px 0 0", text: h })));
   },
 });

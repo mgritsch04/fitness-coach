@@ -4,7 +4,7 @@ import { z } from "zod";
 import { addDays, DEFAULT_TIMEZONE, weekStart } from "./core/analysis";
 import { buildDashboard } from "./core/dashboard";
 import { weekView } from "./core/training";
-import { bestWindow, FORECAST_URL, GEOCODE_URL, parseForecast, parseGeocode, readLocation, rideAdvice, round1, writeLocation, type WeatherHour, type WeatherLocation } from "./core/weather";
+import { bestWindow, clothingAdvice, FORECAST_URL, GEOCODE_URL, parseForecast, parseGeocode, readLocation, rideAdvice, round1, writeLocation, type WeatherHour, type WeatherLocation } from "./core/weather";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -65,7 +65,7 @@ export function registerWeatherTools(server: McpServer, env: Env, fetchJson: (ur
     "get_ride_weather",
     {
       description:
-        "Radwetter für heute und morgen am eingestellten Ort (Open-Meteo): Stunden mit Bewertung 0–100, bestes Zeitfenster in Länge der geplanten Einheit " +
+        "Radwetter für heute und morgen am eingestellten Ort (Open-Meteo): Stunden mit Bewertung 0–100, bestes Zeitfenster in Länge der geplanten Einheit, Kleidungsempfehlung (clothing: gefühlte Temperatur mit Fahrtwind, Stufe, Liste, Hinweise zu Regen und Licht) " +
         "und eine Empfehlung draußen oder Rolle, die Wochenplan und Tagesform berücksichtigt. Bewertung nach Faustregeln, keine Unwetterwarnung.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
@@ -98,6 +98,8 @@ export function registerWeatherTools(server: McpServer, env: Env, fetchJson: (ur
           planned,
           best,
           advice: rideAdvice(best, planned, i === 0 ? dash.coach.readiness : null),
+          // Kleidung (#224) nur, wenn draußen fahren überhaupt in Frage kommt.
+          clothing: best && best.rating !== "schlecht" ? clothingAdvice(best, fc.hours.filter((h) => h.time.startsWith(day))) : null,
           hours: fc.hours.filter((h) => h.time.startsWith(day)),
         });
       }

@@ -19,6 +19,7 @@ import {
 import { coachAdvice } from "./coach";
 import { trainingOverview } from "./training";
 import { zoneTargets } from "./zone-targets";
+import { applyFeedback, feedbackAdjust, readFeedback } from "./feedback";
 import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
 import { applyWarning } from "./warning-cap";
 import { applyHrvTrend } from "./hrv-cap";
@@ -91,7 +92,9 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     if (n.effect === "down" && (baseCoach.readiness === "hard" || baseCoach.readiness === "moderate")) baseCoach.warnings.push(n.text);
   }
   // Tagebuch (journal.ts): Check-in von heute fließt in die Tagesempfehlung ein.
-  const [journal, rpeRows] = await Promise.all([readJournal(db, statsFrom, today), readRpe(db, viewFrom)]);
+  const [journal, rpeRows, feedback] = await Promise.all([readJournal(db, statsFrom, today), readRpe(db, viewFrom), readFeedback(db, addDays(today, -30)).catch(() => [])]);
+  // Rückmeldung zur Tagesempfehlung (feedback.ts, #216): begrenzte Korrektur aus den letzten 30 Tagen.
+  const fbAdjust = feedbackAdjust(feedback, today);
   const journalToday = journal.find((j) => j.day === today) ?? null;
   // Frühwarnung (warnings.ts): mehrere Körpersignale außerhalb der Basis dämpfen die Empfehlung.
   const warning = earlyWarning(series, today);
@@ -102,7 +105,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const hrvSignal = hrv.available ? { pattern: hrv.pattern, label: hrv.label, advice: hrv.advice } : null;
   // Wiedereinstieg nach Krankheit oder Pause (return-to-training.ts, #201): deckelt die Empfehlung stufenweise.
   const comeback = returnToTraining(series, journal, today);
-  const coach = applyReturn(applyJournal(applyHrvTrend(applyWarning(baseCoach, warning), hrvSignal), journalToday), comeback);
+  const coach = applyReturn(applyFeedback(applyJournal(applyHrvTrend(applyWarning(baseCoach, warning), hrvSignal), journalToday), fbAdjust), comeback);
   const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
@@ -176,5 +179,5 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   const tomorrowPlan = training.thisWeek.plan.days.find((x) => x.day === addDays(today, 1)) ?? null;
   // Zeit-in-Zone-Ziele (#214): Soll aus dem Wochenplan gegen die WHOOP-Pulszonen dieser Woche.
   const zoneWeek = result.hrZones.weeks.find((w) => w.week === training.thisWeek.week) ?? null;
-  return { ...result, journal: journalOut, training, zoneTargets: zoneTargets(training.thisWeek.plan, zoneWeek, today), sleepTarget: sleepTarget({ today, nights, series, sleepNeedH: settings.sleepNeedH, tomorrow: tomorrowPlan }) };
+  return { ...result, journal: journalOut, recommendationFeedback: fbAdjust, training, zoneTargets: zoneTargets(training.thisWeek.plan, zoneWeek, today), sleepTarget: sleepTarget({ today, nights, series, sleepNeedH: settings.sleepNeedH, tomorrow: tomorrowPlan }) };
 }

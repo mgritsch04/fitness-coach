@@ -17,7 +17,7 @@ export interface StrengthSeason {
 
 export const SEASON_LABEL: Record<StrengthSeasonPhase, string> = { build: "Kraftaufbau", maintain: "Krafterhalt", race: "Wettkampf" };
 const TEXT: Record<StrengthSeasonPhase, string> = {
-  build: "Kraftaufbau: ein Satz mehr bei den Grundübungen, 2–3 Einheiten pro Woche. Jetzt ist die Zeit, Kraft aufzubauen.",
+  build: "Kraftaufbau: ein Satz mehr bei den Grundübungen, mindestens 2 Einheiten pro Woche. Jetzt ist die Zeit, Kraft aufzubauen.",
   maintain: "Krafterhalt: 2 Einheiten pro Woche, weniger Sätze, dafür schwer und kurz (höchstens 6 Wiederholungen bei den Grundübungen).",
   race: "Wettkampfphase: höchstens 1 kurze Einheit, 2 Sätze, etwa 10 % leichter und explosiv, nichts bis zur Ermüdung.",
 };

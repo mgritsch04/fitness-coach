@@ -15,7 +15,7 @@ import { weekReview } from "../src/core/review";
 import { weekView } from "../src/core/training";
 import { weekStart } from "../src/core/analysis";
 import { buildBikeWorkout, pickWorkouts, toZwo, zwoFileName } from "../src/core/bike-workout";
-import { bestWindow, parseForecast, rideAdvice } from "../src/core/weather";
+import { bestWindow, clothingAdvice, parseForecast, rideAdvice } from "../src/core/weather";
 import { bodyReport, readBodyHistory, saveManualWeight } from "../src/core/body";
 import { durabilityReport } from "../src/core/durability";
 import { aerobicReport } from "../src/core/aerobic";
@@ -188,7 +188,8 @@ process.stdout.write(JSON.stringify({
     const plans = [{ type: "endurance" as const, title: "Grundlage", durationMin: 90 }, { type: "threshold" as const, title: "Schwelle", durationMin: 75 }];
     return { location: { name: "Graz, Österreich (Beispiel)", lat: 47.1, lon: 15.4 }, timezone: "Europe/Vienna", fetchedAt: "2026-03-31T07:10:00Z", source: "Open-Meteo",
       days: ["2026-03-31", "2026-04-01"].map((day, i) => { const best = bestWindow(hours, day, Math.ceil(plans[i].durationMin / 60), i ? undefined : "2026-03-31T09:00");
-        return { day, planned: plans[i], best, advice: rideAdvice(best, plans[i], "moderate"), hours: hours.filter((h) => h.time.startsWith(day)) }; }) };
+        return { day, planned: plans[i], best, advice: rideAdvice(best, plans[i], "moderate"), clothing: best && best.rating !== "schlecht" ? clothingAdvice(best, hours.filter((h) => h.time.startsWith(day))) : null,
+          hours: hours.filter((h) => h.time.startsWith(day)) }; }) };
   })(),
   get_ftp_tests: await (async () => {
     const c = await ctx(7);

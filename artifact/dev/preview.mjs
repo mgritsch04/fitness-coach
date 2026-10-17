@@ -65,17 +65,20 @@ const payloads = {
       weeks: [{ week: wk, sessions: 2, sets: 4, tonnageKg: 2740, muscles: [{ muscle: "quads", label: "Oberschenkel vorne", sets: 2, tonnageKg: 1000 }, { muscle: "chest", label: "Brust", sets: 2, tonnageKg: 1160 }, { muscle: "glutes", label: "Gesäß", sets: 1, tonnageKg: 0 }, { muscle: "triceps", label: "Trizeps", sets: 1, tonnageKg: 0 }] }],
       progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress" },
         { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau" }],
+      standards: { available: true, weightKg: 75, note: "Grobe Richtwerte für trainierte Erwachsene, keine Norm.", text: "", exercises: [{ exercise: "back_squat", name: "Kniebeuge", e1rmKg: 116.7, perKg: 1.56, level: "Stark", next: { level: "Sehr stark", e1rmKg: 150 }, day: t }, { exercise: "bench_press", name: "Bankdrücken", e1rmKg: 91.8, perKg: 1.22, level: "Stark", next: { level: "Sehr stark", e1rmKg: 113 }, day: d(-4) }] },
       templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", sets: 3, reps: 5, weightKg: 100 }] }],
       coachNotes: [{ effect: "down", text: "Schwere Beineinheit heute: morgen eher locker radeln, keine Intervalle." }],
       note: "1RM und Belastung sind Schätzungen." }; },
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   save_strength_template: (i) => i,
+  get_exercise_alternatives: (i) => ({ exercise: "bench_press", name: i.exercise, known: true, pattern: "push", alternatives: [{ exercise: "dumbbell_bench", name: "Kurzhantel-Bankdrücken", startKg: 30, lastDay: null, basis: "history" }], note: "Startgewicht aus deiner letzten Einheit." }),
   update_settings: (i) => i,
   save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
   save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
   save_workout_rpe: (i) => { window.__rpeSaved = i; return { saved: i }; },
+  save_recommendation_feedback: (i) => { window.__fbSaved = i; return { saved: { day: window.__MOCK__.get_dashboard.today, verdict: i.verdict }, today: i.verdict, count: 4, scoreDelta: 0, text: "" }; },
   get_week_review: (i) => window.__MOCK__.get_week_review[i.week ?? "previous"],
   save_coach_note: (i) => ({ id: 1, ...i }),
   import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.get_dashboard.today, startTime: window.__MOCK__.get_dashboard.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
@@ -250,6 +253,15 @@ for (const [name, vp, scheme, tab] of shots) {
       if (!on) errors.push(`${name}: Heute dran startet den Gym-Modus nicht`);
       await p.evaluate(() => localStorage.removeItem("fc-gym"));
     } else errors.push(`${name}: Heute dran ohne Gym-Knopf am Krafttag`);
+    // Rückmeldung zur Empfehlung (#216): nach erledigter Einheit drei Knöpfe, Auswahl bleibt markiert.
+    await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(300);
+    const fbBtn = p.locator("#agBody .ag-fb button:nth-child(2)");
+    if (!(await fbBtn.count())) errors.push(`${name}: Heute dran fragt nicht nach der Rückmeldung zur Empfehlung`);
+    else {
+      await fbBtn.click(); await p.waitForTimeout(300);
+      const fbr = await p.evaluate(() => [window.__fbSaved?.verdict, document.querySelector("#agBody .ag-fb button:nth-child(2)")?.getAttribute("aria-pressed")]);
+      if (fbr[0] !== "too_hard" || fbr[1] !== "true") errors.push(`${name}: Rückmeldung falsch gespeichert ${JSON.stringify(fbr)}`);
+    }
     // Mobility (#223): Abschnitt öffnen, Timer starten und stoppen.
     await p.evaluate(() => FC.goTo("mobility")); await p.waitForTimeout(300);
     const moN = await p.$$eval("#moList li", (l) => l.length);
@@ -257,6 +269,10 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#moStart").catch(() => errors.push(`${name}: Mobility ohne Start-Knopf`)); await p.waitForTimeout(1200);
     if (!(await p.evaluate(() => !document.getElementById("moRun").hidden && /\d+ s/.test(document.getElementById("moRun").textContent)))) errors.push(`${name}: Mobility-Timer läuft nicht`);
     await p.click("#moStart").catch(() => {});
+    // Kraft pro kg (#203): Tabelle mit Stufen im Abschnitt Krafttraining.
+    await p.evaluate(() => FC.goTo("strength")); await p.waitForTimeout(800);
+    const stdN = await p.$$eval("#stStd tbody tr", (r) => r.length).catch(() => 0);
+    if (stdN !== 2) errors.push(`${name}: Kraft pro kg zeigt ${stdN} statt 2 Zeilen`);
     await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
     await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
   }
@@ -289,6 +305,12 @@ for (const [name, vp, scheme, tab] of shots) {
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
     await p.screenshot({ path: join(out, "phone-gym.png") });
+    // Übung tauschen (#204): letzte Übung gegen Alternative tauschen, Satzzahl bleibt.
+    const before = await p.$$eval("#gyBody .gy-ex", (l) => { const c = l[l.length - 1]; return c.querySelectorAll(".gy-set").length; });
+    await p.click("#gyBody .gy-ex:last-of-type .gy-swap"); await p.waitForSelector("#gyBody .gy-swapbox button", { timeout: 2000 }).catch(() => {});
+    await p.click("#gyBody .gy-swapbox button").catch(() => errors.push(`${name}: Tauschen zeigt keine Alternative`)); await p.waitForTimeout(100);
+    const after = await p.$$eval("#gyBody .gy-ex", (l) => { const c = l[l.length - 1]; return { h: c.querySelector("h3")?.textContent ?? "", n: c.querySelectorAll(".gy-set").length }; });
+    if (!after.h.includes("Kurzhantel-Bankdrücken") || after.n !== before) errors.push(`${name}: Tauschen ersetzt die Übung nicht richtig ${JSON.stringify({ before, after })}`);
     await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(7)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
     const saved = await p.evaluate(() => window.__gymSaved);
     if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
