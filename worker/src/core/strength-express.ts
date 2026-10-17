@@ -119,6 +119,11 @@ export function strengthExpress(input: ExpressInput[], minutes: number): Strengt
     for (const x of list) if (x.priority > 1 && changes.some((c) => c.startsWith("Hilfsübungen als Supersatz"))) x.restS = x.superset ? SUPERSET_REST_S : 75;
   }
   if (!changes.some((c) => c.startsWith("Hilfsübungen als Supersatz"))) for (const x of list) x.superset = null;
+  // Nach dem Streichen kann ein Partner fehlen: ohne verbliebenen Supersatz auch keinen Hinweis darauf, normale Pause.
+  else if (!list.some((x) => x.superset)) {
+    changes.splice(changes.findIndex((c) => c.startsWith("Hilfsübungen als Supersatz")), 1);
+    for (const x of list) if (x.priority > 1) x.restS = 75;
+  }
   const est = estimateMin(list), ok = est <= minutes;
   // Nur Änderungen nennen, die im Ergebnis noch sichtbar sind.
   const has = (p: number) => list.some((x) => x.priority === p);
