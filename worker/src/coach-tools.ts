@@ -297,6 +297,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         today: dash.today,
         readiness: dash.coach,
         earlyWarning: dash.earlyWarning,
+        returnToTraining: dash.returnToTraining,
         planToday: t.today,
         trends: trendBrief,
         recentDays: dash.days.slice(-n).map((d) => ({
@@ -333,6 +334,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
           "Kraft und Rad zusammen denken: keine schweren Beine vor Intervallen oder der langen Fahrt; harte Tage hart, lockere Tage locker.",
           "Das Tagebuch (Befinden, Muskelkater, Stress, Tags wie krank/Reise/Alkohol) ist so wichtig wie die Messwerte; tagEffects sind Beobachtungen, keine Ursachen.",
           "recoveryForecast ist eine statistische Schätzung der Erholung von morgen aus deinen eigenen Daten: Spanne (low–high) nennen und nur nutzen, wenn available = true.",
+          "returnToTraining: Läuft ein Wiedereinstieg nach Krankheit oder Pause, die Stufe (Dauer, Intensität, Kraft) einhalten und bei abort nicht steigern. Bei Fieber, Brustschmerz oder Atemnot nicht trainieren.",
           "makeUp: kind makeUp = ausgefallene Schlüsseleinheit nachholen, kind postpone = heutige Schlüsseleinheit wegen der Tagesform verschieben. Nur am vorgeschlagenen Tag; bei day = null ausfallen lassen statt zwei harte Tage hintereinander.",
           "analysisHighlights sind die wichtigsten Befunde der Analysen (tone warn zuerst); bei Bedarf mit dem genannten tool Details holen. Nicht jeden Punkt aufzählen, nur was zur Frage passt.",
           "Planänderungen mit save_plan speichern, dauerhafte Erkenntnisse mit save_coach_note, Ziele mit set_goals.",

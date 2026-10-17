@@ -91,6 +91,7 @@ FC.section({
     $("planSummary").textContent = `${cmp.summary} Geplant: ${de(w.plan.targetHours, 1)} h, ~${de(w.plan.days.reduce((a, x) => a + x.targetLoad, 0))} Belastungspunkte (geschätzt).`;
     if (t.intensity && t.intensity.verdict !== "ok") $("planSummary").textContent += ` ${t.intensity.text}`;
     if (t.ftpTest) $("planSummary").textContent += ` ${t.ftpTest.text}`;
+    if (d.returnToTraining?.status === "return") $("planSummary").textContent += ` ${d.returnToTraining.text}`;
     if (t.makeUp) $("planSummary").textContent += ` ${t.makeUp.text}`;
     const ftpDay = t.ftpTest?.day ?? null;
     const makeUpDay = t.makeUp?.day ?? null;
