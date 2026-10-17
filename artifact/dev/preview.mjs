@@ -322,6 +322,31 @@ for (const [name, vp, scheme, tab] of shots) {
     const saved = await p.evaluate(() => window.__gymSaved);
     if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
   }
+  if (name === "phone-mehr" || name === "desktop-light") {
+    // Abschnitte suchen (#269): „kadenz“ findet Trittfrequenz im Training-Tab, Enter springt hin und klappt am Handy auf.
+    if (name === "phone-mehr") await p.click("#btnSearch");
+    else if (await p.evaluate(() => !document.getElementById("sec-whatsnew").hidden)) {
+      // Desktop: der Eintrag unter „Neu im Dashboard“ öffnet die Suche; danach per Taste „/“.
+      await p.locator("#wnList li button", { has: p.locator("strong", { hasText: /^Abschnitte suchen$/ }) }).click().catch(() => errors.push(`${name}: Suche fehlt unter „Neu im Dashboard“`));
+      await p.waitForTimeout(100);
+      if (!(await p.evaluate(() => document.getElementById("searchDlg").open))) errors.push(`${name}: „Neu im Dashboard“ öffnet die Suche nicht`);
+      await p.keyboard.press("Escape"); await p.waitForTimeout(100);
+      await p.evaluate(() => document.activeElement?.blur()); await p.keyboard.press("/");
+    } else { await p.evaluate(() => document.activeElement?.blur()); await p.keyboard.press("/"); }
+    await p.waitForTimeout(100);
+    if (!(await p.evaluate(() => document.getElementById("searchDlg").open && document.activeElement?.id === "searchInput"))) errors.push(`${name}: Suche öffnet nicht`);
+    await p.fill("#searchInput", "kadenz"); await p.waitForTimeout(100);
+    const hits = await p.$$eval("#searchList button", (b) => b.map((x) => x.textContent));
+    if (!hits.length || !/^Trittfrequenz.*Training$/.test(hits[0])) errors.push(`${name}: Suche „kadenz“ findet ${JSON.stringify(hits)}`);
+    await p.screenshot({ path: join(out, `${name}-search-open.png`) });
+    await p.fill("#searchInput", "xyzq"); await p.waitForTimeout(50);
+    if (!/Kein Abschnitt/.test(await p.textContent("#searchHint"))) errors.push(`${name}: Suche ohne Treffer-Hinweis`);
+    await p.fill("#searchInput", "kadenz"); await p.press("#searchInput", "Enter"); await p.waitForTimeout(1700);
+    const at = await p.evaluate(() => ({ dlg: document.getElementById("searchDlg").open, tab: document.querySelector("#tabbar [aria-current=page]")?.dataset.tab, folded: document.getElementById("sec-cadence").classList.contains("folded"), top: Math.round(document.getElementById("sec-cadence").getBoundingClientRect().top), cad: window.__calls.includes("get_cadence_profile") }));
+    if (at.dlg || at.tab !== "training" || at.folded || Math.abs(at.top) > 60 || !at.cad) errors.push(`${name}: Suche springt falsch ${JSON.stringify(at)}`);
+    await p.screenshot({ path: join(out, `${name}-search.png`) });
+    await p.click("#tabbar [data-tab=" + (tab ?? "heute") + "]").catch(() => {}); await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(200);
+  }
   if (name === "desktop-light") {
     const stuck = await p.evaluate(() => [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.innerText.includes("Lädt …")).map((s) => s.id));
     if (stuck.length) errors.push(`${name}: noch „Lädt …“ in ${stuck.join(", ")}`);

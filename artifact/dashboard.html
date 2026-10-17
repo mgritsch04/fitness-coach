@@ -79,6 +79,15 @@ header.top h1 { font-size: 2.3rem; line-height: 1; }
 header.top .date { color: var(--ink-2); margin-top: 4px; }
 .syncbox { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .syncbox .state { font-size: 0.88rem; color: var(--ink-2); }
+.search-btn { display: inline-flex; align-items: center; gap: 6px; }
+.search-dlg { width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 640px); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); padding: 14px; }
+.search-dlg::backdrop { background: rgba(0, 0, 0, 0.35); }
+.search-row { display: flex; gap: 8px; }
+.search-row input { flex: 1; min-width: 0; font: inherit; font-size: 1rem; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.search-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.search-list button { width: 100%; display: flex; justify-content: space-between; gap: 12px; text-align: left; font-weight: 600; }
+.search-list button:focus-visible, .search-list button:hover { border-color: var(--accent); }
+.search-tab { color: var(--ink-3); font-weight: 400; font-size: 0.85rem; flex: none; }
 .fresh { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 0.85rem; }
 .fresh button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); padding: 2px 0; }
 .fresh button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
@@ -333,4 +342,5 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
 <script src="sections/sources.js"></script>
 <script src="sections/export.js"></script>
 <script src="sections/layout.js"></script>
+<script src="sections/search.js"></script>
 <script>FC.boot();</script>
