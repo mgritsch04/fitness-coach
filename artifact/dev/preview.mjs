@@ -78,6 +78,9 @@ const payloads = {
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
   save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
   save_workout_rpe: (i) => { window.__rpeSaved = i; return { saved: i }; },
+  get_consistency: () => { const t = window.__MOCK__.get_dashboard.today, x = new Date(t + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() - (x.getUTCDay() + 6) % 7); const ws = (n) => { const y = new Date(x); y.setUTCDate(y.getUTCDate() - 7 * n); return y.toISOString().slice(0, 10); };
+    const weeks = Array.from({ length: 12 }, (_, i) => { const n = 11 - i, met = n >= 1 && n <= 3; return { week: ws(n), strength: met ? 3 : n === 0 ? 1 : 1, rides: met ? 3 : 1, met, current: n === 0, planned: null, done: null }; });
+    return { target: { strength: 2, rides: 3, strengthSource: "prefs", ridesSource: "estimate" }, weeks, streak: 3, bestStreak: 3, ratePct: 27, planAdherencePct: 80, text: "3 Wochen in Folge 2× Kraft + 3× Rad. Diese Woche fehlen noch 1× Kraft und 2× Rad.", note: "Kraft zählt einmal pro Tag, Rad ab 20 min." }; },
   save_recommendation_feedback: (i) => { window.__fbSaved = i; return { saved: { day: window.__MOCK__.get_dashboard.today, verdict: i.verdict }, today: i.verdict, count: 4, scoreDelta: 0, text: "" }; },
   get_week_review: (i) => window.__MOCK__.get_week_review[i.week ?? "previous"],
   save_coach_note: (i) => ({ id: 1, ...i }),
@@ -179,6 +182,10 @@ for (const [name, vp, scheme, tab] of shots) {
     if (!at.vis || at.top < -5 || at.top > 200) errors.push(`${name}: Datenstand-Tippen springt nicht zu Datenquellen ${JSON.stringify(at)}`);
   }
   if (tab === "coach") {
+    // Konstanz (#209): 12 Wochenkacheln, 3 erreicht, laufende Woche markiert.
+    const cs = await p.evaluate(() => ({ vis: !document.getElementById("sec-consistency")?.hidden, n: document.querySelectorAll("#csWeeks .cs-w").length, met: document.querySelectorAll("#csWeeks .cs-w.met").length, cur: document.querySelectorAll("#csWeeks .cs-w.current").length, text: document.getElementById("csText")?.textContent ?? "" }));
+    if (!cs.vis || cs.n !== 12 || cs.met !== 3 || cs.cur !== 1 || !cs.text.includes("in Folge")) errors.push(`${name}: Konstanz-Karte falsch ${JSON.stringify(cs)}`);
+    else await p.locator("#sec-consistency").screenshot({ path: join(out, "phone-consistency.png") });
     // Wochenbilanz als Bild (#218): Knopf speichert eine gültige, nicht leere PNG-Karte.
     const btn = p.locator("#rvImg"); await btn.scrollIntoViewIfNeeded();
     await btn.click(); await p.waitForFunction(() => window.__saved?.filename?.endsWith(".png"), null, { timeout: 5000 }).catch(() => {});

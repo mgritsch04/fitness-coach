@@ -6,9 +6,10 @@ import { addDays, weekStart } from "./core/analysis";
 import { analysisContext, analysisHighlightsView, recoveryForecastView } from "./core/analytics";
 import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
-import { normalizePlan } from "./core/plan";
+import { comparePlan, normalizePlan } from "./core/plan";
+import { CONSISTENCY_WEEKS, consistency } from "./core/consistency";
 import { weekReview } from "./core/review";
-import { blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, weekView } from "./core/training";
+import { actualDays, blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, weekView } from "./core/training";
 import { blockView, buildBlock, deleteBlock, readBlock, saveBlock } from "./core/periodization";
 import { readJournal } from "./core/journal";
 import { zoneTargets } from "./core/zone-targets";
@@ -92,6 +93,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
     strengthPerWeek: z.number().int().min(0).max(6).nullable().optional().describe("Krafteinheiten pro Woche (null = wie in den letzten Wochen)"),
     strengthMin: z.number().int().min(15).max(120).nullable().optional().describe("Dauer einer Krafteinheit in min (null = wie in den letzten Wochen)"),
     strengthPhase: z.enum(["build", "maintain", "race"]).nullable().optional().describe("Saisonphase Kraft: build = Aufbau, maintain = Erhalt, race = Wettkampf (null = automatisch)"),
+    ridesPerWeek: z.number().int().min(0).max(14).nullable().optional().describe("Radeinheiten pro Woche als Ziel für die Serien (null = wie in den letzten Wochen)"),
   };
 
   server.registerTool(
@@ -315,6 +317,28 @@ export function registerCoachTools(server: McpServer, env: Env) {
       await saveFeedback(db, { day: d, verdict, readiness: readiness ?? (d === dash.today ? dash.coach.readiness : null), note: note ?? null });
       const rows = await readFeedback(db, addDays(dash.today, -30));
       return json({ saved: { day: d, verdict }, ...feedbackAdjust(rows, dash.today) });
+    },
+  );
+
+  server.registerTool(
+    "get_consistency",
+    {
+      description:
+        "Konstanz und Serien: Wochenziel (Kraft- und Radeinheiten aus den Trainingsvorlieben, sonst geschätzt), je Woche der letzten 12 erreicht ja/nein, " +
+        "aktuelle und beste Serie, Quote der abgeschlossenen Wochen und Plan-Treue (absolvierte gegen geplante Einheiten aus gespeicherten Plänen).",
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const [dash, prefs] = await Promise.all([buildDashboard(db, { days: CONSISTENCY_WEEKS * 7 }), readPrefs(db)]);
+      const cur = weekStart(dash.today);
+      const weeks = Array.from({ length: CONSISTENCY_WEEKS }, (_, i) => addDays(cur, -7 * i));
+      const stored = await Promise.all(weeks.map((w) => readPlan(db, w).catch(() => null)));
+      const plans = stored.flatMap((p, i) => {
+        if (!p) return [];
+        const c = comparePlan(p, actualDays(dash.workouts, weeks[i], addDays(weeks[i], 6)), dash.today);
+        return [{ week: weeks[i], planned: c.sessionsPlannedToDate, done: c.sessionsDoneToDate }];
+      });
+      return json(consistency({ today: dash.today, workouts: dash.workouts, prefs, plans }));
     },
   );
 

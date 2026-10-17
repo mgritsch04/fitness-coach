@@ -24,7 +24,7 @@ function tools() {
 describe("Coach-Werkzeuge", () => {
   it("registriert alle Werkzeuge", () => {
     expect([...tools().handlers.keys()].sort()).toEqual(
-      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_recommendation_feedback", "save_plan", "set_goals", "set_training_prefs"].sort(),
+      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_consistency", "get_event_projection", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_recommendation_feedback", "save_plan", "set_goals", "set_training_prefs"].sort(),
     );
   });
 
@@ -83,6 +83,10 @@ describe("Coach-Werkzeuge", () => {
     // Mobility (#223): ohne Art passend zu heute, mit Art fest.
     expect((await call("get_mobility_routine")).value.exercises.length).toBeGreaterThan(3);
     expect((await call("get_mobility_routine", { kind: "legs" })).value.kind).toBe("legs");
+    // Konstanz (#209): 12 Wochen mit Ziel und Serie.
+    const cons = await call("get_consistency");
+    expect(cons.value.weeks).toHaveLength(12);
+    expect(cons.value.target.strength).toBeGreaterThanOrEqual(1);
     // Analyse-Highlights (#179): Liste von Befunden, jeder mit Ton und Detail-Tool.
     expect(Array.isArray(ctx.value.analysisHighlights.highlights)).toBe(true);
     for (const h of ctx.value.analysisHighlights.highlights) expect(["warn", "good", "neutral"]).toContain(h.tone);

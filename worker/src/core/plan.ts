@@ -43,11 +43,13 @@ export interface TrainingPrefs {
   strengthMin: number | null;
   /** Saisonphase fürs Krafttraining (#213); null = automatisch aus Planphase und Jahreszeit. */
   strengthPhase?: StrengthSeasonPhase | null;
+  /** Radeinheiten pro Woche als Ziel für die Serien (#209); null = aus den letzten Wochen geschätzt. */
+  ridesPerWeek?: number | null;
 }
 
 // Standard für G: Rennrad (derzeit indoor mit MyWhoosh) plus Kraft im Gym; Häufigkeit und Dauer
 // der Krafteinheiten werden aus den letzten Wochen übernommen, solange nichts eingetragen ist.
-export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null, strengthPhase: null };
+export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null, strengthPhase: null, ridesPerWeek: null };
 
 export type Phase = "base" | "build" | "peak" | "taper" | "race" | "recovery" | "maintain";
 export type SessionType = "rest" | "recovery" | "endurance" | "long" | "tempo" | "threshold" | "vo2max" | "strength" | "opener" | "race";
