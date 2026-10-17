@@ -8,7 +8,8 @@ import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
 import { normalizePlan } from "./core/plan";
 import { weekReview } from "./core/review";
-import { eventProjection, proposePlan, todayCheck, weekView } from "./core/training";
+import { blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, weekView } from "./core/training";
+import { blockView, buildBlock, deleteBlock, readBlock, saveBlock } from "./core/periodization";
 import { readJournal } from "./core/journal";
 import type { Env } from "./env";
 
@@ -155,8 +156,8 @@ export function registerCoachTools(server: McpServer, env: Env) {
       const dash = await dashboard();
       const ws = resolveWeek(dash.today, week);
       if (reset) return json({ week: ws, deleted: await deletePlan(db, ws) });
-      const [goals, prefs, stored] = await Promise.all([readGoals(db), readPrefs(db), readPlan(db, ws)]);
-      const proposal = proposePlan(dash, ws, goals, prefs);
+      const [goals, prefs, stored, block] = await Promise.all([readGoals(db), readPrefs(db), readPlan(db, ws), readBlock(db, dash.today).catch(() => null)]);
+      const proposal = proposePlan(dash, ws, goals, prefs, block);
       let plan;
       if (days?.length) {
         try {
@@ -289,6 +290,42 @@ export function registerCoachTools(server: McpServer, env: Env) {
   );
 
   server.registerTool(
+    "get_training_block",
+    {
+      description:
+        "4-Wochen-Block (3 Aufbauwochen + 1 Entlastungswoche): Wochenziele (Belastung), Schwerpunkt, Soll/Ist je Woche und Anpassungen " +
+        "(Ziel gehalten bei < 70 %, Entlastung vorgezogen bei Warnzeichen). Ohne gespeicherten Block ein Vorschlag ab dieser Woche (saved = false). Schätzungen.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => json((await dashboard()).training.block),
+  );
+
+  server.registerTool(
+    "save_training_block",
+    {
+      description:
+        "Startet bzw. speichert einen 4-Wochen-Block; der Wochenplan richtet seine Ziel-Belastung danach (Termin-Phasen haben Vorrang). " +
+        "startWeek (Montag, Standard diese Woche), rampPct (Steigerung je Aufbauwoche, Standard 0.05). delete=true entfernt den Block dieser Startwoche.",
+      inputSchema: {
+        startWeek: DAY.optional(),
+        rampPct: z.number().min(0).max(0.1).optional(),
+        delete: z.boolean().optional(),
+      },
+      annotations: { readOnlyHint: false },
+    },
+    async ({ startWeek, rampPct, delete: del }) => {
+      const dash = await dashboard();
+      const ws = weekStart(startWeek ?? dash.today);
+      if (del) return json({ startWeek: ws, deleted: await deleteBlock(db, ws) });
+      const ref = [...dash.days].reverse().find((d) => d.day < ws) ?? dash.days.at(-1);
+      const block = rampPct == null && !startWeek ? proposeBlock(dash) : buildBlock(ws, ref?.ctl ?? 0, rampPct ?? 0.05);
+      await saveBlock(db, block);
+      return json({ saved: true, ...blockView({ ...block, source: "saved" }, dash.weeks, dash.today, blockWarning(dash)) });
+    },
+  );
+
+  server.registerTool(
     "delete_coach_note",
     { description: "Löscht einen gespeicherten Coach-Text per id.", inputSchema: { id: z.number().int() }, annotations: { readOnlyHint: false, destructiveHint: true } },
     async ({ id }) => json({ id, deleted: await deleteNote(db, id) }),
@@ -322,6 +359,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         earlyWarning: dash.earlyWarning,
         returnToTraining: dash.returnToTraining,
         sleepTarget: dash.sleepTarget,
+        trainingBlock: { saved: t.block.saved, text: t.block.text, current: t.block.current },
         planToday: t.today,
         trends: trendBrief,
         recentDays: dash.days.slice(-n).map((d) => ({

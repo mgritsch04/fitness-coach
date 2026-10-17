@@ -7,6 +7,7 @@ import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goa
 import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
 import { makeUpPlan, type MakeUpPlan } from "./make-up";
+import { blockView, buildBlock, readBlock, type BlockView, type TrainingBlock } from "./periodization";
 import { readStrengthSessions } from "./strength";
 import { strengthDeload, type StrengthDeload } from "./strength-deload";
 import { STRENGTH_PLAN_NOTE, strengthWorkout, type StrengthWorkout } from "./strength-plan";
@@ -101,10 +102,13 @@ export interface WeekView {
 }
 
 /** Plan einer Woche: gespeicherter Plan, sonst Regelvorschlag (nicht gespeichert). */
-export async function weekView(db: D1Database, inp: TrainingInputs, week: string, ctx?: { goals: Goal[]; prefs: TrainingPrefs }): Promise<WeekView> {
+export async function weekView(db: D1Database, inp: TrainingInputs, week: string, ctx?: { goals: Goal[]; prefs: TrainingPrefs; block?: TrainingBlock | null }): Promise<WeekView> {
   const ws = weekStart(week);
-  const [goals, prefs, stored] = await Promise.all([ctx?.goals ?? readGoals(db), ctx?.prefs ?? readPrefs(db), readPlan(db, ws)]);
-  const plan = stored ?? proposePlan(inp, ws, goals, prefs);
+  const [goals, prefs, stored, block] = await Promise.all([
+    ctx?.goals ?? readGoals(db), ctx?.prefs ?? readPrefs(db), readPlan(db, ws),
+    ctx && "block" in ctx ? ctx.block ?? null : readBlock(db, inp.today).catch(() => null),
+  ]);
+  const plan = stored ?? proposePlan(inp, ws, goals, prefs, block);
   return {
     week: ws,
     stored: Boolean(stored),
@@ -115,7 +119,23 @@ export async function weekView(db: D1Database, inp: TrainingInputs, week: string
   };
 }
 
-export function proposePlan(inp: TrainingInputs, week: string, goals: Goal[], prefs: TrainingPrefs): WeekPlan {
+/** Blockvorschlag ab dieser Woche mit der Fitness von gestern. */
+export function proposeBlock(inp: TrainingInputs): TrainingBlock {
+  const ref = [...inp.days].reverse().find((d) => d.day < inp.today) ?? inp.days.at(-1);
+  return buildBlock(inp.today, ref?.ctl ?? 0);
+}
+
+/** Warnzeichen aus der Tagesempfehlung (Frühwarnung), die eine Entlastung im Block vorziehen. */
+export const blockWarning = (inp: TrainingInputs) => inp.coach.reasons.find((r) => r.factor === "warning")?.text ?? null;
+
+/** Blockwoche (angepasst an Ist-Werte und Warnzeichen) für den Wochenplan. */
+export function blockWeekFor(inp: TrainingInputs, block: TrainingBlock | null | undefined, week: string) {
+  if (!block) return null;
+  const w = blockView(block, inp.weeks, inp.today, blockWarning(inp)).weeks.find((x) => x.week === weekStart(week));
+  return w ? { targetLoad: w.targetLoad, deload: w.deload, label: `Block Woche ${w.index + 1}${w.deload ? " (Entlastung)" : ""}` } : null;
+}
+
+export function proposePlan(inp: TrainingInputs, week: string, goals: Goal[], prefs: TrainingPrefs, block?: TrainingBlock | null): WeekPlan {
   // Fitness und Form am letzten bekannten Tag vor der Woche (bzw. heute).
   const ref = [...inp.days].reverse().find((d) => d.day <= inp.today && d.day < week) ?? inp.days.at(-1);
   return buildWeekPlan({
@@ -128,6 +148,7 @@ export function proposePlan(inp: TrainingInputs, week: string, goals: Goal[], pr
     ftpW: inp.settings.ftpW,
     thresholdHr: inp.settings.thresholdHr,
     maxHr: inp.settings.maxHr,
+    block: blockWeekFor(inp, block, week),
   });
 }
 
@@ -175,6 +196,8 @@ export interface TrainingOverview {
   ftpTest: FtpTestPlan | null;
   /** Ausgefallene Schlüsseleinheit: Tag zum Nachholen oder Rat, sie ausfallen zu lassen (null, wenn nichts ausfiel). */
   makeUp: MakeUpPlan | null;
+  /** 4-Wochen-Block (#206): gespeichert oder Vorschlag ab dieser Woche. */
+  block: BlockView & { saved: boolean };
   /** Kraft-Plateau: Entlastungswoche empfohlen? (#202) */
   strengthDeload: StrengthDeload;
   /** Konkrete Krafteinheiten (Übungen, Sätze, Gewicht) für die Plantage ab heute. */
@@ -185,11 +208,11 @@ export interface TrainingOverview {
 }
 
 export async function trainingOverview(db: D1Database, inp: TrainingInputs & { body?: { weightKg: number | null } | null }): Promise<TrainingOverview> {
-  const [goals, prefs, notes] = await Promise.all([readGoals(db), readPrefs(db), readNotes(db, { fromDay: addDays(inp.today, -14), limit: 10 })]);
-  const thisWeek = await weekView(db, inp, inp.today, { goals, prefs });
+  const [goals, prefs, notes, savedBlock] = await Promise.all([readGoals(db), readPrefs(db), readNotes(db, { fromDay: addDays(inp.today, -14), limit: 10 }), readBlock(db, inp.today).catch(() => null)]);
+  const thisWeek = await weekView(db, inp, inp.today, { goals, prefs, block: savedBlock });
   const nextWs = addDays(weekStart(inp.today), 7);
   const nextStored = await readPlan(db, nextWs);
-  const next = nextStored ?? proposePlan(inp, nextWs, goals, prefs);
+  const next = nextStored ?? proposePlan(inp, nextWs, goals, prefs, savedBlock);
   const planned = thisWeek.plan.days.find((d) => d.day === inp.today) ?? null;
   const projection = eventProjection(inp, goals, prefs, thisWeek.plan);
   const [tests, sessions] = await Promise.all([readFtpTests(db).catch(() => []), readStrengthSessions(db, addDays(inp.today, -120)).catch(() => [])]);
@@ -205,6 +228,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null, next),
     makeUp: makeUpPlan(thisWeek.comparison, inp.today, inp.coach?.readiness ?? null, next.days[0] ?? null),
     strengthDeload: strengthDeload(sessions, inp.today),
+    block: { ...blockView(savedBlock ?? proposeBlock(inp), inp.weeks, inp.today, blockWarning(inp)), saved: Boolean(savedBlock) },
     strengthWorkouts: {
       days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions)),
       note: STRENGTH_PLAN_NOTE,
