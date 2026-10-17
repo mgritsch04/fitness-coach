@@ -7,6 +7,7 @@ import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goa
 import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
 import { makeUpPlan, type MakeUpPlan } from "./make-up";
+import { NUTRITION_NOTE, dailyNutrition, type DailyNutrition } from "./nutrition";
 import { blockView, buildBlock, readBlock, type BlockView, type TrainingBlock } from "./periodization";
 import { readStrengthSessions } from "./strength";
 import { strengthDeload, type StrengthDeload } from "./strength-deload";
@@ -204,6 +205,8 @@ export interface TrainingOverview {
   strengthWorkouts: { days: StrengthWorkout[]; note: string };
   /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
   fueling: { days: Fueling[]; note: string };
+  /** Eiweiß und Kohlenhydrate je Tag der laufenden Woche (#222, Faustregeln; heute nach Tagesform). */
+  nutrition: { days: DailyNutrition[]; note: string };
   disclaimer: string;
 }
 
@@ -234,6 +237,10 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
       note: STRENGTH_PLAN_NOTE,
     },
     fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null), note: FUELING_NOTE },
+    nutrition: {
+      days: thisWeek.plan.days.map((d) => dailyNutrition(d, inp.body?.weightKg ?? null, d.day === inp.today ? (inp.coach?.readiness ?? null) : null)),
+      note: NUTRITION_NOTE,
+    },
     disclaimer: "Trainingsplan und Belastungen sind Schätzungen nach Faustregeln, keine medizinische Beratung. Bei Schmerzen oder Krankheit pausieren.",
   };
 }

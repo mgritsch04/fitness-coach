@@ -94,7 +94,10 @@ export function blockView(block: TrainingBlock, weeks: WeekSummary[], today: str
   let text: string;
   if (cur > last.week) text = "Der Block ist abgeschlossen. Ein neuer Block startet mit der aktuellen Fitness.";
   else if (!current) text = `Block startet in der Woche ab ${block.startWeek}.`;
-  else text = `Woche ${current.index + 1} von ${out.length}: ${current.focus}, Ziel etwa ${current.targetLoad} Belastungspunkte${current.actualLoad != null ? ` (bisher ${current.actualLoad})` : ""}.${current.adjusted ? ` ${current.adjusted}` : ""}`;
+  else {
+    const early = out.find((w) => w.status === "upcoming" && w.adjusted?.startsWith("Entlastung"));
+    text = `Woche ${current.index + 1} von ${out.length}: ${current.focus}, Ziel etwa ${current.targetLoad} Belastungspunkte${current.actualLoad != null ? ` (bisher ${current.actualLoad})` : ""}.${current.adjusted ? ` ${current.adjusted}` : ""}${early ? " Nächste Woche Entlastung (vorgezogen wegen Warnzeichen), danach neuer Block." : ""}`;
+  }
   return { block, weeks: out, current, text, note: NOTE };
 }
 
