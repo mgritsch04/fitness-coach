@@ -18,6 +18,7 @@ import {
 } from "./analysis";
 import { coachAdvice } from "./coach";
 import { trainingOverview } from "./training";
+import { zoneTargets } from "./zone-targets";
 import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
 import { applyWarning } from "./warning-cap";
 import { applyHrvTrend } from "./hrv-cap";
@@ -173,5 +174,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   // Schlafziel für heute Nacht (sleep-need.ts, #205) mit der Einheit von morgen aus dem Plan.
   const nights = sleepReport(sleeps, settings.timezone ?? "Europe/Berlin", addDays(today, -60), today, settings.sleepNeedH).nights;
   const tomorrowPlan = training.thisWeek.plan.days.find((x) => x.day === addDays(today, 1)) ?? null;
-  return { ...result, journal: journalOut, training, sleepTarget: sleepTarget({ today, nights, series, sleepNeedH: settings.sleepNeedH, tomorrow: tomorrowPlan }) };
+  // Zeit-in-Zone-Ziele (#214): Soll aus dem Wochenplan gegen die WHOOP-Pulszonen dieser Woche.
+  const zoneWeek = result.hrZones.weeks.find((w) => w.week === training.thisWeek.week) ?? null;
+  return { ...result, journal: journalOut, training, zoneTargets: zoneTargets(training.thisWeek.plan, zoneWeek, today), sleepTarget: sleepTarget({ today, nights, series, sleepNeedH: settings.sleepNeedH, tomorrow: tomorrowPlan }) };
 }
