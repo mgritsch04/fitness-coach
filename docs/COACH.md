@@ -147,3 +147,7 @@ Ist heute eine Schlüsseleinheit geplant und sagt die Tagesform „Ruhe“ oder 
 ## Übung tauschen im Gym-Modus (#204)
 
 Ist ein Gerät belegt, tauscht „Tauschen“ eine offene Übung gegen eine gleichwertige Alternative (gleiches Bewegungsmuster, ähnliche Muskeln). Die Satzzahl bleibt, das Startgewicht kommt aus deinem letzten Top-Satz dieser Alternative, sonst wählst du selbst. Tool: `get_exercise_alternatives {exercise, exclude?}` (Logik in `worker/src/core/exercises.ts`). Die Reihenfolge der Alternativen ist eine Faustregel.
+
+## Konstanz und Serien (#209)
+
+Das Wochenziel besteht aus Kraft- und Radeinheiten. Es kommt aus den Trainingsvorlieben (`strengthPerWeek`, `ridesPerWeek`), sonst wird es als Median der letzten abgeschlossenen Wochen geschätzt und so gekennzeichnet. Kraft zählt einmal pro Tag, Rad ab 20 min. `get_consistency` liefert die letzten 12 Wochen (erreicht ja/nein), die aktuelle und die beste Serie, die Quote der abgeschlossenen Wochen und die Plan-Treue aus gespeicherten Plänen. Die laufende Woche bricht keine Serie ab. Karte „Konstanz und Serien“ im Coach-Tab (`artifact/sections/consistency.js`, Logik in `worker/src/core/consistency.ts`).
