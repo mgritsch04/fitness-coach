@@ -216,6 +216,15 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
   .jump::-webkit-scrollbar { display: none; }
   .jump button { flex: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
   .tabbar button[aria-current="page"] { color: var(--accent); background: var(--accent-wash); }
+  /* Einklappbare Abschnitte in langen Tabs (#188): eingeklappt nur die Überschrift als Leiste */
+  #sections > section.foldable > .fold-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 10px 2px;
+    border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); text-align: left; cursor: pointer;
+    font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; letter-spacing: 0.01em; }
+  #sections > section.foldable > .fold-bar::after { content: ""; flex: none; width: 9px; height: 9px; margin-right: 6px; border: solid var(--ink-3); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-3px); transition: transform .15s; }
+  #sections > section.foldable:not(.folded) > .fold-bar::after { transform: rotate(-135deg) translate(-3px, 0); }
+  #sections > section.folded > :not(.fold-bar) { display: none !important; }
+  #sections > section.folded + section.folded { margin-top: -18px; }
+  #sections > section.foldable .fold-title { display: none; }
   .display { padding: 16px; gap: 12px; }
   .dial { width: 84px; height: 84px; }
   .dial .v { font-size: 1.9rem; }

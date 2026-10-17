@@ -76,8 +76,8 @@ const payloads = {
   import_fit: (i) => ({ fileName: i.fileName, imported: true, updated: false, workout: { sourceId: "x", day: window.__MOCK__.get_dashboard.today, startTime: window.__MOCK__.get_dashboard.today + "T17:00:00Z", sport: "cycling", durationS: 3720, distanceM: 31400, avgPowerW: 195, normalizedPowerW: 212, avgHr: 142, maxHr: 171, avgCadenceRpm: 88, tss: 71 }, secondsOfData: 3720, powerCurve: null, sameRideIn: ["whoop"] }),
 };
 const mcp = {
-  watchTool(s, t, input, h) { setTimeout(() => h({ type: "data", result: { payload: payloads[t](input) } }), 50); return () => {}; },
-  async callTool(s, t, input) { await sleep(100); return { payload: payloads[t](input) }; },
+  watchTool(s, t, input, h) { (window.__calls ??= []).push(t); setTimeout(() => h({ type: "data", result: { payload: payloads[t](input) } }), 50); return () => {}; },
+  async callTool(s, t, input) { (window.__calls ??= []).push(t); await sleep(100); return { payload: payloads[t](input) }; },
   async invalidate() {},
   async listTools() { return { servers: [], fileArgs: true }; },
 };
@@ -107,6 +107,19 @@ for (const [name, vp, scheme, tab] of shots) {
   await p.goto("file://" + join(out, "preview.html"));
   await p.waitForTimeout(800);
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
+  if (tab === "training") {
+    // Einklappen (#188): am Handy nur die ersten zwei offen, eingeklappte laden nichts; Aufklappen lädt und bleibt gemerkt.
+    const f = await p.evaluate(() => ({ folded: document.querySelectorAll("#sections > section.on.folded").length, open: [...document.querySelectorAll("#sections > section.on.foldable:not(.folded)")].map((x) => x.id), h: document.documentElement.scrollHeight, cad: window.__calls.includes("get_cadence_profile") }));
+    if (f.folded < 10 || f.open.length !== 2 || f.h > 6000 || f.cad) errors.push(`${name}: Einklappen falsch ${JSON.stringify(f)}`);
+    await p.click("#sec-cadence > .fold-bar"); await p.waitForTimeout(300);
+    const g = await p.evaluate(() => ({ open: !document.getElementById("sec-cadence").classList.contains("folded"), cad: window.__calls.includes("get_cadence_profile"), text: document.getElementById("sec-cadence").innerText.length }));
+    if (!g.open || !g.cad || g.text < 100) errors.push(`${name}: Aufklappen lädt nicht ${JSON.stringify(g)}`);
+    await p.reload(); await p.waitForTimeout(800); await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(300);
+    if (await p.evaluate(() => document.getElementById("sec-cadence").classList.contains("folded"))) errors.push(`${name}: Aufgeklappt wird nicht gemerkt`);
+    await p.screenshot({ path: join(out, "phone-training-folded.png"), fullPage: true });
+    // Für die folgenden Tests alles aufklappen.
+    await p.evaluate(() => document.querySelectorAll("#sections > section.on.folded > .fold-bar").forEach((b) => b.click())); await p.waitForTimeout(400);
+  }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "heute") {
     // „Neu im Dashboard“ (#152): Liste da, Sprung in den Training-Tab, „Alles gesehen“ bleibt nach Neuladen.
