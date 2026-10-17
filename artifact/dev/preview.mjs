@@ -88,7 +88,7 @@ const mcp = {
 const sample = async (input, o = {}) => { if (o.tools) { const t = o.tools.find((x) => x.name === "krafttraining"); window.__toolResult = t ? String(await t.execute({ wochen: 4 }, { signal: new AbortController().signal })).length : -1; if (!window.__toolBad) { window.__toolBad = []; for (const x of o.tools) { try { if (String(await x.execute({}, { signal: new AbortController().signal })).length < 20) window.__toolBad.push(x.name + ": leer"); } catch (e) { window.__toolBad.push(x.name + ": " + e.message); } } window.__toolCount = o.tools.length; } } const text = "**Heute normales Training.** Deine Erholung ist gelb und die HRV liegt im Normalbereich.\\n- 45–60 min Grundlage auf dem Rad\\n- danach 10 min Mobility"; o.onText?.({ text, delta: text }); return { text, truncated: false }; };
 sample.limits = async () => ({ tools: {} });
 sample.json = async () => ({ hinweis: "Beispielplan.", tage: [{ tag: "2026-03-31", einheit: "Rad locker", dauerMin: 60, intensitaet: "locker", belastung: 45, ziel: "Grundlage" }] });
-const downloads = { async save(f) { window.__saved = { filename: f.filename, text: await f.data.text() }; } };
+const downloads = { async save(f) { const b = f.data instanceof Blob ? f.data : new Blob([f.data]); const u = new Uint8Array(await b.arrayBuffer()); window.__saved = { filename: f.filename, text: await b.text(), size: u.length, b64: u.length < 3e6 ? btoa(Array.from(u, (x) => String.fromCharCode(x)).join("")) : "" }; } };
 window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample : n === "downloads" ? downloads : null) };
 </script>`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
@@ -173,6 +173,16 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#fresh button"); await p.waitForTimeout(600);
     const at = await p.evaluate(() => { const r = document.getElementById("sec-sources").getBoundingClientRect(); return { top: Math.round(r.top), vis: !document.getElementById("sec-sources").hidden }; });
     if (!at.vis || at.top < -5 || at.top > 200) errors.push(`${name}: Datenstand-Tippen springt nicht zu Datenquellen ${JSON.stringify(at)}`);
+  }
+  if (tab === "coach") {
+    // Wochenbilanz als Bild (#218): Knopf speichert eine gültige, nicht leere PNG-Karte.
+    const btn = p.locator("#rvImg"); await btn.scrollIntoViewIfNeeded();
+    await btn.click(); await p.waitForFunction(() => window.__saved?.filename?.endsWith(".png"), null, { timeout: 5000 }).catch(() => {});
+    const img = await p.evaluate(() => window.__saved);
+    const png = img?.b64 ? Buffer.from(img.b64, "base64") : Buffer.alloc(0);
+    if (!/^wochenbilanz-\d{4}-\d{2}-\d{2}\.png$/.test(img?.filename ?? "") || png.length < 20000 || png.subarray(1, 4).toString() !== "PNG" || png.readUInt32BE(16) !== 1080 || png.readUInt32BE(20) !== 1350) errors.push(`${name}: Wochenbilanz-Bild falsch ${img?.filename} ${png.length}`);
+    else writeFileSync(join(out, "wochenbilanz.png"), png);
+    if (!/gespeichert/.test(await p.locator("#rvMsg").innerText())) errors.push(`${name}: Wochenbilanz ohne Rückmeldung`);
   }
   if (tab === "verlauf") {
     // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.
