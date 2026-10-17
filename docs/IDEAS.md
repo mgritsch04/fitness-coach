@@ -70,6 +70,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 55 | Fahrertyp (#164) | Stärken und Schwächen der Leistungskurve relativ zur FTP | Training gezielt auf Schwächen | P3 | M | Zeile 34 | Unit-Tests, User-Test | Done ⚙️ (#167, v20; User-Test #170) |
 | 56 | Sprungleiste am Handy (#168) | Wischbare Abschnittsliste oben in langen Tabs | Training-Tab (über 20 000 px) schnell durchsuchen | P2 | S | Zeile 25 | Vorschau, User-Test | Done (#169, v20; User-Test #172) |
 | 57 | Muskelbalance (#171) | Sätze je Muskelgruppe gegen Zielbereich, Ziehen/Drücken | ausgewogenes Krafttraining | P2 | M | Zeile 24 | Unit-Tests, User-Test | Done ⚙️ (#174, v21; User-Test #176) |
+| 58 | Auf einen Blick (#180) | wichtigste Analyse-Befunde oben auf „Heute“ mit Sprung zu den Details (get_analysis_highlights #175) | Überblick ohne durch alle Tabs zu scrollen | P2 | S | #175 | Vorschau-Test, User-Test | Done (v22; User-Test #183) |
 
 ## Parallel-Plan (Stand 2026-10-16 abends)
 

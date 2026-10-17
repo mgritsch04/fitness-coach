@@ -5,6 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 24, id: "highlights", title: "Auf einen Blick", text: "Die auffälligsten Befunde aller Analysen oben auf „Heute“, mit Sprung zu den Details." },
     { n: 23, id: "musclebalance", title: "Muskelbalance", text: "Sätze je Muskelgruppe gegen den Zielbereich, Ziehen gegen Drücken." },
     { n: 22, id: "riderprofile", title: "Fahrertyp", text: "Stärken und Schwächen deiner Leistungskurve im Verhältnis zur FTP." },
     { n: 20, id: "cadence", title: "Trittfrequenz", text: "Welche Kadenz du fährst, je Leistungszone und im Verlauf." },
@@ -62,10 +63,7 @@ FC.section({
     }
     FC.$("wnList").replaceChildren(...items.map((x) => {
       const b = el("button", { type: "button" }, el("strong", { text: x.title }), el("span", { text: x.text }));
-      b.onclick = () => {
-        FC.showTab(live.get(x.id).tab);
-        requestAnimationFrame(() => FC.$(`sec-${x.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
-      };
+      b.onclick = () => FC.goTo(x.id);
       return el("li", {}, b);
     }), ...(more ? [more] : []));
   },

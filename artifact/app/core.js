@@ -334,6 +334,18 @@
     jump();
   }
 
+  // Zu einem Abschnitt springen (auch in anderem Tab). Abschnitte des neuen Tabs laden erst beim Anzeigen und
+  // schieben das Ziel nach unten; daher kurz nachführen, bis der Nutzer selbst scrollt.
+  function goTo(id) {
+    const s = sections.find((x) => x.id === id);
+    if (!s) return;
+    showTab(s.tab ?? "mehr");
+    let stop = false; const halt = () => { stop = true; };
+    for (const ev of ["wheel", "touchstart", "keydown"]) window.addEventListener(ev, halt, { once: true, passive: true });
+    const go = () => { if (!stop) $(`sec-${id}`)?.scrollIntoView({ block: "start" }); };
+    requestAnimationFrame(go); for (const ms of [300, 800, 1500]) setTimeout(go, ms);
+  }
+
   async function boot() {
     const root = $("sections");
     const css = sections.map((s) => s.css).filter(Boolean).join("\n");
@@ -374,7 +386,7 @@
   window.FC = Object.freeze({
     SERVER, state, $, el, sv, de, dayDate, fmtDay, fmtDayLong, fmtWeekday, fmtH, ago, addDays, sport, SOURCES, recStatus, cssVar,
     chart, spark, rolling, richText, errText, sampleErrText, banner, call, watch, reload, section, rerender, setRange,
-    onRange: (f) => listeners.add(f), boot, showTab, layout: layoutApi,
+    onRange: (f) => listeners.add(f), boot, showTab, goTo, layout: layoutApi,
     invalidate: () => state.mcp?.invalidate(SERVER, "get_dashboard").catch(() => {}),
   });
 })();
