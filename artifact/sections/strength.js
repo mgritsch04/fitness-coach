@@ -45,6 +45,9 @@ FC.section({
         <div class="panel span2"><h3>Fortschritt je Übung</h3><p id="stDeload" hidden style="margin:0 0 8px"></p><div class="tablewrap"><table id="stProg" class="cards"><thead><tr>
           <th class="l">Übung</th><th>Einheiten</th><th>Letzter Top-Satz</th><th>Geschätztes 1RM</th><th>4 Wochen</th><th>Verlauf</th><th>Status</th>
         </tr></thead><tbody><tr><td colspan="7" class="empty">Noch keine Daten.</td></tr></tbody></table></div></div>
+        <div class="panel span2"><h3>Kraft pro kg Körpergewicht</h3><p id="stStdText" class="muted" style="margin:0 0 8px"></p><div class="tablewrap"><table id="stStd" class="cards"><thead><tr>
+          <th class="l">Übung</th><th>Geschätztes 1RM</th><th>Pro kg</th><th>Stufe</th><th>Nächste Stufe</th>
+        </tr></thead><tbody></tbody></table></div><p class="chart-cap" id="stStdNote"></p></div>
         <div class="panel span2"><h3>Letzte Einheiten</h3><div id="stSessions"><div class="empty">Noch keine Krafteinheiten.</div></div><p class="chart-cap" id="stNotes"></p></div>
       </div>`;
 
@@ -162,6 +165,18 @@ FC.section({
           el("td", { "data-k": "Verlauf" }, sp),
           el("td", { "data-k": "Status" }, el("span", { class: `pill ${p.status}`, text: STATUS[p.status] }))));
       }
+
+      // Kraft pro kg (#203): grobe Stufen als Orientierung.
+      const std = data.standards, stb = $("stStd").tBodies[0];
+      $("stStd").hidden = !std?.available;
+      $("stStdText").textContent = std?.available ? "" : std?.text ?? "";
+      $("stStdNote").textContent = std?.note ?? "";
+      stb.replaceChildren(...(std?.exercises ?? []).map((e) => el("tr", {},
+        el("td", { text: e.name }),
+        el("td", { "data-k": "Geschätztes 1RM", text: `${de(e.e1rmKg, e.e1rmKg % 1 ? 1 : 0)} kg` }),
+        el("td", { "data-k": "Pro kg", text: `${de(e.perKg, 2)} ×` }),
+        el("td", { "data-k": "Stufe", text: e.level }),
+        el("td", { "data-k": "Nächste Stufe", text: e.next ? `${e.next.level} ab ${de(e.next.e1rmKg)} kg` : "–" }))));
 
       const list = $("stSessions"); list.replaceChildren();
       const sessions = data.sessions.slice(0, 8);
