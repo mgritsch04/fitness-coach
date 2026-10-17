@@ -24,7 +24,7 @@ function tools() {
 describe("Coach-Werkzeuge", () => {
   it("registriert alle Werkzeuge", () => {
     expect([...tools().handlers.keys()].sort()).toEqual(
-      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_week_review", "get_plan", "get_sleep_target", "get_training_prefs", "save_coach_note", "save_plan", "set_goals", "set_training_prefs"].sort(),
+      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_event_projection", "get_goals", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_plan", "set_goals", "set_training_prefs"].sort(),
     );
   });
 
@@ -63,6 +63,13 @@ describe("Coach-Werkzeuge", () => {
     if (!ctx.value.recoveryForecast.available) expect(ctx.value.recoveryForecast.reason).toBeTruthy();
     // Nachholen (#194): Feld immer vorhanden, null ohne ausgefallene Schlüsseleinheit.
     expect("makeUp" in ctx.value).toBe(true);
+    // 4-Wochen-Block (#206): erst Vorschlag, nach dem Speichern gespeichert.
+    expect((await call("get_training_block")).value.saved).toBe(false);
+    const blk = await call("save_training_block", {});
+    expect(blk.value.saved).toBe(true);
+    expect(blk.value.weeks.length).toBeGreaterThan(0);
+    expect((await call("get_training_block")).value.saved).toBe(true);
+    expect(ctx.value.trainingBlock.text).toBeTruthy();
     // Schlafziel (#205): immer da, Zielzeit als Text.
     expect(ctx.value.sleepTarget.targetText).toMatch(/h/);
     const st = await call("get_sleep_target");
