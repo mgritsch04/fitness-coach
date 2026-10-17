@@ -65,6 +65,7 @@ const payloads = {
       weeks: [{ week: wk, sessions: 2, sets: 4, tonnageKg: 2740, muscles: [{ muscle: "quads", label: "Oberschenkel vorne", sets: 2, tonnageKg: 1000 }, { muscle: "chest", label: "Brust", sets: 2, tonnageKg: 1160 }, { muscle: "glutes", label: "Gesäß", sets: 1, tonnageKg: 0 }, { muscle: "triceps", label: "Trizeps", sets: 1, tonnageKg: 0 }] }],
       progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress" },
         { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau" }],
+      repRecords: [{ exercise: "bench_press", name: "Bankdrücken", marks: [{ kg: 72.5, reps: 8, day: d(-4) }] }, { exercise: "dumbbell_bench_press", name: "Kurzhantel-Bankdrücken", marks: [{ kg: 32, reps: 6, day: d(-11) }, { kg: 28, reps: 8, day: d(-11) }] }],
       standards: { available: true, weightKg: 75, note: "Grobe Richtwerte für trainierte Erwachsene, keine Norm.", text: "", exercises: [{ exercise: "back_squat", name: "Kniebeuge", e1rmKg: 116.7, perKg: 1.56, level: "Stark", next: { level: "Sehr stark", e1rmKg: 150 }, day: t }, { exercise: "bench_press", name: "Bankdrücken", e1rmKg: 91.8, perKg: 1.22, level: "Stark", next: { level: "Sehr stark", e1rmKg: 113 }, day: d(-4) }] },
       templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", sets: 3, reps: 5, weightKg: 100 }] }],
       coachNotes: [{ effect: "down", text: "Schwere Beineinheit heute: morgen eher locker radeln, keine Intervalle." }],
@@ -338,6 +339,12 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#gyBody .gy-swapbox button").catch(() => errors.push(`${name}: Tauschen zeigt keine Alternative`)); await p.waitForTimeout(100);
     const after = await p.$$eval("#gyBody .gy-ex", (l) => { const c = l[l.length - 1]; return { h: c.querySelector("h3")?.textContent ?? "", n: c.querySelectorAll(".gy-set").length }; });
     if (!after.h.includes("Kurzhantel-Bankdrücken") || after.n !== before) errors.push(`${name}: Tauschen ersetzt die Übung nicht richtig ${JSON.stringify({ before, after })}`);
+    // Wiederholungsrekord (#299): nach dem Tausch Kurzhantel-Bankdrücken 28 kg × 10, bisher bei ≥ 28 kg höchstens 8 Wdh.
+    const bench = "#gyBody .gy-ex:last-of-type .gy-set";
+    await p.fill(`${bench} input[aria-label$='Gewicht in kg']`, "28"); await p.fill(`${bench} input[aria-label$='Wiederholungen']`, "10");
+    await p.click(`${bench} .ok`); await p.waitForTimeout(100);
+    const repNote = await p.textContent("#gyBody .gy-note").catch(() => "");
+    if (!/Wiederholungsrekord: erstmals 10 Wdh\. mit 28 kg \(bisher höchstens 8\)/.test(repNote)) errors.push(`${name}: kein Wiederholungsrekord „${repNote}“`);
     await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(7)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
     const saved = await p.evaluate(() => window.__gymSaved);
     if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.exercises[0].sets[0].rpe === 7 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
