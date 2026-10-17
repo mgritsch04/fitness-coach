@@ -44,6 +44,7 @@ import { cadenceReport } from "./cadence";
 import { riderProfile } from "./rider-profile";
 import { combineCurves } from "./power";
 import { muscleBalance } from "./muscle-balance";
+import { analysisHighlights } from "./highlights";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -313,6 +314,26 @@ export async function muscleBalanceView(db: D1Database, weeks: number, now?: num
   const settings = await readSettings(db);
   const today = todayIn(settings.timezone ?? "Europe/Berlin", now);
   return muscleBalance(await readStrengthSessions(db, addDays(today, -(7 * weeks - 1))), today, weeks);
+}
+
+/** Analyse-Highlights (#175): je Analyse höchstens ein Satz; Sekundenwerte werden nur einmal gelesen. */
+export async function analysisHighlightsView(db: D1Database, limit: number, now?: number) {
+  const c = await analysisContext(db, { days: 180, maxDays: 450, now });
+  const rides = await readIntervalRides(db, addDays(c.today, -119));
+  const withHr = rides.flatMap((r) => (r.heartRate ? [{ ...r, heartRate: r.heartRate }] : []));
+  const [interference, rider, muscles] = await Promise.all([interferenceView(db, c, 180), riderProfileView(db, 90, now), muscleBalanceView(db, 4, now)]);
+  return analysisHighlights({
+    forecast: recoveryForecastView(c),
+    hrv: hrvTrendView(c, 90),
+    aerobic: aerobicReport(withHr, c.today, 120),
+    intervals: intervalReport(rides, c.settings.ftpW, c.today, 90),
+    durability: durabilityReport(rides, c.today, 90),
+    rider,
+    muscles,
+    timing: trainingTimingView(c, 120),
+    interference,
+    cadence: cadenceReport(rides, c.settings.ftpW, c.today, 90),
+  }, limit);
 }
 
 /** Aerobe Basis (#145): Pa:HR-Entkopplung gleichmäßiger Fahrten im Verlauf, aus FIT-Sekundenwerten. */
