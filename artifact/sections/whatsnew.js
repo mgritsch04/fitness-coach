@@ -5,6 +5,9 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 33, id: "sources", title: "Datenstand je Quelle", text: "Unter dem Datum steht, wie aktuell WHOOP und MyWhoosh sind; alte Daten sind als „veraltet“ markiert." },
+    { n: 32, id: "sleeptarget", title: "Schlafziel heute Nacht", text: "Wann du heute ins Bett solltest, aus Schlafbedarf, Schlafschuld und Belastung (Schätzung)." },
+    { n: 31, id: "eftp", title: "FTP-Schätzung im Verlauf", text: "Wie sich deine geschätzte FTP aus normalen Fahrten entwickelt, ohne eigenen Test." },
     { n: 30, id: "readiness", title: "Training nach der Erholungsampel", text: "Wie gut deine Belastung zur Erholung passte: Strain je Erholungszone und Treffer-Quote." },
     { n: 29, id: "workouts", title: "Workouts filtern", text: "Workout-Liste nach Rad, Kraft und Quelle filtern und durchsuchen; der Filter bleibt gemerkt." },
     { n: 28, id: "recovery", title: "Diagramme antippen", text: "Am Handy zeigt ein Tippen ins Diagramm Datum und Werte; waagrecht wischen fährt die Tage ab." },
