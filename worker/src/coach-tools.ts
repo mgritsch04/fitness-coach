@@ -343,6 +343,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         fuelingToday: t.fueling.days.find((f) => f.day === dash.today) ?? null,
         recoveryForecast: forecast,
         analysisHighlights: highlights,
+        strengthDeload: { verdict: t.strengthDeload.verdict, text: t.strengthDeload.text, suggestion: t.strengthDeload.suggestion },
         strengthWorkouts: t.strengthWorkouts.days.slice(0, 2).map((w) => ({ day: w.day, focus: w.focus, text: w.text })),
         eventProjection: t.projection
           ? { goal: t.projection.goal.title, date: t.projection.goal.targetDate, daysLeft: t.projection.daysLeft, atEvent: t.projection.atEvent, targetTsb: t.projection.targetTsb, verdict: t.projection.verdict, advice: t.projection.advice, weeks: t.projection.weeks }
