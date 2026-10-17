@@ -41,6 +41,11 @@
    *         yMin?, yMax?, band?: {lo, hi}, bandFn?: (p) → {lo, hi} | null, ref?: {value}, zones?: [{from, to, color}], zero?, height?, extraTip?: [series-like], aria? }
    * kind "stack": gestapelte Balken; alle stack-Serien werden in Reihenfolge übereinander gelegt.
    */
+  // Ein Tippen außerhalb eines Diagramms blendet dessen stehengebliebene Werte aus.
+  const tipHiders = new Set();
+  document.addEventListener("pointerdown", (e) => {
+    for (const c of tipHiders) { if (!c.isConnected) tipHiders.delete(c); else if (!c.contains(e.target)) c.fcHideTip?.(); }
+  }, true);
   function chart(container, opts) {
     container.replaceChildren();
     const { days, series } = opts;
@@ -132,8 +137,21 @@
       tip.style.top = `${series.length > 1 ? 28 : 4}px`;
     };
     const hide = () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); };
-    svg.addEventListener("pointermove", (e) => { const r = svg.getBoundingClientRect(); show(Math.floor((((e.clientX - r.left) / r.width) * W - m.l) / step)); });
-    svg.addEventListener("pointerleave", hide);
+    // Maus: Hover zeigt die Werte. Finger/Stift: Tippen zeigt sie und lässt sie stehen, waagrecht wischen
+    // fährt die Tage ab (senkrecht scrollt die Seite weiter), erneutes Tippen auf denselben Tag oder ein Tippen
+    // außerhalb blendet sie aus.
+    const idx = (e) => { const r = svg.getBoundingClientRect(); return Math.floor((((e.clientX - r.left) / r.width) * W - m.l) / step); };
+    const touchy = (e) => e.pointerType === "touch" || e.pointerType === "pen";
+    svg.style.touchAction = "pan-y";
+    svg.addEventListener("pointerdown", (e) => {
+      if (!touchy(e)) return;
+      const i = Math.max(0, Math.min(n - 1, idx(e)));
+      if (!tip.hidden && cur === i) hide(); else show(i);
+    });
+    svg.addEventListener("pointermove", (e) => { if (touchy(e) && !e.buttons) return; show(idx(e)); });
+    svg.addEventListener("pointerleave", (e) => { if (!touchy(e)) hide(); });
+    container.fcHideTip = hide;
+    tipHiders.add(container);
     container.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") { show((cur ?? n) - 1); e.preventDefault(); } if (e.key === "ArrowRight") { show((cur ?? -1) + 1); e.preventDefault(); } if (e.key === "Escape") hide(); });
     container.addEventListener("blur", hide);
   }
