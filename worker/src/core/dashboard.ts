@@ -1,5 +1,6 @@
 // Stellt alles zusammen, was das Dashboard braucht – in einem Aufruf, damit das Artefakt nur
 // ein Werkzeug abfragen muss.
+import { dataFreshness, readLatestBySource } from "./freshness";
 import {
   addDays,
   daySeries,
@@ -159,6 +160,7 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
       progress: exerciseProgress(strengthSessions, today).map(({ history, ...p }) => ({ ...p, history: history.slice(-12) })),
     },
     sync: { whoop: whoopSync, wahoo: wahooSync },
+    freshness: dataFreshness({ now: opts.now ?? Date.now(), sync: { whoop: whoopSync, wahoo: wahooSync }, latest: await readLatestBySource(db) }),
   };
   const journalOut = {
     today: journalToday,

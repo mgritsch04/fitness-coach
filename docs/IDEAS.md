@@ -89,7 +89,7 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 74 | Konstanz und Serien (#209) | Wochenziel-Serien, Plan-Treue | Motivation | P3 | S | Zeile 15 | Unit-Tests, Vorschau | Planned |
 | 75 | Diagramme: Tippen zeigt Werte (#210) | Fadenkreuz und Wertbox in FC.chart | Werte am Handy ablesen | P2 | S | — | Vorschau, User-Test #230 | Done |
 | 76 | Vorschau-CI prüft Barrierefreiheit (#211) | axe-core in preview.mjs, Verstöße beheben | Qualität | P2 | M | Zeile 31 | CI | Planned |
-| 77 | Datenstand je Quelle (#212) | freshness in get_dashboard, Hinweis in Kopfzeile/Briefing | alte Daten erkennen | P3 | S | — | Unit-Tests, Vorschau | Planned |
+| 77 | Datenstand je Quelle (#212) | freshness in get_dashboard, Hinweis in Kopfzeile/Briefing | alte Daten erkennen | P3 | S | — | Unit-Tests, Vorschau, User-Test #243 | Done |
 | 78 | Krafttraining nach Saisonphase (#213) | Aufbau/Erhalt/Wettkampf im Wochenplan | Kraft passend zur Radsaison | P3 | S | Zeile 39 | Unit-Tests | Planned |
 | 79 | Zeit-in-Zone-Ziele je Woche (#214) | Soll aus Plan gegen Ist | Intensitätsverteilung steuern | P3 | S | Zeile 12, 15 | Unit-Tests, Vorschau | Planned |
 | 80 | Leistungskurve Zeitraum-Vergleich (#215) | zwei Zeiträume übereinander mit Differenz | Fortschritt sehen | P3 | S | Zeile 8 | Unit-Tests, Vorschau | Planned |

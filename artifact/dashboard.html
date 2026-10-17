@@ -73,6 +73,12 @@ header.top h1 { font-size: 2.3rem; line-height: 1; }
 header.top .date { color: var(--ink-2); margin-top: 4px; }
 .syncbox { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .syncbox .state { font-size: 0.88rem; color: var(--ink-2); }
+.fresh { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 0.85rem; }
+.fresh button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); padding: 2px 0; }
+.fresh button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.fresh i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+.fresh .stale { color: var(--ink); font-weight: 600; }
+.fresh .stale i { background: var(--warn); }
 .banner { border-radius: var(--r); padding: 12px 16px; background: var(--warn-wash); border: 1px solid var(--line); }
 .banner.bad { background: var(--bad-wash); }
 
@@ -251,6 +257,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
     <div>
       <h1>Fitness Coach</h1>
       <div class="date" id="date">Tageszustand, Trainingslast und Coach</div>
+      <div class="fresh" id="fresh" hidden></div>
     </div>
     <div class="syncbox">
       <span class="state" id="syncState">Verbinde mit „Fitness Coach“ …</span>
@@ -280,6 +287,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
 <script src="sections/journal.js"></script>
 <script src="sections/coach.js"></script>
 <script src="sections/plan.js"></script>
+<script src="sections/block.js"></script>
 <script src="sections/review.js"></script>
 <script src="sections/recovery.js"></script>
 <script src="sections/sleep.js"></script>

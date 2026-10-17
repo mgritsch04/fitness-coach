@@ -14,6 +14,7 @@ FC.section({
         <div class="bf-head"><h3 id="h-briefing">Dein Morgen-Briefing</h3>
           <div class="row"><button type="button" id="bfMake">Briefing erstellen</button><button type="button" id="bfStop" hidden>Stopp</button></div></div>
         <div class="bf-text" id="bfText"><p class="muted">Claude fasst deinen Tag in drei, vier Sätzen zusammen.</p></div>
+        <p class="fine" id="bfStale" role="note" hidden></p>
         <p class="fine" id="bfFine" hidden></p>
       </div>`;
     this.root = root;
@@ -31,6 +32,7 @@ FC.section({
   },
   ready() { if (FC.state.sample) { this.root.hidden = false; if (FC.state.data) this.render(FC.state.data); } },
   render(d) {
+    const st = FC.$("bfStale"); st.hidden = !d.freshness?.note; st.textContent = d.freshness?.note ? `Achtung: ${d.freshness.note}` : "";
     if (!FC.state.sample || this.running) return;
     const saved = this.load(d.today);
     if (saved?.text) { this.show(saved); return; }
@@ -53,7 +55,8 @@ FC.section({
     const out = $("bfText"); out.replaceChildren(el("p", { class: "muted", text: "Claude schreibt dein Briefing …" }));
     const task = `Schreibe das Morgen-Briefing für ${d.today}: genau 3–4 kurze Sätze als ein Absatz, ohne Aufzählung. ` +
       "1) Wie erholt bin ich (Erholung, HRV, Schlaf gegen meine Basis)? 2) Was heißt das fürs Training heute (konkret: Kraft, Rad locker/Intervalle oder Ruhe, mit Dauer)? " +
-      "3) Ein Hinweis zur Woche (Belastung, Form, Schlafschuld). Beginne mit dem wichtigsten Punkt in **fett**. Keine Begrüßung.";
+      "3) Ein Hinweis zur Woche (Belastung, Form, Schlafschuld). Beginne mit dem wichtigsten Punkt in **fett**. Keine Begrüßung." +
+      (d.freshness?.note ? ` Datenlage (#212): ${d.freshness.note} Sag das in einem Halbsatz und bewerte vorsichtiger.` : "");
     try {
       const { text } = await state.sample(`${coach.rules}\n\n${task}\n\nDaten:\n${coach.data()}`, { signal: this.ctl.signal, cache: manual ? false : { gcTime: 3_600_000 }, onText: ({ text }) => richText(out, text) });
       const v = { text, at: new Date().toISOString() };

@@ -255,7 +255,19 @@
   function setData(p, storedAt) {
     if (p && typeof p === "object" && p.compact) p = { ...p, days: expand(p.days), workouts: expand(p.workouts) };
     if (!p || typeof p !== "object" || !Array.isArray(p.days)) { banner("Unerwartete Antwort vom Server.", "bad", { label: "Erneut laden", run: () => reload() }); return; }
-    state.data = p; state.storedAt = storedAt ?? null; banner(null); document.body.classList.add("has-data"); renderAll();
+    state.data = p; state.storedAt = storedAt ?? null; banner(null); document.body.classList.add("has-data"); renderAll(); fresh(p.freshness);
+  }
+  /** Datenstand je Quelle (#212) in der Kopfzeile: Punkt plus Text, „veraltet“ auch als Wort; Tippen öffnet „Datenquellen“. */
+  function fresh(f) {
+    const box = $("fresh"), list = (f?.sources ?? []).filter((x) => x.level !== "none");
+    box.hidden = !list.length;
+    const age = (h) => (h == null ? "" : h < 1 ? "gerade eben" : h < 36 ? `vor ${h} Std.` : `vor ${Math.round(h / 24)} Tagen`);
+    box.replaceChildren(...list.map((x) => {
+      const b = el("button", { type: "button", class: x.level, title: x.text, "aria-label": `${x.label}: ${x.text}${x.level === "stale" ? ", veraltet" : ""}. Zu den Datenquellen` },
+        el("i", { "aria-hidden": "true" }), `${x.label} ${age(x.ageH)}${x.level === "stale" ? " · veraltet" : ""}`);
+      b.onclick = () => goTo("sources");
+      return b;
+    }));
   }
   function startWatch() {
     unwatch?.();

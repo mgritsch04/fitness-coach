@@ -154,6 +154,8 @@ export interface PlanInput {
   ftpW: number | null;
   thresholdHr: number | null;
   maxHr: number | null;
+  /** Wochenziel aus einem gespeicherten 4-Wochen-Block (#206); Termin-Phasen (Spitze, Tapering, Wettkampf) haben Vorrang. */
+  block?: { targetLoad: number; deload: boolean; label: string } | null;
 }
 
 const WEEKDAY = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -244,7 +246,14 @@ export function strengthHabit(prefs: TrainingPrefs, weeks: WeekSummary[], week: 
 
 export function buildWeekPlan(inp: PlanInput): WeekPlan {
   const week = weekStart(inp.weekStart);
-  const { phase, reason, goal } = choosePhase(week, inp.goals, inp.weeks, inp.tsb);
+  const picked = choosePhase(week, inp.goals, inp.weeks, inp.tsb);
+  const { goal } = picked;
+  let { phase, reason } = picked;
+  const useBlock = inp.block && !["peak", "taper", "race"].includes(phase) ? inp.block : null;
+  if (useBlock?.deload) {
+    phase = "recovery";
+    reason = `${useBlock.label}: Entlastungswoche im Block, damit die Fitness ankommt.`;
+  } else if (useBlock && phase !== "recovery") reason = `${useBlock.label}. ${reason}`;
   const notes: string[] = [];
   const sport = sportWord(inp.prefs.mainSport ?? goal?.sport ?? null);
 
@@ -255,6 +264,8 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   const phaseHours = { taper: 0.6, race: 0.5, recovery: 0.6 } as Partial<Record<Phase, number>>;
   let hours = hoursInfo.hours * (phaseHours[phase] ?? 1);
   let targetLoad = hasLoad ? Math.round(inp.ctl * 7 * LOAD_FACTOR[phase]) : Math.round(hours * 50);
+  // Blockziel ersetzt die Faustregel, außer die Phase verlangt Erholung (dann gilt der niedrigere Wert).
+  if (useBlock && hasLoad) targetLoad = phase === "recovery" ? Math.min(targetLoad, useBlock.targetLoad) : useBlock.targetLoad;
   if (hasLoad) {
     // Nicht mehr Stunden einplanen, als die Zielbelastung bei lockerem Schnitt (~52 TSS/h) braucht.
     hours = Math.min(hours, Math.max(2, targetLoad / 45));
