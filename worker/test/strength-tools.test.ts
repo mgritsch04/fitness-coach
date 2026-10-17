@@ -53,6 +53,11 @@ describe("Kraft-Werkzeuge", () => {
     expect(overview.sessions).toHaveLength(3);
     expect(overview.progress.find((p: { exercise: string }) => p.exercise === "back_squat").sessions).toBe(3);
     expect(overview.templates).toHaveLength(1);
+    expect(overview.autoregulation.exercises).toEqual([]);
+    // Express (#281): aus der Vorlage, passt schon in 30 min.
+    const ex = await call("get_express_session", { minutes: 30, template: "Beine" });
+    expect(ex.exercises[0]).toMatchObject({ exercise: "back_squat", sets: 2 });
+    expect((await call("get_express_session", { minutes: 30 })).error).toBe("invalid_input");
 
     expect((await call("delete_strength_session", { id: fromTemplate.saved.id })).deleted).toBe(fromTemplate.saved.id);
     expect((await call("save_strength_template", { name: "Beine", delete: true })).deleted).toBe("Beine");

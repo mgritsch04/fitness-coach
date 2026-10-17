@@ -155,3 +155,7 @@ Das Wochenziel besteht aus Kraft- und Radeinheiten. Es kommt aus den Trainingsvo
 ## Reserve je Satz im Gym-Modus (#280)
 
 Nach jedem abgehakten Satz fragt der Gym-Modus „Noch drin: 0 / 1–2 / 3+“. Das sind die Wiederholungen, die noch möglich gewesen wären (RIR). Bei 3+ wird der nächste Satz etwa 2,5 % schwerer, bei 0 etwa 5 % leichter (Langhantel auf 2,5 kg, sonst auf 1 kg gerundet, Ziel 1–2). Die Angabe wird als Satz-RPE gespeichert (RPE = 10 − RIR). `get_strength.autoregulation` wertet die letzten 3 Wochen je Übung aus (ab 2 Einheiten mit Angabe): Schnitt ≥ 3 heißt steigern, ≤ 0,5 heißt halten oder leichter. Logik in `worker/src/core/autoregulation.ts`, die Gewichtsregel ist in `gym.js` gespiegelt.
+
+## Express-Krafteinheit bei wenig Zeit (#281)
+
+Im Gym-Modus gibt es neben „Was trainierst du?“ die Auswahl „Zeit: Nur 45/30/20 min“. Dann kürzt `get_express_session {minutes, exercises|template}` die Einheit in dieser Reihenfolge: Hilfsübungen als Supersatz (Drücken mit Ziehen, 60 s Pause), Pausen bei Grundübungen 2 min, Isolationsübungen 2 Sätze und dann streichen, Hilfsübungen 2 Sätze und dann streichen, Grundübungen 3 und dann 2 Sätze. Die Dauer ist geschätzt aus Sätzen, Pausen und 5 min Aufwärmen. Weggelassene Übungen werden genannt, damit sie bei der nächsten Einheit zuerst drankommen. Logik in `worker/src/core/strength-express.ts`.
