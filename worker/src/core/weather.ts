@@ -190,3 +190,63 @@ export function rideAdvice(win: RideWindow | null, planned: { type: SessionType;
   }
   return { verdict: "outside", text: `${win.rating === "gut" ? "Gutes Radwetter" : "Draußen fahren geht"}: ${when}.${win.issues.length ? ` Achte auf: ${win.issues.join(", ")}.` : ""}` };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Kleidungsempfehlung (#224): aus der gefühlten Temperatur im besten Fenster (mit Fahrtwind), Regen, Dauer und Tageslicht.
+// Faustregeln, jeder friert anders; als Startpunkt gedacht.
+
+/** Angenommene Fahrgeschwindigkeit für den Fahrtwind (km/h). */
+export const RIDE_SPEED_KMH = 25;
+
+/** Gefühlte Temperatur auf dem Rad: Windchill (Environment Canada) mit Fahrtwind plus halbem Wetterwind; über 15 °C grob 2 °C kühler. */
+export function feelsLikeOnBike(tempC: number, windKmh: number | null) {
+  const v = RIDE_SPEED_KMH + (windKmh ?? 0) / 2;
+  if (tempC > 15) return Math.round((tempC - 2) * 10) / 10;
+  const p = v ** 0.16;
+  return Math.round((13.12 + 0.6215 * tempC - 11.37 * p + 0.3965 * tempC * p) * 10) / 10;
+}
+
+/** Stufen nach gefühlter Temperatur auf dem Rad (ab `min` °C), wärmste zuerst. Grob: Lufttemperatur ab 20 °C Sommer, 15–20 mild, 10–15 frisch, 5–10 kühl, 0–5 kalt. */
+export const CLOTHING_LEVELS = [
+  { level: 1, min: 18, label: "Sommer", items: ["Kurzarmtrikot", "kurze Radhose"] },
+  { level: 2, min: 13, label: "mild", items: ["Kurzarmtrikot", "kurze Radhose", "Armlinge oder Weste für den Start"] },
+  { level: 3, min: 6, label: "frisch", items: ["Kurzarmtrikot mit Armlingen", "Knielinge", "Windweste", "dünne Handschuhe"] },
+  { level: 4, min: 0, label: "kühl", items: ["Langarm-Thermotrikot", "lange Radhose oder Beinlinge", "Windweste", "lange Handschuhe", "Überschuhe"] },
+  { level: 5, min: -6, label: "kalt", items: ["Winterjacke", "Thermo-Radhose lang", "warme Handschuhe", "Überschuhe", "Mütze unter dem Helm"] },
+  { level: 6, min: -Infinity, label: "sehr kalt", items: ["Winterjacke mit Baselayer", "Thermo-Radhose lang", "Winterhandschuhe", "Überschuhe", "Mütze und Halstuch"] },
+] as const;
+
+export interface ClothingAdvice {
+  feelsC: number;
+  level: number;
+  label: string;
+  items: string[];
+  hints: string[];
+}
+
+/** Kleidung für das beste Fenster eines Tages. `hours` = Stunden dieses Tages (für Regen und Tageslicht). */
+export function clothingAdvice(win: RideWindow | null, hours: readonly WeatherHour[]): ClothingAdvice | null {
+  if (!win || win.tempMin == null) return null;
+  const inWin = hours.filter((h) => h.time >= win.start && h.time < win.end);
+  // Kälteste gefühlte Stunde im Fenster zählt (Start und Abfahrten); ohne Stunden aus dem Fenster die Eckwerte.
+  const feels = inWin.length
+    ? Math.min(...inWin.filter((h) => h.tempC != null).map((h) => feelsLikeOnBike(h.tempC!, h.windKmh)))
+    : feelsLikeOnBike(win.tempMin, win.windMax);
+  const lv = CLOTHING_LEVELS.find((l) => feels >= l.min)!;
+  const items: string[] = [...lv.items];
+  const hints: string[] = [];
+  const rainMm = Math.max(0, ...inWin.map((h) => h.rainMm ?? 0));
+  const rainProb = win.rainProbMax ?? 0;
+  if (rainMm >= 0.3 || rainProb >= 50) { items.push("Regenjacke"); hints.push("Regen wahrscheinlich: Regenjacke an, Schutzblech hilft, Bremswege sind länger."); }
+  else if (rainProb >= 20) { items.push("Regenjacke in die Trikottasche"); hints.push(`Regenrisiko bis ${rainProb} %: dünne Regenjacke einstecken.`); }
+  if (win.tempMax != null && win.tempMax - win.tempMin >= 6 && lv.level >= 2 && lv.level <= 4)
+    hints.push(`Es wird ${win.tempMax - win.tempMin} °C wärmer: lieber in Schichten (Weste, Armlinge), die du unterwegs ausziehst.`);
+  if (win.hours >= 3 && feels < 18 && !items.some((i) => /Weste|Jacke/.test(i))) { items.push("Windweste in die Trikottasche"); }
+  if (lv.level >= 5 && (win.tempMin ?? 99) <= 2) hints.push("Um 0 °C: Achtung auf Glätte, besonders auf Brücken und im Schatten.");
+  if ((win.tempMax ?? 0) >= 26) hints.push("Warm: zwei Flaschen, Sonnencreme, Pausen im Schatten einplanen.");
+  // Tageslicht: dunkle Stunden im Fenster oder Ende in der letzten hellen Stunde.
+  const lastDay = hours.filter((h) => h.isDay).at(-1)?.time;
+  const endsLate = lastDay != null && win.end > lastDay;
+  if (inWin.some((h) => !h.isDay) || endsLate) { items.push("Front- und Rücklicht"); hints.push("Die Fahrt endet in der Dämmerung oder im Dunkeln: Licht einschalten, helle Kleidung."); }
+  return { feelsC: Math.round(feels), level: lv.level, label: lv.label, items, hints };
+}
