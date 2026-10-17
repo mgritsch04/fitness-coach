@@ -221,7 +221,7 @@ for (const [name, vp, scheme, tab] of shots) {
     if (!(tr > 100)) errors.push(`${name}: Coach-Werkzeug krafttraining lieferte nichts (${tr})`);
     // Alle Chat-Werkzeuge (#185) liefern mit leerer Eingabe Daten.
     const [bad, cnt] = await p.evaluate(() => [window.__toolBad, window.__toolCount]);
-    if (!bad || bad.length || cnt < 24) errors.push(`${name}: Coach-Werkzeuge fehlerhaft (${cnt}) ${JSON.stringify(bad)}`);
+    if (!bad || bad.length || cnt < 25) errors.push(`${name}: Coach-Werkzeuge fehlerhaft (${cnt}) ${JSON.stringify(bad)}`);
     // Fragen-Vorschlag antippen, dann neu laden: der Chat bleibt erhalten (#118).
     await p.click("#askChips .chip"); await p.waitForTimeout(300);
     await p.reload(); await p.waitForTimeout(800);

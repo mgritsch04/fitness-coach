@@ -7,7 +7,7 @@ FC.section({
   SECTIONS: {
     get_recovery_forecast: "forecast", get_hrv_trend: "hrvtrend", get_aerobic_decoupling: "aerobic", get_interval_quality: "intervals",
     get_durability: "durability", get_rider_profile: "riderprofile", get_muscle_balance: "musclebalance", get_training_timing: "timing",
-    get_strength_cycling_interference: "interference", get_cadence_profile: "cadence",
+    get_strength_cycling_interference: "interference", get_cadence_profile: "cadence", get_recovery_curve: "recoverycurve",
   },
   TONES: { warn: "Achtung", good: "Gut", neutral: "Hinweis" },
   css: `
