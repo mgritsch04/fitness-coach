@@ -8,6 +8,7 @@ import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
 import { makeUpPlan, type MakeUpPlan } from "./make-up";
 import { readStrengthSessions } from "./strength";
+import { strengthDeload, type StrengthDeload } from "./strength-deload";
 import { STRENGTH_PLAN_NOTE, strengthWorkout, type StrengthWorkout } from "./strength-plan";
 import { projectEvent, type EventProjection } from "./projection";
 import {
@@ -174,6 +175,8 @@ export interface TrainingOverview {
   ftpTest: FtpTestPlan | null;
   /** Ausgefallene Schlüsseleinheit: Tag zum Nachholen oder Rat, sie ausfallen zu lassen (null, wenn nichts ausfiel). */
   makeUp: MakeUpPlan | null;
+  /** Kraft-Plateau: Entlastungswoche empfohlen? (#202) */
+  strengthDeload: StrengthDeload;
   /** Konkrete Krafteinheiten (Übungen, Sätze, Gewicht) für die Plantage ab heute. */
   strengthWorkouts: { days: StrengthWorkout[]; note: string };
   /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
@@ -201,6 +204,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     intensity: intensityCheck(inp),
     ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null, next),
     makeUp: makeUpPlan(thisWeek.comparison, inp.today, inp.coach?.readiness ?? null, next.days[0] ?? null),
+    strengthDeload: strengthDeload(sessions, inp.today),
     strengthWorkouts: {
       days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions)),
       note: STRENGTH_PLAN_NOTE,

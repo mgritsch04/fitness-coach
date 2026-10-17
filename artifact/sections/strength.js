@@ -42,7 +42,7 @@ FC.section({
         </form>
         <div class="panel"><h3>Volumen je Muskelgruppe</h3><p class="muted" id="stVolWeek" style="margin:0 0 8px"></p><div class="st-vol" id="stVol"><div class="empty">Noch keine Krafteinheiten.</div></div>
           <p class="chart-cap">Arbeitssätze diese Woche: Hauptmuskel zählt einen Satz, Hilfsmuskel einen halben.</p></div>
-        <div class="panel span2"><h3>Fortschritt je Übung</h3><div class="tablewrap"><table id="stProg" class="cards"><thead><tr>
+        <div class="panel span2"><h3>Fortschritt je Übung</h3><p id="stDeload" hidden style="margin:0 0 8px"></p><div class="tablewrap"><table id="stProg" class="cards"><thead><tr>
           <th class="l">Übung</th><th>Einheiten</th><th>Letzter Top-Satz</th><th>Geschätztes 1RM</th><th>4 Wochen</th><th>Verlauf</th><th>Status</th>
         </tr></thead><tbody><tr><td colspan="7" class="empty">Noch keine Daten.</td></tr></tbody></table></div></div>
         <div class="panel span2"><h3>Letzte Einheiten</h3><div id="stSessions"><div class="empty">Noch keine Krafteinheiten.</div></div><p class="chart-cap" id="stNotes"></p></div>
@@ -143,6 +143,10 @@ FC.section({
         vol.append(el("div", { class: "r" }, el("span", { text: m.label }), el("div", {}, bar), el("span", { class: "n", text: de(m.sets, m.sets % 1 ? 1 : 0) })));
       }
 
+      // Plateau und Entlastungswoche (#202): Hinweis nur bei deload/watch.
+      const dl = data.deload, dlBox = $("stDeload");
+      dlBox.hidden = !dl || !["deload", "watch"].includes(dl.verdict);
+      if (!dlBox.hidden) dlBox.replaceChildren(el("strong", { text: dl.verdict === "deload" ? "Entlastungswoche empfohlen. " : "Plateau beobachten. " }), `${dl.text}${dl.suggestion ? ` ${dl.suggestion.text}` : ""}`);
       const STATUS = { progress: "Fortschritt", plateau: "Plateau", decline: "Rückgang", new: "neu", unknown: "–" };
       const tb = $("stProg").tBodies[0]; tb.replaceChildren();
       if (!data.progress.length) tb.append(el("tr", {}, el("td", { colspan: 7, class: "empty", text: "Noch keine Daten." })));

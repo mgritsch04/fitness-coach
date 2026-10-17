@@ -4,6 +4,7 @@ import { z } from "zod";
 import { addDays, todayIn, type WorkoutRow } from "./core/analysis";
 import { readWorkouts } from "./core/repository";
 import { readSettings } from "./core/settings";
+import { strengthDeload } from "./core/strength-deload";
 import {
   deleteStrengthSession,
   deleteTemplate,
@@ -154,6 +155,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         sessions: inRange.map((s) => ({ ...s, load: srpeLoad(s.durationMin, s.rpe) })),
         weeks: weeklyVolume(inRange),
         progress: exerciseProgress(all, t),
+        deload: strengthDeload(all, t),
         templates: await readTemplates(env.DB),
         coachNotes: strengthCoachNotes(all, t),
         note: "1RM und Belastung sind Schätzungen. Volumen: Hauptmuskel zählt einen Satz, Hilfsmuskel einen halben.",
