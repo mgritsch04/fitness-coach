@@ -332,6 +332,24 @@ for (const [name, vp, scheme, tab] of shots) {
     const ex = await p.evaluate(() => ({ min: window.__expressIn?.minutes, n: window.__expressIn?.exercises?.length, cards: [...document.querySelectorAll("#gyBody .gy-ex h3")].map((h) => h.textContent), sets: document.querySelectorAll("#gyBody .gy-ex")[0]?.querySelectorAll(".gy-set").length, ss: document.querySelectorAll("#gyBody .gy-ex")[1]?.querySelector(".gy-exh .muted")?.textContent ?? "", msg: document.getElementById("gyMsg")?.textContent ?? "" }));
     if (ex.min !== 30 || ex.n !== 2 || ex.cards.join("|") !== "Kniebeuge|Kurzhantelrudern" || ex.sets !== 2 || !/Supersatz A/.test(ex.ss) || !/Gekürzt/.test(ex.msg)) errors.push(`${name}: Express-Einheit falsch ${JSON.stringify(ex)}`);
   }
+  if (name === "desktop-light") {
+    // Favoriten (#291): Stern an „Trittfrequenz“ heftet sie oben auf „Heute“ an, Sprung, nach Neuladen gemerkt, lösen.
+    const favNone = await p.evaluate(() => document.getElementById("sec-favorites").hidden && document.querySelectorAll(".fav-btn").length);
+    if (!favNone || favNone < 20) errors.push(`${name}: Favoriten-Sterne fehlen oder Leiste ohne Favoriten sichtbar (${favNone})`);
+    await p.evaluate(() => document.querySelector("#h-cadence .fav-btn").click()); await p.waitForTimeout(100);
+    const fav = await p.evaluate(() => ({ vis: !document.getElementById("sec-favorites").hidden, items: [...document.querySelectorAll("#favList button")].map((b) => b.textContent), pressed: document.querySelector("#h-cadence .fav-btn").getAttribute("aria-pressed") }));
+    if (!fav.vis || fav.items.join() !== "TrittfrequenzTraining" || fav.pressed !== "true") errors.push(`${name}: Anheften falsch ${JSON.stringify(fav)}`);
+    await p.reload(); await p.waitForTimeout(900);
+    const kept = await p.$$eval("#favList button", (b) => b.map((x) => x.textContent));
+    if (kept.join() !== "TrittfrequenzTraining") errors.push(`${name}: Favorit nach Neuladen weg ${JSON.stringify(kept)}`);
+    await p.screenshot({ path: join(out, "desktop-favorites.png") });
+    await p.click("#favList button"); await p.waitForTimeout(1600);
+    const fj = await p.evaluate(() => ({ tab: document.querySelector("#tabbar [aria-current=page]")?.dataset.tab, top: Math.round(document.getElementById("sec-cadence").getBoundingClientRect().top) }));
+    if (fj.tab !== "training" || Math.abs(fj.top) > 60) errors.push(`${name}: Favorit springt falsch ${JSON.stringify(fj)}`);
+    await p.evaluate(() => document.querySelector("#h-cadence .fav-btn").click()); await p.waitForTimeout(100);
+    if (!(await p.evaluate(() => document.getElementById("sec-favorites").hidden))) errors.push(`${name}: Lösen blendet Favoriten nicht aus`);
+    await p.evaluate(() => { FC.showTab("heute"); window.scrollTo(0, 0); }); await p.waitForTimeout(200);
+  }
   if (name === "phone-mehr" || name === "desktop-light") {
     // Abschnitte suchen (#269): „kadenz“ findet Trittfrequenz im Training-Tab, Enter springt hin und klappt am Handy auf.
     if (name === "phone-mehr") await p.click("#btnSearch");

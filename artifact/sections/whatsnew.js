@@ -6,6 +6,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 46, id: "favorites", title: "Favoriten anheften", text: "Stern neben einer Abschnittsüberschrift: der Abschnitt erscheint oben auf „Heute“ zum Direktsprung." },
     { n: 45, id: "search", title: "Abschnitte suchen", text: "Oben „Suchen“ (am Rechner Taste /): Begriff tippen, z. B. Kadenz oder Schlaf, und direkt zum Abschnitt springen." },
     { n: 44, id: "consistency", title: "Konstanz und Serien", text: "Wie viele Wochen in Folge du dein Ziel aus Kraft und Rad erreicht hast." },
     { n: 43, id: "gym", title: "Übung tauschen", text: "Im Gym-Modus bei belegtem Gerät „Tauschen“: passende Alternativen für dieselbe Muskelgruppe." },
