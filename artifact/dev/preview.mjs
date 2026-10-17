@@ -33,6 +33,11 @@ const payloads = {
   get_cadence_profile: () => window.__MOCK__.get_cadence_profile,
   get_rider_profile: () => window.__MOCK__.get_rider_profile,
   get_muscle_balance: () => window.__MOCK__.get_muscle_balance,
+  get_analysis_highlights: () => ({ highlights: [
+    { topic: "muscles", title: "Muskelbalance", tool: "get_muscle_balance", tone: "warn", text: "Rücken und Beinbeuger bekommen deutlich weniger Sätze als Brust und Beinstrecker." },
+    { topic: "aerobic", title: "Aerobe Basis", tool: "get_aerobic_decoupling", tone: "good", text: "Puls bleibt bei lockeren Fahrten stabil zur Leistung." },
+    { topic: "rider", title: "Fahrertyp: Allrounder", tool: "get_rider_profile", tone: "neutral", text: "Trainingsvorschlag: Sprints einbauen." },
+    { topic: "x", title: "Ohne Abschnitt", tool: "get_unknown", tone: "neutral", text: "Synthetischer Eintrag ohne Sprungziel." } ], more: 2, notes: ["Schätzungen, keine Diagnose."] }),
   get_strength_cycling_interference: () => ({ today: "2026-03-31", range: { from: "2025-10-03", to: "2026-03-31", days: 180 }, legSessions: 24, nextDay: { avgRecovery: 61, avgHrv: 58, groups: [{ group: "afterLegs", label: "Nach Beineinheit", days: 24, recovery: 52.5, hrv: 55, recoveryVsAvg: -7.5, hrvVsAvgPct: -6.2 },{ group: "afterRide", label: "Nach Radeinheit (ohne Beine)", days: 80, recovery: 61.2, hrv: 55, recoveryVsAvg: 1.2, hrvVsAvgPct: 0.8 },{ group: "afterOther", label: "Nach anderem Training", days: 10, recovery: 60, hrv: 55, recoveryVsAvg: null, hrvVsAvgPct: null },{ group: "afterRest", label: "Nach Ruhetag", days: 40, recovery: 63.1, hrv: 55, recoveryVsAvg: 3.1, hrvVsAvgPct: 2.4 }] }, nextRide: [{ bucket: "lt24", label: "unter 24 h", rides: 2, hardRides: 0, efVsTypicalPct: null, hardIntensity: null, hardIntensityVsTypical: null },{ bucket: "24to48", label: "24–48 h", rides: 12, hardRides: 4, efVsTypicalPct: -4.8, hardIntensity: 0.86, hardIntensityVsTypical: null },{ bucket: "48to72", label: "48–72 h", rides: 15, hardRides: 6, efVsTypicalPct: -0.9, hardIntensity: 0.93, hardIntensityVsTypical: null },{ bucket: "gt72", label: "3–7 Tage", rides: 20, hardRides: 8, efVsTypicalPct: 0.6, hardIntensity: 0.95, hardIntensityVsTypical: null },{ bucket: "none", label: "ohne Beine (7 Tage)", rides: 9, hardRides: 3, efVsTypicalPct: 0.3, hardIntensity: 0.94, hardIntensityVsTypical: null }], suggestion: { hours: 48, text: "In deinen Daten ist die Radeinheit ab etwa 48 h nach Beinen wieder so effizient wie sonst. Harte Intervalle daher mit mindestens 48 h Abstand planen (Beobachtung, keine Ursache-Wirkung)." }, recentRides: [], notes: ["Beineinheit = Krafteinheit mit mindestens 3 Beinsätzen.", "Beobachtungen aus deinen Daten, keine Diagnose."] }),
   get_recovery_forecast: (a) => ({ today: "2026-03-31", tomorrow: "2026-04-01", observations: 90, typicalSleepH: 7.6, available: true, notes: ["Schätzung aus deinen eigenen Daten.", "Abends ist die Prognose am genauesten."], assumptions: { sleepH: (a && a.sleepH) || 7.6, sleepFromInput: !!(a && a.sleepH), extraLoad: (a && a.extraLoad) || 0, todayRecovery: 81, todayLoad: 74, todayStrain: 12.4, lateTraining: !!(a && a.extraLoad) }, forecast: { recovery: 72, low: 58, high: 86, zone: "green" }, scenarios: [{ label: "1 Stunde mehr Schlaf", recovery: 79, low: 65, high: 93, delta: 7 }, { label: "1 Stunde weniger Schlaf", recovery: 65, low: 51, high: 79, delta: -7 }, { label: "Noch 1 h lockeres Training heute Abend (etwa 50 Punkte)", recovery: 66, low: 52, high: 80, delta: -6 }], effects: { perSleepHour: 7, per10Load: -0.8, perStrainPoint: -1.2, perRecoveryPoint: 0.3, lateTraining: -2 }, quality: { maePct: 6.2, rmsePct: 7.9, maeIfGuessingAverage: 11.1, maeIfSameAsToday: 14.2, recent: [{ day: "2026-03-18", actual: 62, predicted: 58 },{ day: "2026-03-19", actual: 77, predicted: 70 },{ day: "2026-03-20", actual: 66, predicted: 64 },{ day: "2026-03-21", actual: 54, predicted: 60 },{ day: "2026-03-22", actual: 83, predicted: 76 },{ day: "2026-03-23", actual: 49, predicted: 55 },{ day: "2026-03-24", actual: 72, predicted: 68 },{ day: "2026-03-25", actual: 53, predicted: 57 },{ day: "2026-03-26", actual: 60, predicted: 63 },{ day: "2026-03-27", actual: 61, predicted: 59 },{ day: "2026-03-28", actual: 84, predicted: 78 },{ day: "2026-03-29", actual: 86, predicted: 80 },{ day: "2026-03-30", actual: 87, predicted: 82 },{ day: "2026-03-31", actual: 81, predicted: 79 }] } }),
   get_ftp_tests: () => window.__MOCK__.get_ftp_tests,
@@ -111,13 +116,23 @@ for (const [name, vp, scheme, tab] of shots) {
     if ((await p.$$eval("#wnList li", (l) => l.length)) <= news) errors.push(`${name}: „weitere zeigen“ zeigt nicht mehr`);
     if (!news) errors.push(`${name}: Neu im Dashboard ist leer`);
     else {
-      await p.click("#wnList li button"); await p.waitForTimeout(300);
+      await p.click("#wnList li:nth-child(2) button"); await p.waitForTimeout(300);
       const at = await p.evaluate(() => document.querySelector("#tabbar [aria-current=page]")?.dataset.tab ?? "alle");
       if (at !== "training") errors.push(`${name}: Neu im Dashboard springt nach ${at} statt Training`);
       await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
       await p.click("#wnSeen"); await p.reload(); await p.waitForTimeout(800);
       await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(300);
       if (await p.evaluate(() => !document.getElementById("sec-whatsnew").hidden)) errors.push(`${name}: Neu im Dashboard nach „Alles gesehen“ noch da`);
+    }
+    // Auf einen Blick (#180): Befunde mit Kennzeichnung, „Details“ nur mit Sprungziel, springt in den richtigen Tab.
+    const hl = await p.$$eval("#hlList .hl-item", (l) => l.map((x) => [x.querySelector(".hl-tag")?.textContent, !!x.querySelector("button")]));
+    if (hl.length !== 4 || hl[0][0] !== "Achtung" || hl.filter((x) => x[1]).length !== 3) errors.push(`${name}: Auf einen Blick falsch ${JSON.stringify(hl)}`);
+    else {
+      await p.click("#hlList .hl-item button"); await p.waitForTimeout(1500);
+      const at = await p.evaluate(() => document.querySelector("#tabbar [aria-current=page]")?.dataset.tab ?? "alle");
+      const top = await p.evaluate(() => document.getElementById("sec-musclebalance")?.getBoundingClientRect().top ?? 9999);
+      if (at !== "training" || Math.abs(top) > 80) errors.push(`${name}: Auf einen Blick springt nach ${at}, Abstand ${Math.round(top)} px`);
+      await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(300);
     }
     // Wochenplan als Kalenderdatei (#157): gültiger Aufbau, Zeilen höchstens 75 Byte.
     const calBtn = await p.$("#agBody .ag-act .ag-cal");
