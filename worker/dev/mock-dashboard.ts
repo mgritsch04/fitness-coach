@@ -1,7 +1,7 @@
 // Erzeugt synthetische Antworten der Connector-Werkzeuge (keine echten Messwerte) für die Vorschau des Artefakts:
 //   cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
 import { addDays } from "../src/core/analysis";
-import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, recoveryCurveView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
+import { analysisContext, fitnessProfileView, recoveryFactorsView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, recoveryCurveView, readinessAlignmentView, healthTrendsView, periodSummariesView, strainRecoveryView, trainingLoadView } from "../src/core/analytics";
 import { buildDashboard } from "../src/core/dashboard";
 import { ftpHistory, ftpTestSuggestion, readFtpTests, saveFtpTest } from "../src/core/ftp-test";
 import { CURVE_DURATIONS_S, combineCurves } from "../src/core/power";
@@ -102,6 +102,7 @@ process.stdout.write(JSON.stringify({
   get_hrv_trend: hrvTrendView(await ctx(157), 90),
   get_training_timing: trainingTimingView(await ctx(120), 120),
   get_recovery_curve: recoveryCurveView(await ctx(180), 180),
+  get_readiness_alignment: readinessAlignmentView(await ctx(90), 90),
   // Synthetische Sekundenreihen (keine Datenbank): 3 h Grundlage mit harten Blöcken früh und spät, Leistung fällt mit der Arbeit leicht ab.
   get_durability: durabilityReport([0, 1, 2].map((k) => ({
     day: addDays("2026-03-31", -7 * k - 2), source: "mywhoosh", sourceId: `d${k}`,
