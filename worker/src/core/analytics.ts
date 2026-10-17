@@ -50,6 +50,7 @@ import { recoveryCurve } from "./recovery-curve";
 import { readinessAlignment } from "./readiness-alignment";
 import { eftpTrend, WINDOW_DAYS as EFTP_WINDOW_DAYS } from "./eftp";
 import { readFtpTests } from "./ftp-test";
+import { indoorOutdoor } from "./indoor-outdoor";
 import { enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
@@ -341,6 +342,7 @@ export async function analysisHighlightsView(db: D1Database, limit: number, now?
     recoveryCurve: recoveryCurve(c.series, c.today, 180),
     readiness: readinessAlignment(c.series, c.today, 90),
     eftp,
+    indoorOutdoor: indoorOutdoor(c.workouts, c.settings.ftpW, c.today, 180),
   }, limit);
 }
 
@@ -367,4 +369,9 @@ export async function eftpView(db: D1Database, weeks: number, now?: number) {
   const from = addDays(weekStart(c.today), -7 * (weeks - 1) - EFTP_WINDOW_DAYS);
   const [rows, tests] = await Promise.all([readPowerCurves(db, from).then(flattenCurves), readFtpTests(db).catch(() => [])]);
   return eftpTrend({ rows, ftpW: c.settings.origin.ftpW === "user" ? c.settings.ftpW : null, tests: tests.map((t) => ({ day: t.day, ftpW: t.ftp_w })), weightKg: c.weightKg }, c.today, weeks);
+}
+
+/** Rolle gegen Straße (#207): Effizienz, Puls bei gleicher Leistung und Kadenz drinnen gegen draußen. */
+export function indoorOutdoorView(c: AnalysisContext, days: number) {
+  return indoorOutdoor(c.workouts, c.settings.ftpW, c.today, days);
 }

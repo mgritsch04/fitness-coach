@@ -239,7 +239,7 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 
 ## Analyse-Highlights (`get_analysis_highlights`, #175)
 
-`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz, Erholungskurve, Training nach der Erholungsampel und FTP-Schätzung. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
+`core/highlights.ts` fasst die fertigen Berichte zusammen: Erholungsprognose, HRV-Trend, Aerobe Basis, Intervall-Qualität, Ermüdungsresistenz, Fahrertyp, Muskelbalance, Trainingszeit, Kraft/Rad, Trittfrequenz, Erholungskurve, Training nach der Erholungsampel, FTP-Schätzung und Rolle gegen Straße. Je Thema höchstens ein Satz mit Ton (`warn`, `good`, `neutral`) und dem Tool für Details; `warn` zuerst, dann `good`, dann `neutral`, höchstens `limit` (Standard 6), `more` zählt den Rest.
 
 - Der View (`analysisHighlightsView`) liest Kontext (180 Tage) und Sekundenwerte (120 Tage) nur einmal und füttert damit alle Berichte.
 - Kein eigener Dashboard-Abschnitt; gedacht als Einstieg für den Coach und für Briefing oder Wochenrückblick.
@@ -270,3 +270,12 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `current` mit W/kg und `stale` (Bestwert älter als 28 Tage); `change` über 6 Wochen, `direction` ab ±2 %.
 - `suggestTest`: zwei Wochen in Folge mindestens 5 % Abweichung in dieselbe Richtung von der selbst eingestellten FTP (eine geschätzte FTP zählt nicht).
 - Dashboard: `sections/eftp.js`, Reiter Verlauf (Training-Reiter ist voll). Auch in `get_analysis_highlights` (Thema `eftp`).
+
+## Rolle gegen Straße (`get_indoor_outdoor`, #207)
+
+`core/indoor-outdoor.ts` vergleicht Radfahrten ab 20 min aus den Zusammenfassungswerten (keine Sekundenwerte). Drinnen: Quelle MyWhoosh (auch mit virtueller Strecke) oder Sportart mit Indoor/Rolle/virtuell; draußen: Strecke ab 1 km; sonst `unknown`.
+
+- Je Seite: Fahrten, Stunden, Median von NP, IF (mit FTP), Puls und Trittfrequenz, Effizienz `ef` = NP pro Herzschlag (Median).
+- `comparison` ab je 3 Fahrten mit Leistung und Puls: Bezugsleistung (Median beider Seiten), Puls drinnen/draußen bei dieser Leistung (Leistung / Effizienz), `hrGap`, `efGapPct`, `cadenceGap`.
+- `hints[]`: Puls auf der Rolle ab 4 Schlägen höher (Ventilator, nach Leistung steuern), Kadenzunterschied ab 5 U/min, sonst fehlende Fahrten.
+- Dashboard: `sections/indooroutdoor.js`, Reiter Verlauf. Auch in `get_analysis_highlights` (Thema `indoorOutdoor`, nur mit Vergleich).
