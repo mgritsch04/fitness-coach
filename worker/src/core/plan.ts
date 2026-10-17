@@ -2,6 +2,7 @@
 // Soll/Ist-Abgleich. Reine Funktionen ohne D1. Trainingsempfehlungen, keine medizinische Diagnose;
 // Belastungswerte (TSS-Maßstab) und Phasen sind Schätzungen nach gängigen Faustregeln.
 import { addDays, daysBetween, weekStart, type WeekSummary } from "./analysis";
+import { strengthSeason, type StrengthSeasonPhase } from "./strength-season";
 
 export type GoalKind = "event" | "fitness" | "weight" | "habit" | "other";
 export type GoalPriority = "A" | "B" | "C";
@@ -40,11 +41,13 @@ export interface TrainingPrefs {
   strengthPerWeek: number | null;
   /** Dauer einer Krafteinheit (min); null = aus den letzten Wochen geschätzt. */
   strengthMin: number | null;
+  /** Saisonphase fürs Krafttraining (#213); null = automatisch aus Planphase und Jahreszeit. */
+  strengthPhase?: StrengthSeasonPhase | null;
 }
 
 // Standard für G: Rennrad (derzeit indoor mit MyWhoosh) plus Kraft im Gym; Häufigkeit und Dauer
 // der Krafteinheiten werden aus den letzten Wochen übernommen, solange nichts eingetragen ist.
-export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null };
+export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null, strengthPhase: null };
 
 export type Phase = "base" | "build" | "peak" | "taper" | "race" | "recovery" | "maintain";
 export type SessionType = "rest" | "recovery" | "endurance" | "long" | "tempo" | "threshold" | "vo2max" | "strength" | "opener" | "race";
@@ -348,6 +351,9 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
 
   // Kraft: nicht in der Wettkampfwoche, im Tapering und in Erholungswochen höchstens eine leichte.
   const habit = strengthHabit(inp.prefs, inp.weeks, week);
+  // Saisonphase (#213): ohne feste Vorgabe begrenzt Erhalt auf 2, Wettkampf auf 1 Einheit.
+  const season = strengthSeason(phase, week, inp.prefs.strengthPhase ?? null);
+  if (habit.estimated && season.maxPerWeek != null) habit.perWeek = Math.min(habit.perWeek, season.maxPerWeek);
   const strengthWanted = phase === "race" ? 0 : phase === "taper" ? Math.min(1, habit.perWeek) : phase === "recovery" ? Math.min(3, Math.ceil(habit.perWeek / 2)) : habit.perWeek;
   const days: PlannedSession[] = [];
   for (let d = 0; d < 7; d++) {
@@ -370,6 +376,7 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   const strengthDays = placeStrength(days, strengthWanted, rest, phase, habit.minutes);
   if (habit.estimated && strengthWanted) notes.push(`Kraft: ${habit.perWeek}× pro Woche à ~${habit.minutes} min wie in den letzten Wochen. Ändern über die Trainingsvorlieben.`);
   if (strengthDays < strengthWanted) notes.push(`Nur ${strengthDays} von ${strengthWanted} Krafteinheiten passten sinnvoll in die Woche: Kraft nicht vor harten Tagen, und ein Tag pro Woche bleibt ganz frei.`);
+  if (strengthDays) notes.push(season.text);
   if (strengthDays) notes.push("Kraft nie direkt vor Intervallen oder der langen Fahrt: schwere Beine kosten sonst die Qualität der Radeinheit. Am selben Tag erst Rad, dann Kraft.");
 
   const planned = days.reduce((a, s) => a + s.targetLoad, 0);

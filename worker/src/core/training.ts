@@ -11,6 +11,7 @@ import { NUTRITION_NOTE, dailyNutrition, type DailyNutrition } from "./nutrition
 import { blockView, buildBlock, readBlock, type BlockView, type TrainingBlock } from "./periodization";
 import { readStrengthSessions } from "./strength";
 import { strengthDeload, type StrengthDeload } from "./strength-deload";
+import { strengthSeason, type StrengthSeason } from "./strength-season";
 import { STRENGTH_PLAN_NOTE, strengthWorkout, type StrengthWorkout } from "./strength-plan";
 import { projectEvent, type EventProjection } from "./projection";
 import {
@@ -203,6 +204,8 @@ export interface TrainingOverview {
   strengthDeload: StrengthDeload;
   /** Konkrete Krafteinheiten (Übungen, Sätze, Gewicht) für die Plantage ab heute. */
   strengthWorkouts: { days: StrengthWorkout[]; note: string };
+  /** Saisonphase fürs Krafttraining (#213). */
+  strengthSeason: StrengthSeason;
   /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
   fueling: { days: Fueling[]; note: string };
   /** Eiweiß und Kohlenhydrate je Tag der laufenden Woche (#222, Faustregeln; heute nach Tagesform). */
@@ -218,6 +221,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
   const next = nextStored ?? proposePlan(inp, nextWs, goals, prefs, savedBlock);
   const planned = thisWeek.plan.days.find((d) => d.day === inp.today) ?? null;
   const projection = eventProjection(inp, goals, prefs, thisWeek.plan);
+  const season = strengthSeason(thisWeek.plan.phase, thisWeek.week, prefs.strengthPhase ?? null);
   const [tests, sessions] = await Promise.all([readFtpTests(db).catch(() => []), readStrengthSessions(db, addDays(inp.today, -120)).catch(() => [])]);
   return {
     goals: goalProgress(goals, inp),
@@ -232,8 +236,9 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     makeUp: makeUpPlan(thisWeek.comparison, inp.today, inp.coach?.readiness ?? null, next.days[0] ?? null),
     strengthDeload: strengthDeload(sessions, inp.today),
     block: { ...blockView(savedBlock ?? proposeBlock(inp), inp.weeks, inp.today, blockWarning(inp)), saved: Boolean(savedBlock) },
+    strengthSeason: season,
     strengthWorkouts: {
-      days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions)),
+      days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions, season.phase)),
       note: STRENGTH_PLAN_NOTE,
     },
     fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null), note: FUELING_NOTE },

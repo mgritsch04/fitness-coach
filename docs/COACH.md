@@ -127,3 +127,7 @@ Ist heute eine Schlüsseleinheit geplant und sagt die Tagesform „Ruhe“ oder 
 ## Eiweiß und Kohlenhydrate je Tag (#222)
 
 `core/nutrition.ts`: `dailyNutrition(Planeinheit, Gewicht, Tagesform)` stuft den Tag ein (Ruhetag, locker, mittel, hart, sehr lang) und gibt Faustregeln aus: Kohlenhydrate 3–4 / 4–5 / 5–7 / 6–8 / 8–10 g/kg, Eiweiß 1,6–1,8 g/kg, an Krafttagen bis 2,0 g/kg. Heute zählt die Tagesform (Ruhe → Ruhetag-Werte, locker → höchstens „locker“). Mit Körpergewicht in Gramm, ohne nur g/kg. Feld `training.nutrition.days`, im Coach-Kontext `nutritionToday`, in der Wochenagenda die Zeile „Essen heute“. Richtwert, keine Ernährungsberatung.
+
+## Krafttraining nach Saisonphase (#213)
+
+`core/strength-season.ts`: `strengthSeason(Planphase, Woche, Einstellung)` wählt Aufbau, Erhalt oder Wettkampf. Feste Einstellung `strengthPhase` (Trainingsvorlieben) gewinnt; sonst Spitze/Tapering/Wettkampfwoche → Wettkampf, Aufbau auf ein Ziel → Erhalt, ohne Ziel nach Jahreszeit (Oktober–Februar Aufbau, März–September Erhalt). `seasonItems` passt die Krafteinheiten an: Aufbau +1 Satz bei den ersten zwei Grundübungen; Erhalt höchstens 4 Übungen, 1 Satz weniger (mind. 2), Grundübungen höchstens 6 Wdh.; Wettkampf 3 Übungen à 2 Sätze, höchstens 5 Wdh., Gewichte −10 %. Ohne feste Häufigkeit begrenzt Wettkampf auf 1 und Erhalt (aus Planphase oder Einstellung) auf 2 Einheiten pro Woche; nach Jahreszeit bleibt die gewohnte Häufigkeit. Die Phase steht als Hinweis im Wochenplan, im Feld `training.strengthSeason` und im Coach-Kontext.
