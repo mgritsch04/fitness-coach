@@ -11,6 +11,7 @@ import { weekReview } from "./core/review";
 import { blockWarning, eventProjection, proposeBlock, proposePlan, todayCheck, weekView } from "./core/training";
 import { blockView, buildBlock, deleteBlock, readBlock, saveBlock } from "./core/periodization";
 import { readJournal } from "./core/journal";
+import { zoneTargets } from "./core/zone-targets";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -88,6 +89,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
     mainSport: z.string().max(40).nullable().optional().describe("Hauptsportart, z. B. cycling oder running"),
     strengthPerWeek: z.number().int().min(0).max(6).nullable().optional().describe("Krafteinheiten pro Woche (null = wie in den letzten Wochen)"),
     strengthMin: z.number().int().min(15).max(120).nullable().optional().describe("Dauer einer Krafteinheit in min (null = wie in den letzten Wochen)"),
+    strengthPhase: z.enum(["build", "maintain", "race"]).nullable().optional().describe("Saisonphase Kraft: build = Aufbau, maintain = Erhalt, race = Wettkampf (null = automatisch)"),
   };
 
   server.registerTool(
@@ -121,7 +123,9 @@ export function registerCoachTools(server: McpServer, env: Env) {
       const view = await weekView(db, dash, ws);
       const isCurrent = ws === weekStart(dash.today);
       const planned = view.plan.days.find((d) => d.day === dash.today) ?? null;
-      return json({ ...view, today: isCurrent ? todayCheck(planned, dash.coach, view.plan) : null, readiness: isCurrent ? dash.coach : null });
+      const zoneWeek = dash.hrZones.weeks.find((w) => w.week === ws) ?? null;
+      return json({ ...view, today: isCurrent ? todayCheck(planned, dash.coach, view.plan) : null, readiness: isCurrent ? dash.coach : null,
+        zoneTargets: zoneTargets(view.plan, zoneWeek, dash.today) });
     },
   );
 
@@ -382,6 +386,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         nutritionToday: t.nutrition.days.find((n) => n.day === dash.today) ?? null,
         recoveryForecast: forecast,
         analysisHighlights: highlights,
+        strengthSeason: { phase: t.strengthSeason.phase, text: t.strengthSeason.text },
         strengthDeload: { verdict: t.strengthDeload.verdict, text: t.strengthDeload.text, suggestion: t.strengthDeload.suggestion },
         strengthWorkouts: t.strengthWorkouts.days.slice(0, 2).map((w) => ({ day: w.day, focus: w.focus, text: w.text })),
         eventProjection: t.projection
