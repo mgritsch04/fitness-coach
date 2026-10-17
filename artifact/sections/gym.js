@@ -102,15 +102,17 @@ FC.section({
       d.templates.length ? el("optgroup", { label: "Vorlage (mit Gewichtsvorschlag)" }, ...d.templates.map((t) => el("option", { value: `t:${t.name}`, text: t.name }))) : null,
       d.sessions.length ? el("optgroup", { label: "Wie eine letzte Einheit" }, ...d.sessions.slice(0, 6).map((s) => el("option", { value: `s:${s.id}`, text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }))) : null,
       el("option", { value: "", text: "Leer starten" }));
+    // Express (#281): wenig Zeit → Einheit kürzen lassen statt ausfallen.
+    const time = el("select", { id: "gyTime" }, ...[["", "Volle Einheit"], ["45", "Nur 45 min"], ["30", "Nur 30 min"], ["20", "Nur 20 min"]].map(([v, t]) => el("option", { value: v, text: t })));
     const go = el("button", { type: "button", class: "primary", text: "Einheit starten" });
-    go.onclick = () => this.start(sel.value, go);
+    go.onclick = () => this.start(sel.value, go, Number(time.value) || null);
     body.replaceChildren(el("div", { class: "panel" },
-      el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Was trainierst du?", sel), go),
+      el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Was trainierst du?", sel), el("label", { for: "gyTime" }, "Zeit", time), go),
       el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })));
   },
   /** Geplante Krafteinheit eines Tages starten (läuft schon eine Einheit, bleibt sie). */
   startPlan(day) { if (!this.st) this.start(`p:${day}`); },
-  async start(src, btn) {
+  async start(src, btn, minutes = null) {
     if (btn) btn.disabled = true;
     this.msg("");
     try {
@@ -133,8 +135,14 @@ FC.section({
         for (const x of s?.sets ?? []) { if (!by.has(x.exercise)) by.set(x.exercise, { name: x.exerciseName, sets: [] }); by.get(x.exercise).sets.push({ reps: x.reps, kg: x.weightKg }); }
         list = [...by.values()];
       }
+      list = list.filter((x) => x.name || !minutes);
+      if (minutes && list.length) {
+        const r = await FC.call("get_express_session", { minutes, exercises: list.map((x) => ({ name: x.name, sets: x.sets.length, reps: x.sets[0]?.reps || 8, weightKg: x.sets[0]?.kg ?? null, unit: x.unit === "s" ? "s" : "Wdh" })) });
+        list = r.exercises.map((e) => ({ name: e.name, unit: e.unit, restS: e.restS, superset: e.superset, sets: Array.from({ length: e.sets }, () => ({ reps: e.reps, kg: e.weightKg })) }));
+        this.msg(r.text);
+      }
       this.st = { startedAt: new Date().toISOString(), name, cur: 0, restEnd: null, rpe: null, finishing: false,
-        exercises: list.map((x) => ({ name: x.name, unit: x.unit === "s" ? "s" : undefined, rest: this.restFor(x.name), sets: x.sets.map((y) => ({ ...y, done: false })) })) };
+        exercises: list.map((x) => ({ name: x.name, unit: x.unit === "s" ? "s" : undefined, rest: x.restS ?? this.restFor(x.name), superset: x.superset ?? undefined, sets: x.sets.map((y) => ({ ...y, done: false })) })) };
       if (!this.st.exercises.length) this.st.exercises.push({ name: "", rest: 90, sets: [{ reps: 8, kg: 0, done: false }] });
       this.persist(); this.draw();
     } catch (err) { this.msg(err?.code === "tool_error" ? `Vorschlag nicht verfügbar: ${String(err.message).slice(0, 160)}` : FC.errText(err)); }
@@ -172,7 +180,7 @@ FC.section({
     restBtn.onclick = () => { const r = this.RESTS; x.rest = r[(r.indexOf(x.rest) + 1) % r.length] ?? 90; this.persist(); restBtn.textContent = `Pause ${this.mmss(x.rest)}`; };
     const title = x.name ? el("h3", { text: x.name }) : (() => { const inp = el("input", { type: "text", list: "stEx", maxlength: 80, placeholder: "Übung", "aria-label": "Name der Übung" }); inp.onchange = () => { x.name = inp.value.trim(); x.rest = this.restFor(x.name); this.persist(); }; return inp; })();
     const card = el("div", { class: `gy-ex${i === st.cur ? " cur" : ""}${doneSets === x.sets.length ? " done" : ""}` },
-      el("div", { class: "gy-exh" }, title, el("span", { class: "muted" }, `${doneSets}/${x.sets.length} Sätze · `, restBtn)),
+      el("div", { class: "gy-exh" }, title, el("span", { class: "muted" }, x.superset ? `Supersatz ${x.superset} · ` : "", `${doneSets}/${x.sets.length} Sätze · `, restBtn)),
       (() => {
         const last = x.name ? this.prog(x.name)?.history?.at(-1) : null;
         if (!last) return null;

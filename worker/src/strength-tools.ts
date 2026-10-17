@@ -1,5 +1,6 @@
 // Connector-Werkzeuge fürs Krafttraining (Logik in core/strength.ts).
 import { rirTrend } from "./core/autoregulation";
+import { strengthExpress } from "./core/strength-express";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { addDays, todayIn, type WorkoutRow } from "./core/analysis";
@@ -230,6 +231,35 @@ export function registerStrengthTools(server: McpServer, env: Env) {
       const t = await today();
       const history = await readStrengthSessions(env.DB, addDays(t, -365));
       return json({ template: tpl.name, exercises: suggestFromTemplate(tpl.exercises, history), coachNotes: strengthCoachNotes(history, t) });
+    },
+  );
+
+  server.registerTool(
+    "get_express_session",
+    {
+      description:
+        "Krafteinheit auf wenig Zeit kürzen (Express, z. B. 20/30/45 min): Hilfsübungen als Supersatz, kürzere Pausen, Isolationsübungen zuerst kürzen/streichen, " +
+        "Grundübungen behalten. Eingabe: Übungsliste (wie im Gym-Modus) oder eine Vorlage. Liefert gekürzte Übungen, Weggelassenes und geschätzte Dauer.",
+      inputSchema: {
+        minutes: z.number().int().min(10).max(120),
+        exercises: z
+          .array(z.object({ name: z.string().min(1).max(80), sets: z.number().int().min(1).max(10), reps: z.number().int().min(1).max(300), weightKg: z.number().min(0).max(500).nullable().optional(), unit: z.enum(["Wdh", "s"]).nullable().optional() }))
+          .max(20)
+          .optional(),
+        template: z.string().min(1).max(80).optional(),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ minutes, exercises, template }) => {
+      let list = exercises;
+      if (!list?.length && template) {
+        const tpl = (await readTemplates(env.DB)).find((t) => t.name.toLowerCase() === template.toLowerCase());
+        if (!tpl) return fail("template_not_found", `Keine Vorlage „${template}“.`);
+        const history = await readStrengthSessions(env.DB, addDays(await today(), -365));
+        list = suggestFromTemplate(tpl.exercises, history).map((x) => ({ name: x.name, sets: x.sets, reps: x.reps, weightKg: x.weightKg }));
+      }
+      if (!list?.length) return fail("invalid_input", "Bitte exercises oder template angeben.");
+      return json(strengthExpress(list, minutes));
     },
   );
 }

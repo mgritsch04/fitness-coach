@@ -88,3 +88,6 @@ export function exerciseAlternatives(nameOrKey: string, sessions: StrengthSessio
 }
 
 export const LIBRARY_KEYS = Object.keys(LIBRARY);
+
+/** Bewegungsmuster einer Übung aus der Bibliothek (null = unbekannt). */
+export const exercisePattern = (key: string): Pattern | null => LIBRARY[key]?.pattern ?? null;
