@@ -207,7 +207,7 @@
   function renderAll() {
     const d = state.data; if (!d) return;
     for (const s of live()) { try { s.render?.(d); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
-    jump();
+    applyFolds(); jump();
   }
   function rerender() {
     const d = state.data; if (!d) return;
@@ -222,7 +222,7 @@
     if (nav.hidden) return nav.replaceChildren();
     nav.replaceChildren(...list.map((s) => {
       const b = el("button", { type: "button", text: $(`h-${s.id}`).textContent });
-      b.onclick = () => $(`sec-${s.id}`).scrollIntoView({ behavior: "smooth", block: "start" });
+      b.onclick = () => { if (folded(s)) setFold(s.id, true); $(`sec-${s.id}`).scrollIntoView({ behavior: "smooth", block: "start" }); };
       return b;
     }));
     nav.scrollLeft = 0;
@@ -287,7 +287,40 @@
   }
   // Am Handy laden Abschnitte ihre eigenen Werkzeuge erst, wenn ihr Reiter offen ist (#69); am Rechner sind alle sichtbar.
   const phone = window.matchMedia?.("(max-width: 640px)");
-  const wanted = (s) => !phone?.matches || (s.tab ?? "mehr") === tab;
+  const wanted = (s) => (!phone?.matches || (s.tab ?? "mehr") === tab) && !folded(s);
+  // Handy: lange Tabs einklappbar (#188). Offen sind die ersten zwei Abschnitte und was man selbst aufklappt;
+  // eingeklappte zeigen nur ihre Überschrift als Leiste und laden ihre Daten erst beim Aufklappen.
+  const FOLD_TABS = new Set(["training", "verlauf"]), FOLD_MIN = 6, FOLD_OPEN = 2, FOLD_KEY = "fc-fold";
+  let folds = {};
+  try { folds = JSON.parse(localStorage.getItem(FOLD_KEY) ?? "{}") ?? {}; } catch {}
+  const shown = (t) => live().filter((x) => (x.tab ?? "mehr") === t && !$(`sec-${x.id}`)?.hidden);
+  const foldable = (s) => !!phone?.matches && FOLD_TABS.has(s.tab ?? "mehr") && shown(s.tab ?? "mehr").length >= FOLD_MIN;
+  const isOpen = (s) => (typeof folds[s.id] === "boolean" ? folds[s.id] : shown(s.tab ?? "mehr").indexOf(s) < FOLD_OPEN);
+  const folded = (s) => foldable(s) && !isOpen(s);
+  function applyFolds() {
+    for (const s of sections) {
+      const host = $(`sec-${s.id}`); if (!host || !s.mounted) continue;
+      const f = foldable(s), open = !f || isOpen(s), head = $(`h-${s.id}`);
+      host.classList.toggle("foldable", f); host.classList.toggle("folded", !open);
+      head?.classList.toggle("fold-title", f);
+      let bar = host.querySelector(":scope > .fold-bar");
+      if (!f) { bar?.remove(); continue; }
+      if (!bar) { bar = el("button", { type: "button", class: "fold-bar" }); bar.onclick = () => setFold(s.id, !isOpen(s)); host.prepend(bar); }
+      bar.textContent = head?.textContent || s.id;
+      bar.setAttribute("aria-expanded", String(open));
+    }
+  }
+  function setFold(id, open) {
+    const s = sections.find((x) => x.id === id); if (!s) return;
+    folds[id] = open;
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch {}
+    applyFolds();
+    if (open) {
+      readyWanted();
+      // Diagramme brauchen die echte Breite: nach dem Aufklappen neu zeichnen.
+      if (state.data) try { s.rerender ? s.rerender(state.data) : s.render?.(state.data); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
+    }
+  }
   const readyWanted = () => { if (booted) for (const s of live()) if (wanted(s)) readyOne(s); };
   function readyOne(s) {
     if (s.isReady) return;
@@ -306,6 +339,7 @@
         if (booted && wanted(s)) readyOne(s);
         if (state.data) try { s.render?.(state.data); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
       }
+      applyFolds(); readyWanted();
     },
     move(id, dir) {
       const s = sections.find((x) => x.id === id); if (!s) return;
@@ -318,7 +352,7 @@
       same.forEach((x, k) => (layout.order[x.id] = slots[k]));
       saveLayout(); sortSections();
       const root = $("sections"); for (const x of sections) root.append($(`sec-${x.id}`));
-      jump();
+      applyFolds(); readyWanted(); jump();
     },
     reset() { layout.hidden.clear(); layout.order = {}; saveLayout(); },
   };
@@ -329,6 +363,7 @@
     for (const s of sections) $(`sec-${s.id}`)?.classList.toggle("on", (s.tab ?? "mehr") === id);
     for (const b of $("tabbar").children) b.setAttribute("aria-current", b.dataset.tab === id ? "page" : "false");
     if (scroll) window.scrollTo({ top: 0 });
+    applyFolds();
     readyWanted();
     rerender();
     jump();
@@ -340,6 +375,7 @@
     const s = sections.find((x) => x.id === id);
     if (!s) return;
     showTab(s.tab ?? "mehr");
+    if (folded(s)) setFold(id, true);
     let stop = false; const halt = () => { stop = true; };
     for (const ev of ["wheel", "touchstart", "keydown"]) window.addEventListener(ev, halt, { once: true, passive: true });
     const go = () => { if (!stop) $(`sec-${id}`)?.scrollIntoView({ block: "start" }); };
@@ -380,7 +416,7 @@
     startWatch();
     booted = true;
     readyWanted();
-    phone?.addEventListener?.("change", readyWanted);
+    phone?.addEventListener?.("change", () => { applyFolds(); readyWanted(); rerender(); });
   }
 
   window.FC = Object.freeze({
