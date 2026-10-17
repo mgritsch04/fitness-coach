@@ -5,7 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
-    { n: 26, id: "gym", title: "Training-Tab aufgeräumt", text: "Am Handy sind Abschnitte in Training und Verlauf einklappbar und laden erst beim Aufklappen." },
+    { n: 26, id: "gym", title: "Training-Tab aufgeräumt", text: "Am Handy sind Abschnitte in Heute, Training und Verlauf einklappbar und laden erst beim Aufklappen." },
     { n: 25, id: "coach", title: "Coach-Chat kennt alle Analysen", text: "Frag z. B. „Was fällt in meinen Analysen auf?“ oder nach Muskelbalance, Trittfrequenz, Intervallen." },
     { n: 24, id: "highlights", title: "Auf einen Blick", text: "Die auffälligsten Befunde aller Analysen oben auf „Heute“, mit Sprung zu den Details." },
     { n: 23, id: "musclebalance", title: "Muskelbalance", text: "Sätze je Muskelgruppe gegen den Zielbereich, Ziehen gegen Drücken." },
