@@ -38,6 +38,9 @@ FC.section({
     .gy-last { font-size: .85rem; margin-top: -4px; }
     .gy-list { display: grid; gap: 12px; }
     .gy-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .gy-rir { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -2px 0 6px; }
+    .gy-rir button { min-width: 3.2em; padding: 6px 0; }
+    .gy-rir button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink, #fff); }
     .gy-rpe { display: flex; flex-wrap: wrap; gap: 6px; }
     .gy-rpe button { min-width: 2.6em; padding: 8px 0; }
     .gy-rpe button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink, #fff); }
@@ -195,6 +198,7 @@ FC.section({
       const ok = el("button", { type: "button", class: "ok", text: "✓", "aria-pressed": String(!!s.done), "aria-label": `${x.name} Satz ${j + 1} geschafft` });
       ok.onclick = () => this.toggle(x, i, s, num(reps.value), num(kg.value));
       card.append(el("div", { class: `gy-set${s.done ? " on" : ""}` }, el("span", { class: "n", text: `${j + 1}.` }), reps, kg, ok));
+      if (s.done && x.unit !== "s" && j === x.sets.map((t) => t.done).lastIndexOf(true)) card.append(this.rirRow(x, s, j));
     });
     const more = el("button", { type: "button", text: "+ Satz" });
     more.onclick = () => { const l = x.sets.at(-1) ?? { reps: 8, kg: 0 }; x.sets.push({ reps: l.reps, kg: l.kg, done: false }); this.persist(); this.draw(); };
@@ -279,6 +283,37 @@ FC.section({
     }
     this.persist(); this.draw();
   },
+  // Reserve je Satz (#280): wie viele Wiederholungen wären noch drin? Spiegelt core/autoregulation.ts.
+  RIR: { "0": { rpe: 10, label: "0" }, "1-2": { rpe: 8.5, label: "1–2" }, "3+": { rpe: 7, label: "3+" } },
+  nextKg(kg, rir, bar) {
+    if (!(kg > 0)) return kg;
+    const step = bar ? 2.5 : 1, raw = rir === "0" ? kg * 0.95 : rir === "3+" ? kg * 1.025 : kg;
+    let n = Math.round(raw / step) * step;
+    if (rir === "3+" && n <= kg) n = kg + step;
+    if (rir === "0" && n >= kg) n = Math.max(0, kg - step);
+    return Math.round(n * 10) / 10;
+  },
+  rirRow(x, s, j) {
+    const { el } = FC;
+    const btns = Object.entries(this.RIR).map(([k, v]) => {
+      const b = el("button", { type: "button", text: v.label, "aria-pressed": String(s.rir === k) });
+      b.onclick = () => this.setRir(x, s, j, k);
+      return b;
+    });
+    return el("div", { class: "gy-rir", role: "group", "aria-label": `${x.name} Satz ${j + 1}: Wiederholungen noch drin` }, el("span", { class: "muted", text: "Noch drin:" }), ...btns);
+  },
+  setRir(x, s, j, rir) {
+    s.rir = rir;
+    const next = x.sets.find((t, k) => k > j && !t.done);
+    if (next && s.kg > 0) {
+      const kg = this.nextKg(s.kg, rir, this.isBar(x.name));
+      if (kg !== s.kg) { for (const t of x.sets) if (!t.done) t.kg = kg; }
+      const d = FC.de(kg, kg % 1 ? 1 : 0);
+      const best = this.note?.startsWith("Neuer Bestwert") ? this.note : null;
+      this.note = [best, rir === "1-2" ? `Reserve passt: nächster Satz wieder ${d} kg.` : `Nächster Satz: ${d} kg (${rir === "0" ? "am Limit, etwas leichter" : "noch viel drin, etwas schwerer"}).`].filter(Boolean).join(" ");
+    }
+    this.persist(); this.draw();
+  },
   /** Neuer Bestwert? Geschätztes 1RM nach Epley (bis 12 Wdh.), verglichen mit dem bisher besten. */
   checkBest(x, s) {
     const best = this.prog(x.name)?.bestE1rmKg;
@@ -341,7 +376,7 @@ FC.section({
   },
   async save(btn) {
     const st = this.st;
-    const exercises = st.exercises.filter((x) => x.name).map((x) => ({ exercise: x.name, sets: x.sets.filter((s) => s.done && s.reps).map((s) => ({ reps: Math.round(s.reps), weightKg: s.kg ?? 0 })) })).filter((x) => x.sets.length);
+    const exercises = st.exercises.filter((x) => x.name).map((x) => ({ exercise: x.name, sets: x.sets.filter((s) => s.done && s.reps).map((s) => ({ reps: Math.round(s.reps), weightKg: s.kg ?? 0, ...(s.rir ? { rpe: this.RIR[s.rir].rpe } : {}) })) })).filter((x) => x.sets.length);
     if (!exercises.length) { this.msg("Noch kein Satz abgehakt."); return; }
     const start = new Date(st.startedAt);
     const input = { day: start.toLocaleDateString("sv-SE"), startTime: start.toISOString(), durationMin: Math.max(1, Math.min(600, Math.round((Date.now() - start) / 60000))), exercises };

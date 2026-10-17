@@ -311,6 +311,10 @@ for (const [name, vp, scheme, tab] of shots) {
     if (!/Neuer Bestwert/.test(await p.textContent("#gyBody .gy-note"))) errors.push(`${name}: Gym-Modus meldet keinen Bestwert`);
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
+    // Reserve je Satz (#280): „3+“ macht den nächsten Satz 2,5 % schwerer (Langhantel: 107,5 kg).
+    await p.click("#gyBody .gy-rir button:nth-of-type(3)").catch(() => errors.push(`${name}: keine Reserve-Knöpfe nach dem Satz`)); await p.waitForTimeout(100);
+    const rir = await p.evaluate(() => ({ kg: document.querySelectorAll("#gyBody .gy-ex")[0]?.querySelectorAll(".gy-set input[aria-label$='Gewicht in kg']")[1]?.value, note: document.querySelector("#gyBody .gy-note")?.textContent ?? "" }));
+    if (rir.kg !== "107.5" || !/Bestwert/.test(rir.note) || !/107,5 kg/.test(rir.note)) errors.push(`${name}: Reserve passt das Gewicht nicht an ${JSON.stringify(rir)}`);
     await p.screenshot({ path: join(out, "phone-gym.png") });
     // Übung tauschen (#204): letzte Übung gegen Alternative tauschen, Satzzahl bleibt.
     const before = await p.$$eval("#gyBody .gy-ex", (l) => { const c = l[l.length - 1]; return c.querySelectorAll(".gy-set").length; });
@@ -320,7 +324,7 @@ for (const [name, vp, scheme, tab] of shots) {
     if (!after.h.includes("Kurzhantel-Bankdrücken") || after.n !== before) errors.push(`${name}: Tauschen ersetzt die Übung nicht richtig ${JSON.stringify({ before, after })}`);
     await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(7)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
     const saved = await p.evaluate(() => window.__gymSaved);
-    if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
+    if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.exercises[0].sets[0].rpe === 7 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
   }
   if (name === "desktop-light") {
     const stuck = await p.evaluate(() => [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.innerText.includes("Lädt …")).map((s) => s.id));
