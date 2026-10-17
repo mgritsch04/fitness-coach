@@ -11,7 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
-import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, strainRecoveryView, trainingLoadView } from "./core/analytics";
+import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
 import { registerCoachTools } from "./coach-tools";
@@ -520,6 +520,18 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ days: d }) => json(await riderProfileView(env.DB, d ?? 90)),
+  );
+
+  server.registerTool(
+    "get_eftp_trend",
+    {
+      description:
+        "eFTP-Verlauf: FTP-Schätzung je Woche aus normalen Fahrten (Leistungskurve der letzten 42 Tage: Critical Power, sonst 95 % der besten 20 min, sonst 90 % der besten 10 min) " +
+        "mit Spanne, Veränderung über 6 Wochen, Abweichung von der eingestellten FTP und Testvorschlag ab 5 % über zwei Wochen. Schätzung.",
+      inputSchema: { weeks: z.number().int().min(4).max(52).optional().describe("Anzahl Wochen, Standard 26") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ weeks }) => json(await eftpView(env.DB, weeks ?? 26)),
   );
 
   server.registerTool(

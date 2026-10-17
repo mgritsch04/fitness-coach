@@ -23,6 +23,7 @@ import { intervalReport } from "../src/core/intervals";
 import { cadenceReport } from "../src/core/cadence";
 import { riderProfile } from "../src/core/rider-profile";
 import { muscleBalance } from "../src/core/muscle-balance";
+import { eftpTrend } from "../src/core/eftp";
 
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -159,6 +160,14 @@ process.stdout.write(JSON.stringify({
         : [...set("back_squat", 4, 6, 90), ...set("leg_extension", 3, 12, 45), ...set("leg_curl", 1, 12, 35), ...set("plank", 2, 1, 0)],
     };
   }), "2026-03-31", 4),
+  // Synthetische Bestwerte: eine harte Fahrt pro Woche, Form steigt über 26 Wochen um etwa 8 %.
+  get_eftp_trend: eftpTrend({
+    rows: Array.from({ length: 32 }, (_, k) => {
+      const day = addDays("2026-03-31", -7 * (31 - k) - 2), f = 1 + k * 0.0026 + (rnd() - 0.5) * 0.02;
+      return ([[180, 360], [300, 330], [600, 305], [1200, 290], [3600, 262]] as const).map(([d, w]) => ({ source: "mywhoosh", source_id: `e${k}`, day, duration_s: d, watts: Math.round(w * f) }));
+    }).flat(),
+    ftpW: 280, tests: [{ day: "2026-01-20", ftpW: 280 }], weightKg: 76,
+  }, "2026-03-31", 26),
   get_ride_weather: (() => {
     // Synthetische Vorhersage (kein Abruf): heute mild bis 15 Uhr, danach Regen; morgen kühl und windig.
     const time: string[] = [], t: number[] = [], p: number[] = [], mm: number[] = [], w: number[] = [], c: number[] = [], d: number[] = [];

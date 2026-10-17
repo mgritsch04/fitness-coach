@@ -25,6 +25,7 @@ export interface HighlightInputs {
   cadence?: { pedalingMinutes: number; hints: string[] } | null;
   recoveryCurve?: { available: boolean; hints?: string[]; backToNormalDays?: number | null } | null;
   readiness?: { available: boolean; hints?: string[]; score?: number | null; counts?: { against: number } } | null;
+  eftp?: { available: boolean; hints?: string[]; direction?: string | null; suggestTest?: boolean; current?: { stale: boolean } | null } | null;
 }
 
 const ORDER: Record<Tone, number> = { warn: 0, good: 1, neutral: 2 };
@@ -86,6 +87,11 @@ export function analysisHighlights(x: HighlightInputs, limit = 6) {
   if (ra?.available && ra.hints?.length && ra.counts)
     add({ topic: "readiness", title: "Training nach Erholung", tool: "get_readiness_alignment", text: ra.hints[0],
       tone: ra.counts.against > 0 ? "warn" : (ra.score ?? 0) >= 75 ? "good" : "neutral" });
+
+  const e = x.eftp;
+  if (e?.available && e.current && e.hints?.length)
+    add({ topic: "eftp", title: "FTP-Schätzung", tool: "get_eftp_trend", text: (e.suggestTest ? e.hints.at(-1)! : e.hints.slice(0, 2).join(" ")),
+      tone: e.suggestTest || e.direction === "down" ? "warn" : e.direction === "up" ? "good" : "neutral" });
 
   const sorted = all.map((h, k) => ({ h, k })).sort((p, q) => ORDER[p.h.tone] - ORDER[q.h.tone] || p.k - q.k).map((p) => p.h);
   return {
