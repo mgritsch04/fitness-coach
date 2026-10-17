@@ -14,7 +14,7 @@ FC.section({
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-year">Jahr im Überblick</h2><span class="muted">Belastung je Tag, letzte 12 Monate</span></div>
-      <div class="panel"><div class="yr-stats" id="yrStats"></div><div class="yr-wrap" id="yrMap"></div><div class="yr-legend" id="yrLegend"></div>
+      <div class="panel"><div class="yr-stats" id="yrStats"></div><div class="yr-wrap" id="yrMap" tabindex="0" role="region" aria-label="Jahreskalender, waagrecht scrollbar"></div><div class="yr-legend" id="yrLegend"></div>
         <p class="chart-cap">Kästchen = ein Tag, je dunkler, desto mehr Belastung (geschätzt, TSS-Maßstab). Eine Serie zählt Tage mit Training ohne Unterbrechung.</p></div>`;
   },
   ready() {

@@ -7,12 +7,12 @@ FC.section({
     .fo-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 22px; }
     .fo-num { font-family: var(--font-display); font-size: 2.6rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
     .fo-num small { font-size: 1rem; font-weight: 500; color: var(--ink-3); margin-left: 3px; }
-    .fo-green { color: var(--good); } .fo-yellow { color: var(--warn); } .fo-red { color: var(--bad); }
+    .fo-green { color: var(--good-ink); } .fo-yellow { color: var(--warn-ink); } .fo-red { color: var(--bad-ink); }
     .fo-ctl { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
     .fo-ctl label { display: grid; gap: 3px; font-size: 0.85rem; color: var(--ink-2); }
     .fo-sc { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
     .fo-sc li { display: flex; justify-content: space-between; gap: 10px; }
-    .fo-up { color: var(--good); } .fo-down { color: var(--bad); }`,
+    .fo-up { color: var(--good-ink); } .fo-down { color: var(--bad-ink); }`,
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-forecast">Erholung morgen (Prognose)</h2><span class="muted" id="foDay"></span></div>

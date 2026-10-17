@@ -14,7 +14,7 @@ FC.section({
     .mb-row b { text-align: right; font-weight: 600; }
     .mb-ratios { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 18px; margin-top: 12px; }
     .mb-ratios div { display: grid; gap: 2px; } .mb-ratios b { font-family: var(--font-display); font-size: 1.3rem; }
-    .mb-warn { color: var(--warn); }
+    .mb-warn { color: var(--warn-ink); }
     @media (max-width: 520px) { .mb-row { grid-template-columns: 96px 1fr 40px; font-size: 0.85rem; } }`,
   mount(root) {
     root.innerHTML = `

@@ -9,7 +9,7 @@ FC.section({
     .ci-row { display: grid; grid-template-columns: 8.5em 1fr; gap: 8px; align-items: center; }
     .ci-scale { display: flex; gap: 4px; flex-wrap: wrap; }
     .ci-scale button { min-width: 2.4em; padding: 4px 0; }
-    .ci-scale button[aria-pressed="true"], .ci-tags button[aria-pressed="true"] { background: var(--accent, #4fb3cf); color: #fff; border-color: transparent; }
+    .ci-scale button[aria-pressed="true"], .ci-tags button[aria-pressed="true"] { background: var(--accent, #4fb3cf); color: var(--accent-ink, #fff); border-color: transparent; }
     .ci-tags { display: flex; gap: 6px; flex-wrap: wrap; }
     .ci-tags button { border-radius: 999px; padding: 3px 10px; font-size: 13px; }
     .ci textarea { width: 100%; min-height: 2.6em; font: inherit; box-sizing: border-box; }

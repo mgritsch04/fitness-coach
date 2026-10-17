@@ -8,8 +8,8 @@ FC.section({
     .hs-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
     .hs-val { font-family: var(--font-display); font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
     .hs-val small { font-size: .9rem; color: var(--ink-3); margin-left: 3px; font-weight: 500; }
-    .pill.st-ok { background: var(--good-wash); color: var(--good); }
-    .pill.st-watch { background: var(--warn-wash); color: var(--warn); }
+    .pill.st-ok { background: var(--good-wash); color: var(--good-ink); }
+    .pill.st-watch { background: var(--warn-wash); color: var(--warn-ink); }
     .pill.st-none { background: var(--line); color: var(--ink-2); }
     .rhythm { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
     .rhythm b { display: block; font-family: var(--font-display); font-size: 1.4rem; }`,
