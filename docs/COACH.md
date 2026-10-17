@@ -165,3 +165,16 @@ Im Gym-Modus gibt es neben „Was trainierst du?“ die Auswahl „Zeit: Nur 45/
 ## Schweißrate auf der Rolle (#282)
 
 Unter „Heute dran“ gibt es nach einer Radeinheit „Schweißrate messen“: Gewicht vorher und nachher (ohne Kleidung), getrunkene Menge und Dauer. Die Rate ist (vorher − nachher + getrunken) / Stunden und wird getrennt nach Rolle und draußen gespeichert (`log_sweat_test`, `get_sweat_rate`, Tabelle `sweat_tests`, Migration 0013). Unplausible Werte werden abgelehnt (unter 30 min, mehr als 6 % Gewichtsunterschied, außerhalb 0,1–3,5 l/h). Die Trinkempfehlung liegt bei etwa 75 % der Rate (0,4–1,5 l/h) und ersetzt in `training.fueling` die Faustregel, bevorzugt mit der Rate von der Rolle. Logik in `worker/src/core/sweat.ts`.
+
+## Doppeltage: Rad und Kraft am selben Tag (#298)
+
+`training.sameDay.days[]` = {day, order ride_first|strength_first|any, gapH, conflict, text}. Das gilt je Plantag mit Rad und Kraft (`worker/src/core/same-day.ts`):
+
+- Harte Radeinheit mit Beinkraft: Rad zuerst, Kraft frühestens 6 h später. Das ist ein Konflikt, daher besser trennen.
+- Hart mit Oberkörper: Rad zuerst, etwa 3 h Abstand.
+- Lange Fahrt mit Beinen: Rad zuerst, 6 h Abstand, ebenfalls ein Konflikt.
+- Beinkraft mit lockerem Rad: Kraft zuerst, danach ausrollen.
+- Lange Fahrt mit Oberkörper: Rad zuerst, 1–2 h Pause.
+- Sonst ist die Reihenfolge egal.
+
+„Heute dran“ zeigt den Hinweis am jeweiligen Tag.

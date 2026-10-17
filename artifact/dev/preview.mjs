@@ -271,6 +271,8 @@ for (const [name, vp, scheme, tab] of shots) {
       await fbBtn.click(); await p.waitForTimeout(300);
       const fbr = await p.evaluate(() => [window.__fbSaved?.verdict, document.querySelector("#agBody .ag-fb button:nth-child(2)")?.getAttribute("aria-pressed")]);
       if (fbr[0] !== "too_hard" || fbr[1] !== "true") errors.push(`${name}: Rückmeldung falsch gespeichert ${JSON.stringify(fbr)}`);
+      // Doppeltag (#298): heute Rad und Kraft, Hinweis zur Reihenfolge.
+      if (!/Doppeltag/.test(await p.textContent("#agBody .ag-both").catch(() => ""))) errors.push(`${name}: kein Doppeltag-Hinweis`);
       // Schweißrate (#282): nach der Radeinheit messen, Rate wird gespeichert und angezeigt.
       await p.click("#agBody .ag-sw summary"); await p.fill("#swBefore", "70"); await p.fill("#swAfter", "69,2".replace(",", ".")); await p.fill("#swDrank", "0.6"); await p.fill("#swDur", "60");
       await p.click("#agBody .ag-sw .primary"); await p.waitForFunction(() => /l\/h/.test(document.getElementById("swOut")?.textContent ?? ""), null, { timeout: 3000 }).catch(() => {});
