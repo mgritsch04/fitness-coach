@@ -135,7 +135,7 @@ process.stdout.write(JSON.stringify({
     }
     for (let t = 0; t < 600; t++) { power.push(150); heartRate.push(122); }
     return { day: addDays("2026-03-31", -5 * (7 - k) - 1), source: "mywhoosh", sourceId: `i${k}`, power, heartRate, cadence: null };
-  }), 285, "2026-03-31", 90),
+  }), 285, "2026-03-31", 90, { cpW: 285, wPrimeKj: 20, source: "ftp" }),
   // Synthetische Fahrten: Grundlage mit langsam steigender Kadenz, dazu harte Blöcke mit höherer Kadenz.
   get_cadence_profile: cadenceReport(Array.from({ length: 10 }, (_, k) => {
     const n = 75 * 60, power: number[] = [], cadence: number[] = [];

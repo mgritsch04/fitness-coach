@@ -49,7 +49,8 @@ FC.section({
     $("iqSessions").replaceChildren(...(r.sessions.length ? r.sessions.map((s) => el("tr", {},
       el("td", { text: fmtDay(s.day) }),
       el("td", {}, el("div", { text: `${s.reps} × ${dur(s.repDurationS)}` }), bars(s.repPowers)),
-      el("td", {}, el("div", { text: `${de(s.avgPowerW)} W` }), ...[s.pctFtp == null ? null : el("div", { class: "muted", text: `${s.pctFtp} % FTP` })].filter(Boolean)),
+      el("td", {}, el("div", { text: `${de(s.avgPowerW)} W` }), ...[s.pctFtp == null ? null : el("div", { class: "muted", text: `${s.pctFtp} % FTP` }),
+        s.wbalMinPct == null ? null : el("div", { class: "muted", title: "Tiefster Stand der anaeroben Reserve W′ (Modellschätzung)", text: `W′ min ${s.wbalMinPct} %` })].filter(Boolean)),
       el("td", {}, el("div", { class: `iq-${s.execution}`, text: sign(s.fadePct) }), el("div", { class: "muted", text: labels[s.execution] })),
     )) : [el("tr", {}, el("td", { colspan: "4", class: "muted", text: "Noch keine Intervalltrainings erkannt." }))]));
     $("iqClasses").replaceChildren(...(r.classes.length ? r.classes.map((c) => {

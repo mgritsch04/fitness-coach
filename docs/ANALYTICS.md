@@ -279,3 +279,11 @@ Interferenz-Analyse in `core/interference.ts`. Beineinheit = Krafteinheit mit mi
 - `comparison` ab je 3 Fahrten mit Leistung und Puls: Bezugsleistung (Median beider Seiten), Puls drinnen/draußen bei dieser Leistung (Leistung / Effizienz), `hrGap`, `efGapPct`, `cadenceGap`.
 - `hints[]`: Puls auf der Rolle ab 4 Schlägen höher (Ventilator, nach Leistung steuern), Kadenzunterschied ab 5 U/min, sonst fehlende Fahrten.
 - Dashboard: `sections/indooroutdoor.js`, Reiter Verlauf. Auch in `get_analysis_highlights` (Thema `indoorOutdoor`, nur mit Vergleich).
+
+## W′-Bilanz (`get_workout_detail` › `wbal`, #208)
+
+`core/wbal.ts` rechnet die W′-Bilanz nach Skiba (differenzielles Modell): über CP sinkt W′bal um (P − CP) je Sekunde, darunter füllt es sich mit (W′ − W′bal) · (CP − P) / W′. CP und W′ kommen aus dem CP-Modell der letzten 90 Tage (mindestens „medium“), sonst CP = FTP und W′ = 20 kJ (angenommen).
+
+- `get_workout_detail` liefert additiv `wbal`: `cpW`, `wPrimeKj`, `modelSource` (`cp`/`ftp`), `minKj`, `minPct`, `minAtS`, `below25PctS`, `series` (tiefster Wert je Abschnitt in kJ, gleiches Raster wie `series.points`), `verdict`, `note`.
+- `get_interval_quality` liefert je Einheit `wbalMinPct`; der Abschnitt Intervall-Qualität zeigt ihn als „W′ min“.
+- Modellschätzung, keine Messung.
