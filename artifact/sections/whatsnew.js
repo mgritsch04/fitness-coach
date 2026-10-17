@@ -5,6 +5,7 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 25, id: "coach", title: "Coach-Chat kennt alle Analysen", text: "Frag z. B. „Was fällt in meinen Analysen auf?“ oder nach Muskelbalance, Trittfrequenz, Intervallen." },
     { n: 24, id: "highlights", title: "Auf einen Blick", text: "Die auffälligsten Befunde aller Analysen oben auf „Heute“, mit Sprung zu den Details." },
     { n: 23, id: "musclebalance", title: "Muskelbalance", text: "Sätze je Muskelgruppe gegen den Zielbereich, Ziehen gegen Drücken." },
     { n: 22, id: "riderprofile", title: "Fahrertyp", text: "Stärken und Schwächen deiner Leistungskurve im Verhältnis zur FTP." },
