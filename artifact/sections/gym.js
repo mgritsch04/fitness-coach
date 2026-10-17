@@ -15,7 +15,7 @@ FC.section({
     .gy-clock { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: .9rem; }
     .gy-rest { display: flex; align-items: center; gap: 8px; }
     .gy-rest b { font-family: var(--font-display); font-size: 1.7rem; font-variant-numeric: tabular-nums; min-width: 3.2em; }
-    .gy-rest.over b { color: var(--good); }
+    .gy-rest.over b { color: var(--good-ink); }
     .gy-rest button { padding: 6px 9px; }
     .gy-ex { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
     .gy-ex.cur { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -33,7 +33,7 @@ FC.section({
     .gy-set.on .ok { background: var(--good); border-color: var(--good); color: var(--panel); }
     .gy-set.on input { color: var(--ink-2); }
     .gy-head { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 8px; font-size: .78rem; color: var(--ink-3); text-align: center; }
-    .gy-note { flex-basis: 100%; font-weight: 600; color: var(--good); }
+    .gy-note { flex-basis: 100%; font-weight: 600; color: var(--good-ink); }
     .gy-last { font-size: .85rem; margin-top: -4px; }
     .gy-list { display: grid; gap: 12px; }
     .gy-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

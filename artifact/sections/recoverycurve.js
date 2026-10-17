@@ -9,7 +9,7 @@ FC.section({
     .rc-tab td, .rc-tab th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
     .rc-tab td:first-child, .rc-tab th:first-child { text-align: left; }
     .rc-tab th { font-weight: 600; color: var(--ink-2); }
-    .rc-up { color: var(--good); } .rc-down { color: var(--bad); }
+    .rc-up { color: var(--good-ink); } .rc-down { color: var(--bad-ink); }
     @media (max-width: 520px) { .rc-tab { font-size: 0.82rem; } .rc-tab td, .rc-tab th { padding: 4px 3px; } }`,
   mount(root) {
     root.innerHTML = `

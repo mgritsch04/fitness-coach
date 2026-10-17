@@ -11,7 +11,7 @@ FC.section({
     .if-tab td:not(:first-child), .if-tab th:not(:first-child) { text-align: right; }
     .if-tab td:not(:first-child) { white-space: nowrap; }
     @media (max-width: 520px) { .if-tab { font-size: 0.82rem; } .if-tab td, .if-tab th { padding: 4px 3px; } }
-    .if-up { color: var(--good); } .if-down { color: var(--bad); }`,
+    .if-up { color: var(--good-ink); } .if-down { color: var(--bad-ink); }`,
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-interference">Kraft und Rad im Wechselspiel</h2><span class="muted" id="ifRange"></span></div>

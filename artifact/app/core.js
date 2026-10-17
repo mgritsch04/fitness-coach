@@ -5,6 +5,8 @@
   const SERVER = "Fitness Coach";
   const FETCH_DAYS = 180;
   const $ = (id) => document.getElementById(id);
+  // Sprache für Vorleser und Silbentrennung (#211); das Veröffentlichungs-Gerüst setzt keine.
+  if (!document.documentElement.lang) document.documentElement.lang = "de";
   const state = { data: null, range: 90, mcp: null, sample: null, storedAt: null };
   try { const r = Number(localStorage.getItem("fc-range")); if ([30, 90, 180].includes(r)) state.range = r; } catch {}
 

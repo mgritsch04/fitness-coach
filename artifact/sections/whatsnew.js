@@ -5,6 +5,8 @@ FC.section({
   tab: "heute",
   order: 4,
   NEWS: [
+    { n: 35, id: "indooroutdoor", title: "Rolle gegen Straße", text: "Puls, Leistung und Belastung auf der Rolle im Vergleich zu Fahrten draußen." },
+    { n: 34, id: "block", title: "Trainingsblock", text: "4-Wochen-Block mit Aufbau und Entlastungswoche; bei schlechten Werten wird die Entlastung vorgezogen." },
     { n: 33, id: "sources", title: "Datenstand je Quelle", text: "Unter dem Datum steht, wie aktuell WHOOP und MyWhoosh sind; alte Daten sind als „veraltet“ markiert." },
     { n: 32, id: "sleeptarget", title: "Schlafziel heute Nacht", text: "Wann du heute ins Bett solltest, aus Schlafbedarf, Schlafschuld und Belastung (Schätzung)." },
     { n: 31, id: "eftp", title: "FTP-Schätzung im Verlauf", text: "Wie sich deine geschätzte FTP aus normalen Fahrten entwickelt, ohne eigenen Test." },

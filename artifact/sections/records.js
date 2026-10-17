@@ -6,7 +6,7 @@ FC.section({
   css: `
     .rc-week { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 18px; }
     .rc-week div { display: grid; gap: 2px; } .rc-week b { font-family: var(--font-display); font-size: 1.2rem; }
-    .rc-up { color: var(--good); } .rc-down { color: var(--bad); }
+    .rc-up { color: var(--good-ink); } .rc-down { color: var(--bad-ink); }
     .rc-feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
     .rc-feed li { display: grid; grid-template-columns: 4.8rem 1fr; gap: 2px 10px; align-items: baseline; }
     .rc-feed .rc-tag { grid-row: span 2; justify-self: start; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; background: var(--line); color: var(--ink-2); }`,
