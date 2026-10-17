@@ -4,6 +4,7 @@
 import { addDays } from "./analysis";
 import { readWorkoutStream } from "./repository";
 import { detectIntervals, type Interval } from "./workout-detail";
+import { wbalReport, type WbalModel } from "./wbal";
 
 const round = (v: number | null | undefined, digits = 0) => (v == null || !Number.isFinite(v) ? null : Number(v.toFixed(digits)));
 const mean = (xs: readonly number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -59,7 +60,7 @@ export function mainSet(intervals: readonly Interval[]) {
   return best;
 }
 
-export function sessionQuality(ride: IntervalRide, ftpW: number | null) {
+export function sessionQuality(ride: IntervalRide, ftpW: number | null, model: WbalModel | null = null) {
   const { intervals } = detectIntervals(ride, ftpW);
   const set = mainSet(intervals);
   if (!set) return null;
@@ -82,14 +83,16 @@ export function sessionQuality(ride: IntervalRide, ftpW: number | null) {
     cvPct: round((sd / avg) * 100, 1)!,
     hrCreepBpm: round(hrCreep),
     execution: executionOf(fade),
+    /** Tiefster W′-Stand der Fahrt in % (#208), Modellschätzung; null ohne CP/FTP. */
+    wbalMinPct: wbalReport(ride.power, model)?.minPct ?? null,
   };
 }
 
-export function intervalReport(rides: readonly IntervalRide[], ftpW: number | null, today: string, days: number) {
+export function intervalReport(rides: readonly IntervalRide[], ftpW: number | null, today: string, days: number, model: WbalModel | null = null) {
   const from = addDays(today, -(days - 1));
   const sessions = rides
     .filter((r) => r.day >= from && r.day <= today)
-    .map((r) => sessionQuality(r, ftpW))
+    .map((r) => sessionQuality(r, ftpW, model))
     .filter((s): s is NonNullable<typeof s> => s != null)
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
 

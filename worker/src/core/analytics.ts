@@ -51,7 +51,8 @@ import { readinessAlignment } from "./readiness-alignment";
 import { eftpTrend, WINDOW_DAYS as EFTP_WINDOW_DAYS } from "./eftp";
 import { readFtpTests } from "./ftp-test";
 import { indoorOutdoor } from "./indoor-outdoor";
-import { enduranceProfile } from "./endurance";
+import { wbalModel } from "./wbal";
+import { criticalPower, enduranceProfile } from "./endurance";
 import { readDaily, readLatestBody, readPowerCurves, readSleeps, readWorkouts } from "./repository";
 import { readSettings } from "./settings";
 
@@ -296,7 +297,7 @@ export async function durabilityView(db: D1Database, days: number, now?: number)
 /** Intervall-Qualität (#155): Abfall je Serie und Verlauf je Intervallart, mit wirksamer FTP. */
 export async function intervalQualityView(db: D1Database, days: number, now?: number) {
   const c = await analysisContext(db, { days: 7, now });
-  return intervalReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days);
+  return intervalReport(await readIntervalRides(db, addDays(c.today, -(days - 1))), c.settings.ftpW, c.today, days, wbalModel(criticalPower(c.curveRecent), c.settings.ftpW));
 }
 
 /** Trittfrequenz-Profil (#161): Kadenz-Verteilung, Median je Leistungszone und Verlauf in Zone 2. */

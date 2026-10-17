@@ -4,6 +4,8 @@ import { analysisContext } from "./analytics";
 import { normalizedPower } from "./power";
 import { zonesFor, type Zone } from "./performance";
 import { readWorkoutStream } from "./repository";
+import { criticalPower } from "./endurance";
+import { wbalModel, wbalReport } from "./wbal";
 
 type Series = (number | null)[] | null;
 
@@ -206,11 +208,14 @@ export async function loadWorkoutDetail(db: D1Database, source?: string, sourceI
     .bind(target.source, target.source_id)
     .first();
   const ref = { ftpW: ctx.settings.ftpW, thresholdHr: ctx.settings.thresholdHr };
+  const detail = workoutDetail({ power: stream.power, heartRate: stream.heart_rate, cadence: stream.cadence }, ref, maxPoints);
   return {
     found: true as const,
     workout,
     ftpOrigin: ctx.settings.origin.ftpW ?? null,
-    ...workoutDetail({ power: stream.power, heartRate: stream.heart_rate, cadence: stream.cadence }, ref, maxPoints),
+    ...detail,
+    // W′-Bilanz (#208), im selben Raster wie series.points.
+    wbal: wbalReport(stream.power, wbalModel(criticalPower(ctx.curveRecent), ctx.settings.ftpW), detail.series.stepS),
     powerCurve: parseCurve(stream.power_curve),
     available,
     notes: [
