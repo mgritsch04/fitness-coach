@@ -283,7 +283,7 @@ function markdown(r) {
       ? "**Automatisch BESTANDEN** – jeder Schritt wurde mit synthetischen Daten nachweislich geprüft."
       : r.verdict === "pc"
         ? "**Automatischer Test: noch auf dem PC prüfen** – ohne Fehler, aber die Optik braucht eine echte Grafikkarte."
-        : "**Automatischer Test: bitte selbst anschauen** – nicht alles ließ sich eindeutig automatisch prüfen.";
+        : `Automatische Vorprüfung – bitte selbst anschauen: ${r.results.filter((s) => s.status !== "ok" && s.status !== "skip").map((s) => `Schritt ${s.nr}`).join(", ") || "Konsolenfehler"}${r.realDevice.length ? ", Punkte nur am echten Gerät" : ""}.`;
   const look = r.results.filter((s) => s.status !== "ok" && s.status !== "skip");
   const lines = [
     head,

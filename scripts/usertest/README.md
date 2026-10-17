@@ -26,9 +26,23 @@ Kein `playwright install`: genommen wird `/opt/pw-browsers/chromium` (Cloud) bzw
 Ergebnis in `usertest-reports/<nr>/` (nicht im Git): `report.md` (Issue-Kommentar), `report.html` (Bildbericht,
 als privates Artefakt veröffentlichen und im Kommentar verlinken), `report.json`, `step-*.jpg`.
 
+## Testschritte lesen
+
+- Feature-Issue (`auto-user-test`): der **neueste Kommentar**, der mit `## Testschritte`, `### Testschritte` oder
+  `**Testschritte**` beginnt. Format: optional `**Voraussetzung:** …`, dann nummerierte Schritte, je Schritt darunter
+  `→ Erwartet: …`; Schritte mit `Optional:` dürfen fehlen (im Szenario `skip`).
+- Altes `[USERTEST]`-Issue: der Issue-Text.
+
+Issue (und Kommentare) als JSON `{ title, body, comments: [{ body }] }` speichern, dann:
+
+```bash
+node scripts/usertest/steps.mjs issue.json                       # Schritte als JSON
+node scripts/usertest/steps.mjs issue.json --scaffold 312        # Gerüst scenarios/312.mjs im Wortlaut des Issues
+```
+
 ## Szenario schreiben
 
-`scenarios/<issue-nr>.mjs`, Schritte und Erwartungen im Wortlaut des Issues. Jeder Schritt liefert `{ status, observed }`:
+`scenarios/<issue-nr>.mjs`, Schritte und Erwartungen im Wortlaut des Issues (Gerüst siehe oben). Jeder Schritt liefert `{ status, observed }`:
 
 | status | Bedeutung |
 |---|---|
@@ -55,7 +69,7 @@ für `import_fit`), `calls()`, `text(sel)`, `poll(fn)`, `shot(caption, locator?)
 | Urteil | `auto-user-test`-Feature-Issue | `[USERTEST]`-Issue (`user-test`) |
 |---|---|---|
 | bestanden | Kommentar „Automatisch BESTANDEN“ + Bildbericht, Label `done`, Issue schließen (`completed`) | Kommentar wie links, Label `user-test` → `done`, schließen (`completed`), Feature-Issue schließen |
-| pruefen | Label `auto-user-test` → `user-test`, Kommentar „bitte selbst anschauen: …“ + Bildbericht; G antwortet im Issue | Label bleibt, Issue offen, Kommentar „bitte selbst anschauen: …“ |
+| pruefen | Label `auto-user-test` → `user-test`, Kommentar beginnt mit „Automatische Vorprüfung – bitte selbst anschauen: …“ + Bildbericht; G antwortet im Issue | Label bleibt, Issue offen, Kommentar wie links |
 
 - Nie einen `fail` als bestanden werten; `FEHLGESCHLAGEN` schreibt nur G.
 - Wünsche oder Fehler, die beim Testen auffallen, nicht selbst bauen: im Issue nennen, der Koordinator plant sie ein.
