@@ -31,6 +31,9 @@ export interface BikeWorkout {
   /** Geschätzte Belastung (TSS-Maßstab) und Intensitätsfaktor. */
   load: number;
   intensityFactor: number;
+  /** Vorlage aus der Bibliothek (#221), sonst nicht gesetzt. */
+  templateId?: string;
+  level?: number;
 }
 
 /** Einheiten, die auf dem Rad gefahren werden. */
@@ -154,9 +157,131 @@ export function toZwo(w: BikeWorkout): string {
 
 /** Dateiname ohne Sonderzeichen, z. B. 2026-03-31-schwelle-60min.zwo */
 export function zwoFileName(w: BikeWorkout, day: string | null) {
-  const slug = NAMES[w.type].toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const slug = (w.templateId ? w.name.replace(/\s*\d+ min$/, "") : NAMES[w.type]).toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return `${day ? `${day}-` : ""}${slug}-${w.durationMin}min.zwo`;
 }
 
 function fmtDur(s: number) { return s % 60 ? `${s} s` : `${s / 60} min`; }
 function pct(x: number) { return `${Math.round(x * 100)} % FTP`; }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Workout-Bibliothek (#221): bewährte Einheiten je Typ in 3–4 Stufen, feste Dauer, Auswahl nach Zeit und Tagesform.
+
+export type LibraryCategory = "recovery" | "endurance" | "sweetspot" | "threshold" | "vo2max";
+
+export interface WorkoutTemplate {
+  id: string;
+  category: LibraryCategory;
+  /** Planeinheit, der die Vorlage entspricht (für Zonen-Ziele und Dateiname). */
+  type: SessionType;
+  /** Stufe 1 (Einstieg) bis 4 (fordernd). */
+  level: 1 | 2 | 3 | 4;
+  title: string;
+  /** Hauptteil in Worten. */
+  main: string;
+  steps: Step[];
+}
+
+export const CATEGORY_LABELS: Record<LibraryCategory, string> = {
+  recovery: "Locker", endurance: "Grundlage", sweetspot: "Sweet Spot", threshold: "Schwelle", vo2max: "VO2max",
+};
+
+const W = (min: number, lo = 0.5, hi = 0.75): Step => ({ kind: "warmup", durationS: min * 60, powerLow: lo, powerHigh: hi, label: "Einfahren" });
+const C = (min: number, lo = 0.6, hi = 0.45): Step => ({ kind: "cooldown", durationS: min * 60, powerLow: lo, powerHigh: hi, label: "Ausfahren" });
+const S = (min: number, p: number, label: string): Step => ({ kind: "steady", durationS: Math.round(min * 60), power: p, label });
+const I = (repeat: number, onS: number, offS: number, onPower: number, offPower: number, what: string): Step => ({
+  kind: "intervals", durationS: repeat * (onS + offS), repeat, onS, offS, onPower, offPower,
+  label: `${repeat} × ${fmtDur(onS)} ${what} (${pct(onPower)}), ${fmtDur(offS)} locker`,
+});
+
+/** Die Bibliothek. Prozentwerte der FTP nach gängigen Faustregeln. */
+export const LIBRARY: readonly WorkoutTemplate[] = [
+  { id: "rec-30", category: "recovery", type: "recovery", level: 1, title: "Ausrollen", main: "20 min sehr locker",
+    steps: [W(5, 0.4, 0.5), S(20, 0.5, "sehr locker, Zone 1"), C(5, 0.5, 0.4)] },
+  { id: "rec-45", category: "recovery", type: "recovery", level: 2, title: "Lockere Runde", main: "35 min locker mit hoher Trittfrequenz",
+    steps: [W(5, 0.4, 0.52), S(35, 0.53, "locker, Zone 1, 95–100 U/min"), C(5, 0.52, 0.4)] },
+  { id: "rec-60", category: "recovery", type: "recovery", level: 3, title: "Aktive Erholung", main: "50 min locker",
+    steps: [W(5, 0.4, 0.55), S(50, 0.55, "locker, Zone 1"), C(5, 0.55, 0.4)] },
+
+  { id: "end-60", category: "endurance", type: "endurance", level: 1, title: "Grundlage kurz", main: "45 min Zone 2",
+    steps: [W(10, 0.5, 0.68), S(45, 0.68, "Grundlage, Zone 2"), C(5)] },
+  { id: "end-cad-75", category: "endurance", type: "endurance", level: 2, title: "Grundlage mit Kadenz", main: "5 × 2 min hohe Trittfrequenz in Zone 2",
+    steps: [W(10, 0.5, 0.68), I(5, 120, 480, 0.72, 0.68, "110 U/min"), S(10, 0.68, "Grundlage"), C(5)] },
+  { id: "end-90", category: "endurance", type: "endurance", level: 3, title: "Grundlage lang", main: "75 min Zone 2",
+    steps: [W(10, 0.5, 0.7), S(75, 0.7, "Grundlage, Zone 2"), C(5)] },
+  { id: "end-tempo-120", category: "endurance", type: "long", level: 4, title: "Grundlage mit Tempo", main: "100 min Zone 2 mit 2 × 15 min Tempo",
+    steps: [W(10, 0.5, 0.7), S(30, 0.7, "Grundlage"), I(2, 900, 900, 0.8, 0.68, "Tempo"), S(10, 0.7, "Grundlage"), C(10)] },
+
+  { id: "ss-3x10", category: "sweetspot", type: "tempo", level: 1, title: "Sweet Spot 3 × 10", main: "3 × 10 min bei 88 %",
+    steps: [W(10), I(3, 600, 300, 0.88, 0.55, "Sweet Spot"), C(10)] },
+  { id: "ss-3x12", category: "sweetspot", type: "tempo", level: 2, title: "Sweet Spot 3 × 12", main: "3 × 12 min bei 90 %",
+    steps: [W(10), I(3, 720, 240, 0.9, 0.55, "Sweet Spot"), C(10)] },
+  { id: "ss-2x20", category: "sweetspot", type: "tempo", level: 3, title: "Sweet Spot 2 × 20", main: "2 × 20 min bei 90 %",
+    steps: [W(15), I(2, 1200, 300, 0.9, 0.55, "Sweet Spot"), C(10)] },
+  { id: "ss-3x20", category: "sweetspot", type: "tempo", level: 4, title: "Sweet Spot 3 × 20", main: "3 × 20 min bei 92 %",
+    steps: [W(15), I(3, 1200, 300, 0.92, 0.55, "Sweet Spot"), C(10)] },
+
+  { id: "th-4x8", category: "threshold", type: "threshold", level: 1, title: "Schwelle 4 × 8", main: "4 × 8 min bei 95 %",
+    steps: [W(15), I(4, 480, 240, 0.95, 0.55, "Schwelle"), C(10)] },
+  { id: "th-3x12", category: "threshold", type: "threshold", level: 2, title: "Schwelle 3 × 12", main: "3 × 12 min bei 97 %",
+    steps: [W(15), I(3, 720, 300, 0.97, 0.55, "Schwelle"), C(10)] },
+  { id: "th-ou", category: "threshold", type: "threshold", level: 3, title: "Over-Under", main: "3 Blöcke à 4 × (2 min 95 %, 1 min 105 %)",
+    steps: [W(15), I(4, 60, 120, 1.05, 0.95, "über der Schwelle"), S(5, 0.55, "locker"), I(4, 60, 120, 1.05, 0.95, "über der Schwelle"), S(5, 0.55, "locker"),
+      I(4, 60, 120, 1.05, 0.95, "über der Schwelle"), C(10)] },
+  { id: "th-2x20", category: "threshold", type: "threshold", level: 4, title: "Schwelle 2 × 20", main: "2 × 20 min bei 100 %",
+    steps: [W(15), I(2, 1200, 480, 1, 0.55, "Schwelle"), C(10)] },
+
+  { id: "vo-5x3", category: "vo2max", type: "vo2max", level: 1, title: "VO2max 5 × 3", main: "5 × 3 min bei 112 %",
+    steps: [W(15), I(5, 180, 180, 1.12, 0.5, "VO2max"), C(10)] },
+  { id: "vo-30-30", category: "vo2max", type: "vo2max", level: 2, title: "30/30", main: "2 × 10 × (30 s 125 %, 30 s locker)",
+    steps: [W(15), I(10, 30, 30, 1.25, 0.5, "hart"), S(5, 0.55, "locker"), I(10, 30, 30, 1.25, 0.5, "hart"), C(10)] },
+  { id: "vo-5x4", category: "vo2max", type: "vo2max", level: 3, title: "VO2max 5 × 4", main: "5 × 4 min bei 115 %",
+    steps: [W(15), I(5, 240, 240, 1.15, 0.5, "VO2max"), C(10)] },
+  { id: "vo-6x4", category: "vo2max", type: "vo2max", level: 4, title: "VO2max 6 × 4", main: "6 × 4 min bei 118 %",
+    steps: [W(15), I(6, 240, 180, 1.18, 0.5, "VO2max"), C(10)] },
+];
+
+/** Vorlage als fertige Radeinheit (gleiches Format wie buildBikeWorkout, also auch toZwo). */
+export function templateWorkout(t: WorkoutTemplate): BikeWorkout {
+  const { load, intensityFactor } = estimateLoad(t.steps);
+  const durationMin = Math.round(t.steps.reduce((a, s) => a + s.durationS, 0) / 60);
+  return {
+    type: t.type,
+    name: `${t.title} ${durationMin} min`,
+    description: `${CATEGORY_LABELS[t.category]}, Stufe ${t.level} von 4. Hauptteil: ${t.main}. Prozentwerte beziehen sich auf deine FTP.`,
+    durationMin,
+    steps: t.steps.map((s) => ({ ...s })),
+    load,
+    intensityFactor,
+    templateId: t.id,
+    level: t.level,
+  };
+}
+
+export const findTemplate = (id: string) => LIBRARY.find((t) => t.id === id) ?? null;
+
+/** Ab welcher Erholung (WHOOP, %) welche Arten passen: rot nur locker/Grundlage, gelb ohne VO2max und ohne Stufe 4. */
+export function suitsReadiness(t: Pick<WorkoutTemplate, "category" | "level">, recovery: number | null) {
+  if (recovery == null || recovery >= 67) return true;
+  if (recovery < 34) return t.category === "recovery" || (t.category === "endurance" && t.level <= 2);
+  return t.category !== "vo2max" && t.level <= 3;
+}
+
+/** Auswahl nach verfügbarer Zeit, Art und Tagesform; passende zuerst, dann nach Art und Stufe. */
+export function pickWorkouts(opts: { maxMin?: number | null; category?: LibraryCategory | null; recovery?: number | null }) {
+  const order = Object.keys(CATEGORY_LABELS);
+  const items = LIBRARY.map(templateWorkout)
+    .map((w) => {
+      const t = findTemplate(w.templateId!)!;
+      return { id: t.id, category: t.category, categoryLabel: CATEGORY_LABELS[t.category], type: t.type, level: t.level, title: t.title, main: t.main,
+        name: w.name, durationMin: w.durationMin, load: w.load, intensityFactor: w.intensityFactor, suited: suitsReadiness(t, opts.recovery ?? null) };
+    })
+    .filter((x) => (opts.maxMin ? x.durationMin <= opts.maxMin : true) && (opts.category ? x.category === opts.category : true))
+    .sort((a, b) => Number(b.suited) - Number(a.suited) || order.indexOf(a.category) - order.indexOf(b.category) || a.level - b.level);
+  const r = opts.recovery ?? null;
+  const hint = r == null ? "Keine Erholung für heute; alle Einheiten stehen zur Wahl."
+    : r < 34 ? `Erholung ${r} % (rot): heute nur locker oder kurze Grundlage.`
+    : r < 67 ? `Erholung ${r} % (gelb): kein VO2max und keine Stufe 4, Schwelle und Sweet Spot gehen.`
+    : `Erholung ${r} % (grün): alles möglich, gute Gelegenheit für eine harte Einheit.`;
+  return { recovery: r, items, hint };
+}

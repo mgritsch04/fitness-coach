@@ -1,4 +1,5 @@
 // Workout für MyWhoosh (#63): geplante Radeinheit als Intervallprofil in % FTP, Download als ZWO-Datei (get_bike_workout, Capability downloads).
+// Bibliothek (#221): Vorlagen je Art und Stufe aus list_bike_workouts, gefiltert nach Dauer und Art.
 FC.section({
   id: "bikewo",
   tab: "training",
@@ -14,7 +15,15 @@ FC.section({
     .bw-steps { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .92rem; }
     .bw-how a { color: var(--accent); }
     .bw-how { margin: 6px 0 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .9rem; color: var(--ink-2); }
-    .bw-act { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }`,
+    .bw-act { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+    .bw-lib { margin: 0 0 12px; }
+    .bw-lib summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+    .bw-lib .bw-ctl { margin: 8px 0; }
+    .bw-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .bw-item { display: grid; gap: 2px; text-align: left; padding: 8px 10px; border-radius: 8px; background: var(--panel); }
+    .bw-item[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .bw-item b { font-weight: 600; } .bw-item span { font-size: .85rem; color: var(--ink-2); }
+    .bw-item .bw-no { color: var(--warn-ink); }`,
   TYPES: [["", "Aus dem Wochenplan"], ["recovery", "Locker"], ["endurance", "Grundlage"], ["long", "Lange Grundlage"], ["tempo", "Tempo"], ["threshold", "Schwelle"], ["vo2max", "VO2max"], ["opener", "Vorbelastung"]],
   mount(root) {
     root.innerHTML = `
@@ -25,6 +34,14 @@ FC.section({
           <label for="bwType">Einheit<select id="bwType">${this.TYPES.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select></label>
           <label for="bwMin" id="bwMinL" hidden>Dauer (min)<input id="bwMin" type="number" min="20" max="360" step="5" value="60" inputmode="numeric"></label>
         </form>
+        <details class="bw-lib" id="bwLib"><summary>Aus der Bibliothek wählen</summary>
+          <div class="bw-ctl">
+            <label for="bwLCat">Art<select id="bwLCat"><option value="">Alle</option><option value="recovery">Locker</option><option value="endurance">Grundlage</option>
+              <option value="sweetspot">Sweet Spot</option><option value="threshold">Schwelle</option><option value="vo2max">VO2max</option></select></label>
+            <label for="bwLMax">Zeit<select id="bwLMax"><option value="">beliebig</option><option value="45">bis 45 min</option><option value="60">bis 60 min</option>
+              <option value="75">bis 75 min</option><option value="90">bis 90 min</option></select></label>
+          </div>
+          <p class="muted" id="bwLHint"></p><div class="bw-list" id="bwList"></div></details>
         <div id="bwOut" aria-live="polite"></div>
         <div class="bw-act"><button type="button" class="primary" id="bwGet" disabled>Als .zwo herunterladen</button><span class="muted" id="bwMsg" role="status"></span></div>
         <ol class="bw-how"><li>Datei herunterladen.</li>
@@ -33,7 +50,10 @@ FC.section({
         <p class="chart-cap">Intervalle nach gängigen Faustregeln in % deiner FTP, Belastung geschätzt. MyWhoosh rechnet mit der FTP aus deinem MyWhoosh-Profil.</p>
       </div>`;
     const { $ } = FC;
-    $("bwType").onchange = () => { $("bwMinL").hidden = !$("bwType").value; this.load(); };
+    $("bwType").onchange = () => { $("bwMinL").hidden = !$("bwType").value; this.pick(null); };
+    $("bwLCat").onchange = () => this.loadLib();
+    $("bwLMax").onchange = () => this.loadLib();
+    $("bwLib").ontoggle = () => { if ($("bwLib").open && !this.lib) this.loadLib(); };
     $("bwDay").onchange = () => this.load();
     $("bwMin").onchange = () => this.load();
     $("bwForm").onsubmit = (e) => { e.preventDefault(); this.load(); };
@@ -54,13 +74,40 @@ FC.section({
   async load() {
     const { $ } = FC, day = $("bwDay").value || FC.state.data?.today;
     if (!day || !FC.state.mcp) return;
-    const type = $("bwType").value, input = { day, ...(type ? { type, durationMin: Number($("bwMin").value) || 60 } : {}) };
+    const type = $("bwType").value, input = { day, ...(this.tpl ? { templateId: this.tpl } : type ? { type, durationMin: Number($("bwMin").value) || 60 } : {}) };
     const seq = (this.seq = (this.seq ?? 0) + 1);
     this.busy = true; $("bwGet").disabled = true; $("bwMsg").textContent = "";
     try { this.rep = await FC.call("get_bike_workout", input); }
     catch (err) { this.rep = { error: err?.code === "tool_error" ? this.toolMsg(err) : FC.errText(err) }; }
     finally { this.busy = false; }
     if (seq === this.seq) this.show();
+  },
+  /** Vorlage wählen (id) oder zurück zu Plan/Einheit (null). */
+  pick(id) {
+    this.tpl = id;
+    for (const b of FC.$("bwList")?.children ?? []) b.setAttribute("aria-pressed", String(b.dataset.id === id));
+    this.load();
+  },
+  async loadLib() {
+    const { $, el, de } = FC;
+    if (!FC.state.mcp) return;
+    const input = { ...($("bwLCat").value ? { category: $("bwLCat").value } : {}), ...($("bwLMax").value ? { maxMin: Number($("bwLMax").value) } : {}) };
+    const seq = (this.libSeq = (this.libSeq ?? 0) + 1);
+    $("bwLHint").textContent = "Lädt …";
+    let r;
+    try { r = await FC.call("list_bike_workouts", input); } catch (err) { r = { error: FC.errText(err) }; }
+    if (seq !== this.libSeq) return;
+    this.lib = r;
+    $("bwLHint").textContent = r.error ?? r.hint;
+    $("bwList").replaceChildren(...(r.items ?? []).map((x) => {
+      const b = el("button", { type: "button", class: "bw-item", "data-id": x.id, "aria-pressed": String(x.id === this.tpl) },
+        el("b", { text: x.title }),
+        el("span", { text: `${x.categoryLabel} · Stufe ${x.level} · ${x.durationMin} min · ~${de(x.load)}` }),
+        x.suited ? null : el("span", { class: "bw-no", text: "passt heute eher nicht" }));
+      b.onclick = () => this.pick(x.id);
+      return b;
+    }));
+    if (r.items && !r.items.length) $("bwList").replaceChildren(el("div", { class: "empty", text: "Keine Einheit in dieser Zeit." }));
   },
   toolMsg(err) { try { return JSON.parse(err.message).message; } catch { return String(err.message ?? "").slice(0, 200); } },
   show() {
