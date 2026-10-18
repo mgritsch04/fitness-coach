@@ -72,7 +72,7 @@ const payloads = {
       note: "1RM und Belastung sind Schätzungen." }; },
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
-  save_strength_template: (i) => i,
+  save_strength_template: (i) => { window.__tplSaved = i; return i; },
   get_express_session: (i) => { window.__expressIn = i; return { minutes: i.minutes, fullMin: 52, estimatedMin: 28, fits: true, dropped: ["Bankdrücken"], changes: ["Grundübungen 2 Sätze"], note: "", text: "Gekürzt von etwa 52 auf 28 min: Grundübungen 2 Sätze. Weggelassen: Bankdrücken.",
     exercises: [{ exercise: "back_squat", name: "Kniebeuge", sets: 2, reps: 5, weightKg: 100, unit: "Wdh", restS: 120, superset: null, priority: 1 }, { exercise: "dumbbell_row", name: "Kurzhantelrudern", sets: 2, reps: 10, weightKg: 26, unit: "Wdh", restS: 60, superset: "A", priority: 2 }] }; },
   get_exercise_alternatives: (i) => ({ exercise: "bench_press", name: i.exercise, known: true, pattern: "push", alternatives: [{ exercise: "dumbbell_bench", name: "Kurzhantel-Bankdrücken", startKg: 30, lastDay: null, basis: "history" }], note: "Startgewicht aus deiner letzten Einheit." }),
@@ -327,6 +327,9 @@ for (const [name, vp, scheme, tab] of shots) {
     if (await p.$("#gyWarm")) errors.push(`${name}: Aufwärmsätze nach dem ersten Satz noch sichtbar`);
     if (!/Neuer Bestwert/.test(await p.textContent("#gyBody .gy-note"))) errors.push(`${name}: Gym-Modus meldet keinen Bestwert`);
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
+    // Dauer seit letztem Satz (#107)
+    const since = await p.evaluate(() => ({ on: !document.getElementById("gySince")?.hidden, t: document.getElementById("gySinceT")?.textContent ?? "" }));
+    if (!since.on || !/^0:0\d$/.test(since.t)) errors.push(`${name}: „seit letztem Satz“ fehlt ${JSON.stringify(since)}`);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
     // Reserve je Satz (#280): „3+“ macht den nächsten Satz 2,5 % schwerer (Langhantel: 107,5 kg).
     await p.click("#gyBody .gy-rir button:nth-of-type(3)").catch(() => errors.push(`${name}: keine Reserve-Knöpfe nach dem Satz`)); await p.waitForTimeout(100);
@@ -348,6 +351,13 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(7)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
     const saved = await p.evaluate(() => window.__gymSaved);
     if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.exercises[0].sets[0].rpe === 7 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
+    // Als Vorlage speichern (#319)
+    if (!(await p.$("#gyTplName"))) errors.push(`${name}: nach dem Speichern fehlt „Als Vorlage speichern“`);
+    else {
+      await p.fill("#gyTplName", "Beine Test"); await p.click("#gyBody .panel .primary"); await p.waitForTimeout(200);
+      const tpl = await p.evaluate(() => ({ t: window.__tplSaved, opt: [...document.querySelectorAll("#gySrc option")].some((o) => o.value === "t:Beine Test") }));
+      if (!(tpl.t?.name === "Beine Test" && tpl.t.exercises?.[0]?.sets === 1 && tpl.opt)) errors.push(`${name}: Vorlage aus Einheit falsch ${JSON.stringify(tpl)}`);
+    }
     // Express (#281): „Nur 30 min“ kürzt die Einheit über get_express_session.
     await p.selectOption("#gySrc", "s:s2"); await p.selectOption("#gyTime", "30"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     const ex = await p.evaluate(() => ({ min: window.__expressIn?.minutes, n: window.__expressIn?.exercises?.length, cards: [...document.querySelectorAll("#gyBody .gy-ex h3")].map((h) => h.textContent), sets: document.querySelectorAll("#gyBody .gy-ex")[0]?.querySelectorAll(".gy-set").length, ss: document.querySelectorAll("#gyBody .gy-ex")[1]?.querySelector(".gy-exh .muted")?.textContent ?? "", msg: document.getElementById("gyMsg")?.textContent ?? "" }));

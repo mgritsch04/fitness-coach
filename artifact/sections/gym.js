@@ -13,6 +13,8 @@ FC.section({
     .gy-bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between;
       background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }
     .gy-clock { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: .9rem; }
+    .gy-since { display: flex; align-items: baseline; gap: 6px; }
+    .gy-since b { font-family: var(--font-display); font-size: 1.7rem; font-variant-numeric: tabular-nums; }
     .gy-rest { display: flex; align-items: center; gap: 8px; }
     .gy-rest b { font-family: var(--font-display); font-size: 1.7rem; font-variant-numeric: tabular-nums; min-width: 3.2em; }
     .gy-rest.over b { color: var(--good-ink); }
@@ -106,9 +108,35 @@ FC.section({
     const time = el("select", { id: "gyTime" }, ...[["", "Volle Einheit"], ["45", "Nur 45 min"], ["30", "Nur 30 min"], ["20", "Nur 20 min"]].map(([v, t]) => el("option", { value: v, text: t })));
     const go = el("button", { type: "button", class: "primary", text: "Einheit starten" });
     go.onclick = () => this.start(sel.value, go, Number(time.value) || null);
-    body.replaceChildren(el("div", { class: "panel" },
+    body.replaceChildren(this.savedPanel() ?? "", el("div", { class: "panel" },
       el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Was trainierst du?", sel), el("label", { for: "gyTime" }, "Zeit", time), go),
       el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })));
+  },
+  /** Nach dem Speichern (#319): die Einheit mit Namen als Vorlage übernehmen. */
+  savedPanel() {
+    const { el } = FC, sv = this.saved;
+    if (!sv) return null;
+    const name = el("input", { type: "text", id: "gyTplName", maxlength: 80, placeholder: "z. B. Beine A", "aria-label": "Name der Vorlage" });
+    name.value = sv.name ?? "";
+    const out = el("span", { class: "muted", role: "status" });
+    const ok = el("button", { type: "button", class: "primary", text: "Als Vorlage speichern" });
+    const no = el("button", { type: "button", class: "linkish", text: "Nein danke" });
+    no.onclick = () => { this.saved = null; this.draw(); };
+    ok.onclick = async () => {
+      const n = name.value.trim();
+      if (!n) { out.textContent = "Bitte einen Namen eingeben."; name.focus(); return; }
+      ok.disabled = true; out.textContent = "Speichere …";
+      try {
+        await FC.call("save_strength_template", { name: n, exercises: sv.exercises });
+        this.saved = null;
+        if (this.data) this.data.templates = [...this.data.templates.filter((t) => t.name !== n), { name: n, exercises: sv.exercises }];
+        await FC.state.mcp?.invalidate(FC.SERVER, "get_strength").catch(() => {});
+        this.draw(); this.msg(`Vorlage „${n}“ gespeichert. Du findest sie unter „Vorlage“.`);
+      } catch (err) { out.textContent = FC.errText(err); ok.disabled = false; }
+    };
+    return el("div", { class: "panel", style: "margin-bottom:12px;display:grid;gap:8px" },
+      el("h3", { text: "Diese Einheit als Vorlage speichern?" }),
+      el("div", { class: "gy-row" }, name, ok, no), out);
   },
   /** Geplante Krafteinheit eines Tages starten (läuft schon eine Einheit, bleibt sie). */
   startPlan(day) { if (!this.st) this.start(`p:${day}`); },
@@ -159,8 +187,10 @@ FC.section({
     const skip = el("button", { type: "button", text: "Weiter", "aria-label": "Pause beenden" });
     minus.onclick = () => this.shiftRest(-15); plus.onclick = () => this.shiftRest(15); skip.onclick = () => { st.restEnd = null; this.persist(); this.tickNow(); };
     const rest = el("div", { class: "gy-rest", id: "gyRest" }, el("span", { class: "muted", text: "Pause" }), restB, minus, plus, skip);
+    // Dauer seit dem letzten abgehakten Satz (#107): zählt hoch bis zum nächsten Haken.
+    const since = el("div", { class: "gy-since", id: "gySince" }, el("span", { class: "muted", text: "seit letztem Satz" }), el("b", { id: "gySinceT" }));
     const note = el("div", { class: "gy-note", role: "status", text: this.note ?? "" }); note.hidden = !this.note;
-    const bar = el("div", { class: "gy-bar" }, clock, rest, note);
+    const bar = el("div", { class: "gy-bar" }, clock, since, rest, note);
 
     const list = el("div", { class: "gy-list" }, ...st.exercises.map((x, i) => this.exCard(x, i)));
     const addName = el("input", { type: "text", list: "stEx", maxlength: 80, placeholder: "Übung hinzufügen", "aria-label": "Übung hinzufügen", style: "flex:1 1 12em;min-width:0" });
@@ -283,6 +313,7 @@ FC.section({
     if (!s.done && !reps) { this.msg("Bitte die Wiederholungen eintragen."); return; }
     s.reps = reps; s.kg = kg ?? 0; s.done = !s.done; this.msg(""); this.note = null;
     if (s.done) {
+      st.lastSetAt = Date.now();
       st.restEnd = Date.now() + x.rest * 1000; this.beeped = false;
       if (x.sets.every((y) => y.done)) { const next = st.exercises.findIndex((y, k) => k > i && y.sets.some((z) => !z.done)); st.cur = next >= 0 ? next : i; }
       else st.cur = i;
@@ -350,6 +381,8 @@ FC.section({
     if (!st || !$("gyClock")) { clearInterval(this.tick); return; }
     const sets = st.exercises.flatMap((x) => x.sets), done = sets.filter((s) => s.done).length;
     $("gyClock").textContent = `${this.mmss((Date.now() - Date.parse(st.startedAt)) / 1000)} · ${done}/${sets.length} Sätze`;
+    const sinceS = st.lastSetAt && done ? (Date.now() - st.lastSetAt) / 1000 : null;
+    if ($("gySince")) { $("gySince").hidden = sinceS == null; if (sinceS != null) $("gySinceT").textContent = this.mmss(sinceS); }
     const left = st.restEnd ? (st.restEnd - Date.now()) / 1000 : null;
     $("gyRest").hidden = left == null;
     if (left == null) return;
@@ -399,6 +432,8 @@ FC.section({
     const st = this.st;
     const exercises = st.exercises.filter((x) => x.name).map((x) => ({ exercise: x.name, sets: x.sets.filter((s) => s.done && s.reps).map((s) => ({ reps: Math.round(s.reps), weightKg: s.kg ?? 0, ...(s.rir ? { rpe: this.RIR[s.rir].rpe } : {}) })) })).filter((x) => x.sets.length);
     if (!exercises.length) { this.msg("Noch kein Satz abgehakt."); return; }
+    // Anstrengung vergessen (#320)? Einmal nachfragen, beim zweiten Tippen ohne speichern.
+    if (!st.rpe && !btn.dataset.noRpe) { btn.dataset.noRpe = "1"; this.msg("Anstrengung noch nicht gewählt: bitte oben 1 bis 10 antippen. Nochmal auf Speichern tippen, um ohne Anstrengung zu speichern."); return; }
     const start = new Date(st.startedAt);
     const input = { day: start.toLocaleDateString("sv-SE"), startTime: start.toISOString(), durationMin: Math.max(1, Math.min(600, Math.round((Date.now() - start) / 60000))), exercises };
     if (st.rpe) input.rpe = st.rpe;
@@ -407,6 +442,8 @@ FC.section({
     try {
       const r = await FC.call("log_strength_session", input);
       const best = (r.exercises ?? []).filter((x) => x.newBest).map((x) => x.name);
+      // Vorlage aus der Einheit (#319): je Übung Satzzahl und bester Satz.
+      this.saved = { name: st.name ?? "", exercises: exercises.map((x) => { const top = x.sets.reduce((a, b) => (b.weightKg > a.weightKg ? b : a)); return { exercise: x.exercise, sets: Math.min(20, x.sets.length), reps: Math.min(100, top.reps), weightKg: top.weightKg }; }) };
       this.st = null; this.persist();
       this.msg(["Gespeichert.", r.load?.value != null ? `Belastung ≈ ${FC.de(r.load.value)} (Schätzung).` : "", best.length ? `Neue Bestwerte: ${best.join(", ")}.` : ""].filter(Boolean).join(" "));
       this.draw();

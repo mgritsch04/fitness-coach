@@ -188,9 +188,15 @@ FC.section({
           return `${x.exerciseName} ${sets.length}×${top.reps}${top.weightKg ? ` @ ${de(top.weightKg, top.weightKg % 1 ? 1 : 0)} kg` : ""}`;
         });
         const meta = [s.durationMin ? `${de(s.durationMin)} min` : null, s.rpe ? `Anstrengung ${de(s.rpe, s.rpe % 1 ? 1 : 0)}` : null, s.load != null ? `Belastung ${de(s.load)}` : null].filter(Boolean).join(" · ");
-        list.append(el("div", { class: "row", style: "justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line)" },
+        const tplBtn = el("button", { type: "button", class: "linkish", text: "Als Vorlage speichern", "aria-expanded": "false" });
+        const row = el("div", { class: "row", style: "justify-content:space-between; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line)" },
           el("div", {}, el("b", { text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }), el("div", { class: "muted", text: ex.join(", ") })),
-          el("span", { class: "muted", text: meta })));
+          el("span", { class: "muted" }, meta, meta ? " · " : "", tplBtn));
+        tplBtn.onclick = () => {
+          if (row.nextElementSibling?.classList.contains("st-tplrow")) { row.nextElementSibling.remove(); tplBtn.setAttribute("aria-expanded", "false"); return; }
+          row.after(this.tplForm(s, () => tplBtn.setAttribute("aria-expanded", "false"))); tplBtn.setAttribute("aria-expanded", "true");
+        };
+        list.append(row);
       }
       $("stNotes").textContent = (data.coachNotes ?? []).map((n) => n.text).join(" ");
     };
@@ -201,6 +207,35 @@ FC.section({
     };
     this.load = load;
     this.show = show;
+  },
+  /** Vorlage aus einer gespeicherten Einheit (#319): je Übung Satzzahl und bester Satz (schwerster). */
+  templateFrom(session) {
+    const by = new Map();
+    for (const x of session.sets) { if (!by.has(x.exercise)) by.set(x.exercise, []); by.get(x.exercise).push(x); }
+    return [...by.entries()].map(([exercise, sets]) => {
+      const top = sets.reduce((a, b) => (b.weightKg > a.weightKg ? b : a));
+      return { exercise, sets: Math.min(20, sets.length), reps: Math.min(100, Math.max(1, Math.round(top.reps))), weightKg: top.weightKg ?? 0 };
+    });
+  },
+  tplForm(session, closed) {
+    const { el } = FC;
+    const name = el("input", { type: "text", maxlength: 80, placeholder: "Name der Vorlage", "aria-label": "Name der Vorlage" });
+    name.value = session.name ?? "";
+    const out = el("span", { class: "muted", role: "status" });
+    const ok = el("button", { type: "button", class: "primary", text: "Speichern" });
+    const box = el("div", { class: "row st-tplrow", style: "gap:8px; padding:6px 0; border-bottom:1px solid var(--line)" }, name, ok, out);
+    ok.onclick = async () => {
+      const n = name.value.trim();
+      if (!n) { out.textContent = "Bitte einen Namen eingeben."; name.focus(); return; }
+      ok.disabled = true; out.textContent = "Speichere …";
+      try {
+        await FC.call("save_strength_template", { name: n, exercises: this.templateFrom(session) });
+        out.textContent = `Vorlage „${n}“ gespeichert.`;
+        await FC.state.mcp?.invalidate(FC.SERVER, "get_strength").catch(() => {});
+        setTimeout(() => { box.remove(); closed?.(); this.load?.(true); }, 1500);
+      } catch (err) { out.textContent = FC.errText(err); ok.disabled = false; }
+    };
+    return box;
   },
   ready() { this.load?.(false); },
   render() { this.show?.(); },
