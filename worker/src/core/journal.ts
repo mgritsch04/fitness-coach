@@ -100,6 +100,15 @@ export async function readRpe(db: D1Database, fromDay: string): Promise<WorkoutR
 
 /** RPE zu einem gespeicherten Workout; das Workout muss existieren. */
 export async function saveRpe(db: D1Database, r: { source: string; sourceId: string; rpe: number | null; notes?: string | null }): Promise<WorkoutRpe | null> {
+  // Krafteinheit ohne verknüpftes Workout (Quelle „manual“, sourceId = Einheit): Anstrengung direkt in der Einheit (#320).
+  if (r.source === "manual") {
+    const s = await db
+      .prepare("UPDATE strength_sessions SET rpe = ?, updated_at = datetime('now') WHERE id = ? RETURNING day, updated_at")
+      .bind(r.rpe, r.sourceId)
+      .first<{ day: string; updated_at: string }>();
+    if (!s) throw new Error(`Krafteinheit ${r.sourceId} nicht gefunden.`);
+    return r.rpe == null ? null : { source: r.source, sourceId: r.sourceId, day: s.day, rpe: r.rpe, notes: r.notes ?? null, updatedAt: s.updated_at };
+  }
   const w = await db.prepare("SELECT day FROM workouts WHERE source = ? AND source_id = ?").bind(r.source, r.sourceId).first<{ day: string }>();
   if (!w) throw new Error(`Workout ${r.source}/${r.sourceId} nicht gefunden.`);
   if (r.rpe == null) {

@@ -19,9 +19,18 @@ FC.section({
     .pill.decline { background: var(--bad-wash); color: var(--bad-ink); }
     .pill.new, .pill.unknown { background: var(--accent-wash); color: var(--accent); }
     .st-spark { width: 90px; height: 24px; }
+    .st-detailbox { padding: 6px 0 10px; display: grid; gap: 6px; }
+    .st-detailbox p { margin: 0; }
+    .st-desc { display: grid; gap: 8px; padding: 8px 0; }
+    .st-desc-in { flex: 1 1 14em; min-width: 0; }
+    .st-desc-out { display: grid; gap: 6px; }
+    .st-desc-out p { margin: 0; }
+    .st-desc-pick { text-align: left; }
   `,
   mount(root) {
     const { $, el } = FC;
+    FC.state.exerciseDetail = (p) => this.exerciseDetail(p);
+    FC.state.describePanel = (onPick) => this.describePanel(onPick);
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-strength">Krafttraining</h2><span class="muted">1RM nach Epley und Belastung aus Dauer × Anstrengung sind Schätzungen</span></div>
       <div class="grid2">
@@ -35,9 +44,10 @@ FC.section({
           </div>
           <div class="st-rows" id="stRows"></div>
           <datalist id="stEx"></datalist>
-          <div class="row"><button type="button" id="stAdd">+ Übung</button>
+          <div class="row"><button type="button" id="stAdd">+ Übung</button><button type="button" id="stDescBtn" class="linkish" aria-expanded="false">Übung beschreiben</button>
             <label class="row" style="gap:6px; font-size:0.88rem;"><input type="checkbox" id="stSaveTpl"> als Vorlage speichern</label>
             <input id="stTplName" type="text" placeholder="Name der Vorlage" maxlength="80" hidden style="max-width:14em"></div>
+          <div id="stDesc" hidden></div>
           <div class="row"><button type="submit" class="primary" id="stSave" disabled>Speichern</button><span id="stMsg" class="muted" role="status"></span></div>
         </form>
         <div class="panel"><h3>Volumen je Muskelgruppe</h3><p class="muted" id="stVolWeek" style="margin:0 0 8px"></p><div class="st-vol" id="stVol"><div class="empty">Noch keine Krafteinheiten.</div></div>
@@ -73,6 +83,19 @@ FC.section({
     const resetRows = (list) => { $("stRows").replaceChildren(); (list?.length ? list : [{}, {}, {}]).forEach(addRow); };
     resetRows();
     $("stAdd").onclick = () => addRow();
+    // Übung beschreiben (#327): Vorschlag füllt die erste leere Zeile.
+    $("stDescBtn").onclick = () => {
+      const box = $("stDesc"), open = box.hidden;
+      box.hidden = !open; $("stDescBtn").setAttribute("aria-expanded", String(open));
+      if (!open) return;
+      box.replaceChildren(this.describePanel((name) => {
+        const empty = [...$("stRows").querySelectorAll(".ex")].find((i) => !i.value.trim());
+        if (empty) empty.value = name; else addRow({ name });
+        box.hidden = true; $("stDescBtn").setAttribute("aria-expanded", "false");
+        $("stMsg").textContent = `„${name}“ übernommen.`;
+      }));
+      box.querySelector("input")?.focus();
+    };
     $("stSaveTpl").onchange = (e) => { $("stTplName").hidden = !e.target.checked; if (e.target.checked) $("stTplName").focus(); };
 
     $("stTpl").onchange = async (e) => {
@@ -125,6 +148,7 @@ FC.section({
     });
 
     let data = null;
+    const openEx = new Set();
     const show = () => {
       if (!data) return;
       const { de, fmtDay, fmtDayLong, spark, cssVar } = FC;
@@ -156,14 +180,28 @@ FC.section({
       for (const p of data.progress) {
         const last = p.history.at(-1);
         const sp = spark(p.history.slice(-12).map((h) => h.e1rmKg), cssVar("--accent")); sp.classList.add("st-spark");
-        tb.append(el("tr", {},
-          el("td", { text: p.name }),
+        // Verlauf und Prognose je Übung (#328): Antippen öffnet das Diagramm unter der Zeile.
+        const nameBtn = el("button", { type: "button", class: "linkish", text: p.name, "aria-expanded": "false", "aria-label": `Verlauf und Prognose für ${p.name}` });
+        // Offene Übungen bleiben beim Neuzeichnen offen.
+        const openDetail = (tr) => {
+          tr.after(el("tr", { class: "st-detail" }, el("td", { colspan: 7, class: "l" }, FC.state.exerciseDetail(p))));
+          nameBtn.setAttribute("aria-expanded", "true");
+        };
+        nameBtn.onclick = () => {
+          const tr = nameBtn.closest("tr");
+          if (tr.nextElementSibling?.classList.contains("st-detail")) { tr.nextElementSibling.remove(); nameBtn.setAttribute("aria-expanded", "false"); openEx.delete(p.exercise); return; }
+          openEx.add(p.exercise); openDetail(tr);
+        };
+        const row = el("tr", {},
+          el("td", {}, nameBtn),
           el("td", { "data-k": "Einheiten", text: de(p.sessions) }),
           el("td", { "data-k": "Letzter Top-Satz", text: last ? `${last.topSet.reps} × ${de(last.topSet.weightKg, last.topSet.weightKg % 1 ? 1 : 0)} kg (${fmtDay(last.day)})` : "–" }),
           el("td", { "data-k": "Geschätztes 1RM", text: p.bestE1rmKg == null ? "–" : `${de(p.bestE1rmKg, 1)} kg` }),
           el("td", { "data-k": "4 Wochen", text: p.change4wPct == null ? "–" : `${p.change4wPct > 0 ? "+" : ""}${de(p.change4wPct, 1)} %` }),
           el("td", { "data-k": "Verlauf" }, sp),
-          el("td", { "data-k": "Status" }, el("span", { class: `pill ${p.status}`, text: STATUS[p.status] }))));
+          el("td", { "data-k": "Status" }, el("span", { class: `pill ${p.status}`, text: STATUS[p.status] })));
+        tb.append(row);
+        if (openEx.has(p.exercise)) openDetail(row);
       }
 
       // Kraft pro kg (#203): grobe Stufen als Orientierung.
@@ -188,9 +226,15 @@ FC.section({
           return `${x.exerciseName} ${sets.length}×${top.reps}${top.weightKg ? ` @ ${de(top.weightKg, top.weightKg % 1 ? 1 : 0)} kg` : ""}`;
         });
         const meta = [s.durationMin ? `${de(s.durationMin)} min` : null, s.rpe ? `Anstrengung ${de(s.rpe, s.rpe % 1 ? 1 : 0)}` : null, s.load != null ? `Belastung ${de(s.load)}` : null].filter(Boolean).join(" · ");
-        list.append(el("div", { class: "row", style: "justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line)" },
+        const tplBtn = el("button", { type: "button", class: "linkish", text: "Als Vorlage speichern", "aria-expanded": "false" });
+        const row = el("div", { class: "row", style: "justify-content:space-between; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line)" },
           el("div", {}, el("b", { text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }), el("div", { class: "muted", text: ex.join(", ") })),
-          el("span", { class: "muted", text: meta })));
+          el("span", { class: "muted" }, meta, meta ? " · " : "", tplBtn));
+        tplBtn.onclick = () => {
+          if (row.nextElementSibling?.classList.contains("st-tplrow")) { row.nextElementSibling.remove(); tplBtn.setAttribute("aria-expanded", "false"); return; }
+          row.after(this.tplForm(s, () => tplBtn.setAttribute("aria-expanded", "false"))); tplBtn.setAttribute("aria-expanded", "true");
+        };
+        list.append(row);
       }
       $("stNotes").textContent = (data.coachNotes ?? []).map((n) => n.text).join(" ");
     };
@@ -201,6 +245,86 @@ FC.section({
     };
     this.load = load;
     this.show = show;
+  },
+  /** Übung in eigenen Worten beschreiben (#327): bis zu 3 Vorschläge aus dem Katalog oder eine eigene Übung. */
+  describePanel(onPick) {
+    const { el } = FC;
+    const txt = el("input", { type: "text", maxlength: 300, class: "st-desc-in", placeholder: "z. B. am Kabel sitzend von oben zur Brust ziehen", "aria-label": "Übung beschreiben: Gerät, Bewegung, Muskel" });
+    const go = el("button", { type: "button", text: "Vorschlagen" });
+    const out = el("div", { class: "st-desc-out", role: "status" });
+    const run = async () => {
+      const text = txt.value.trim();
+      if (text.length < 3) { out.replaceChildren(el("span", { class: "muted", text: "Bitte kurz beschreiben: Gerät, Bewegung, Muskel." })); return; }
+      go.disabled = true; out.replaceChildren(el("span", { class: "muted", text: "Suche …" }));
+      try {
+        const r = await FC.call("describe_exercise", { text });
+        const picks = r.suggestions.map((s) => {
+          const b = el("button", { type: "button", class: "st-desc-pick" }, el("b", { text: s.name }), el("span", { class: "muted", text: ` · ${s.muscles.join(", ")}` }));
+          b.onclick = () => onPick(s.name);
+          return b;
+        });
+        const own = el("input", { type: "text", maxlength: 80, "aria-label": "Name der eigenen Übung" }); own.value = r.custom?.name ?? "";
+        const ownB = el("button", { type: "button", class: "linkish", text: "Als eigene Übung anlegen" });
+        ownB.onclick = () => { const n = own.value.trim(); if (n) onPick(n); else own.focus(); };
+        out.replaceChildren(...picks, el("p", { class: "fine muted", text: r.note }), el("div", { class: "row", style: "gap:6px" }, own, ownB));
+      } catch (err) { out.replaceChildren(el("span", { class: "muted", text: FC.errText(err) })); }
+      finally { go.disabled = false; }
+    };
+    go.onclick = run;
+    txt.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); run(); } };
+    return el("div", { class: "st-desc" }, el("div", { class: "row", style: "gap:6px" }, txt, go), out);
+  },
+  /** Diagramm geschätztes 1RM je Einheit plus gestrichelte Prognose und Text (#328); nutzt auch der Gym-Modus. */
+  exerciseDetail(p) {
+    const { el, de, cssVar, fmtDayLong } = FC, f = p.forecast;
+    const box = el("div", { class: "chart st-chart" });
+    const fc = f?.available ? f.points : [];
+    const last = p.history.at(-1);
+    const days = [...p.history.map((h) => ({ day: h.day, e1: h.e1rmKg, top: h.topSet, fc: h === last && fc.length ? h.e1rmKg : null })), ...fc.map((x) => ({ day: x.day, e1: null, top: null, fc: x.e1rmKg }))];
+    const kg = (v) => `${de(v, v % 1 ? 1 : 0)} kg`;
+    const wrap = el("div", { class: "st-detailbox" }, box,
+      el("p", { class: "chart-cap", text: f ? f.text : "Noch keine Prognose verfügbar." }),
+      el("p", { class: "fine muted", text: `${p.sessions} ${p.sessions === 1 ? "Einheit" : "Einheiten"}. Linie: bestes geschätztes Maximum (1RM nach Epley) je Einheit${fc.length ? ", gestrichelt: Prognose (Schätzung)" : ""}.` }));
+    requestAnimationFrame(() => FC.chart(box, {
+      days,
+      series: [
+        { label: "Geschätztes 1RM", color: cssVar("--accent"), kind: "line", dots: true, value: (x) => x.e1, fmt: kg },
+        ...(fc.length ? [{ label: "Prognose (Schätzung)", color: cssVar("--ink-3"), kind: "line", dash: "5 4", value: (x) => x.fc, fmt: kg }] : []),
+      ],
+      tipTitle: (x) => `${fmtDayLong(x.day)}${x.top ? ` · ${x.top.reps} × ${kg(x.top.weightKg)}` : x.e1 == null ? " · Prognose" : ""}`,
+      height: 170,
+      aria: `Verlauf des geschätzten Maximums für ${p.name}${fc.length ? " mit Prognose" : ""}`,
+    }));
+    return wrap;
+  },
+  /** Vorlage aus einer gespeicherten Einheit (#319): je Übung Satzzahl und bester Satz (schwerster). */
+  templateFrom(session) {
+    const by = new Map();
+    for (const x of session.sets) { if (!by.has(x.exercise)) by.set(x.exercise, []); by.get(x.exercise).push(x); }
+    return [...by.entries()].map(([exercise, sets]) => {
+      const top = sets.reduce((a, b) => (b.weightKg > a.weightKg ? b : a));
+      return { exercise, sets: Math.min(20, sets.length), reps: Math.min(100, Math.max(1, Math.round(top.reps))), weightKg: top.weightKg ?? 0 };
+    });
+  },
+  tplForm(session, closed) {
+    const { el } = FC;
+    const name = el("input", { type: "text", maxlength: 80, placeholder: "Name der Vorlage", "aria-label": "Name der Vorlage" });
+    name.value = session.name ?? "";
+    const out = el("span", { class: "muted", role: "status" });
+    const ok = el("button", { type: "button", class: "primary", text: "Speichern" });
+    const box = el("div", { class: "row st-tplrow", style: "gap:8px; padding:6px 0; border-bottom:1px solid var(--line)" }, name, ok, out);
+    ok.onclick = async () => {
+      const n = name.value.trim();
+      if (!n) { out.textContent = "Bitte einen Namen eingeben."; name.focus(); return; }
+      ok.disabled = true; out.textContent = "Speichere …";
+      try {
+        await FC.call("save_strength_template", { name: n, exercises: this.templateFrom(session) });
+        out.textContent = `Vorlage „${n}“ gespeichert.`;
+        await FC.state.mcp?.invalidate(FC.SERVER, "get_strength").catch(() => {});
+        setTimeout(() => { box.remove(); closed?.(); this.load?.(true); }, 1500);
+      } catch (err) { out.textContent = FC.errText(err); ok.disabled = false; }
+    };
+    return box;
   },
   ready() { this.load?.(false); },
   render() { this.show?.(); },

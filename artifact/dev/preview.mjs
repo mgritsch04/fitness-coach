@@ -67,8 +67,8 @@ const payloads = {
     return { today: t, range: { from: d(-83), to: t },
       sessions: [{ id: "s2", day: t, name: "Beine & Brust", durationMin: 60, rpe: 8, load: 70, sets: sq }, { id: "s1", day: d(-4), name: null, durationMin: 45, rpe: 6.5, load: 38, sets: sq.slice(2) }],
       weeks: [{ week: wk, sessions: 2, sets: 4, tonnageKg: 2740, muscles: [{ muscle: "quads", label: "Oberschenkel vorne", sets: 2, tonnageKg: 1000 }, { muscle: "chest", label: "Brust", sets: 2, tonnageKg: 1160 }, { muscle: "glutes", label: "Gesäß", sets: 1, tonnageKg: 0 }, { muscle: "triceps", label: "Trizeps", sets: 1, tonnageKg: 0 }] }],
-      progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress" },
-        { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau" }],
+      progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress", forecast: { available: true, reason: null, weeks: 8, currentKg: 116.7, perWeekKg: 1.2, points: [1, 2, 3, 4, 5, 6, 7, 8].map((k) => ({ day: d(7 * k), e1rmKg: Math.round((116.7 + 1.2 * k) * 10) / 10 })), targetKg: 126.3, target: { reps: 5, weightKg: 107.5 }, text: "Bei gleichem Tempo in 8 Wochen etwa 126,3 kg geschätztes Maximum (jetzt ≈ 116,7 kg), das wären 5 × 107,5 kg. Schätzung aus dem Trend der letzten 12 Wochen." } },
+        { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau", forecast: { available: false, reason: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen).", weeks: 8, currentKg: null, perWeekKg: null, points: [], targetKg: null, target: null, text: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen)." } }],
       repRecords: [{ exercise: "bench_press", name: "Bankdrücken", marks: [{ kg: 72.5, reps: 8, day: d(-4) }] }, { exercise: "dumbbell_bench_press", name: "Kurzhantel-Bankdrücken", marks: [{ kg: 32, reps: 6, day: d(-11) }, { kg: 28, reps: 8, day: d(-11) }] }],
       standards: { available: true, weightKg: 75, note: "Grobe Richtwerte für trainierte Erwachsene, keine Norm.", text: "", exercises: [{ exercise: "back_squat", name: "Kniebeuge", e1rmKg: 116.7, perKg: 1.56, level: "Stark", next: { level: "Sehr stark", e1rmKg: 150 }, day: t }, { exercise: "bench_press", name: "Bankdrücken", e1rmKg: 91.8, perKg: 1.22, level: "Stark", next: { level: "Sehr stark", e1rmKg: 113 }, day: d(-4) }] },
       templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", sets: 3, reps: 5, weightKg: 100 }] }],
@@ -76,7 +76,9 @@ const payloads = {
       note: "1RM und Belastung sind Schätzungen." }; },
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
-  save_strength_template: (i) => i,
+  save_strength_template: (i) => { window.__tplSaved = i; return i; },
+  set_training_prefs: (i) => { window.__prefsSaved = i; return i; },
+  describe_exercise: (i) => (/reifen/i.test(i.text) ? { query: i.text, suggestions: [], custom: { name: "Reifen umwerfen" }, note: "Keine passende Übung im Katalog gefunden. Du kannst sie als eigene Übung anlegen." } : { query: i.text, suggestions: [{ exercise: "lat_pulldown", name: "Latziehen", muscles: ["Rücken", "Bizeps"], match: 100, why: ["kabel"] }, { exercise: "cable_row", name: "Rudern am Kabel", muscles: ["Rücken", "Bizeps"], match: 60, why: ["kabel"] }], custom: { name: "Am Kabel ziehen" }, note: "Vorschläge aus dem Übungskatalog." }),
   get_express_session: (i) => { window.__expressIn = i; return { minutes: i.minutes, fullMin: 52, estimatedMin: 28, fits: true, dropped: ["Bankdrücken"], changes: ["Grundübungen 2 Sätze"], note: "", text: "Gekürzt von etwa 52 auf 28 min: Grundübungen 2 Sätze. Weggelassen: Bankdrücken.",
     exercises: [{ exercise: "back_squat", name: "Kniebeuge", sets: 2, reps: 5, weightKg: 100, unit: "Wdh", restS: 120, superset: null, priority: 1 }, { exercise: "dumbbell_row", name: "Kurzhantelrudern", sets: 2, reps: 10, weightKg: 26, unit: "Wdh", restS: 60, superset: "A", priority: 2 }] }; },
   get_exercise_alternatives: (i) => ({ exercise: "bench_press", name: i.exercise, known: true, pattern: "push", alternatives: [{ exercise: "dumbbell_bench", name: "Kurzhantel-Bankdrücken", startKg: 30, lastDay: null, basis: "history" }], note: "Startgewicht aus deiner letzten Einheit." }),
@@ -194,6 +196,12 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (!at.vis || at.top < -5 || at.top > 200) errors.push(`${name}: Datenstand-Tippen springt nicht zu Datenquellen ${JSON.stringify(at)}`);
   }
   if (tab === "coach") {
+    // Feste Krafttage (#323): zwei Tage wählen und speichern.
+    await p.evaluate(() => { document.getElementById("fixBox").open = true; });
+    await p.selectOption("#fixDays select[data-day='0']", "Beine"); await p.selectOption("#fixDays select[data-day='3']", "Oberkörper");
+    await p.click("#fixSave"); await p.waitForTimeout(200);
+    const fx = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("fixMsg").textContent }));
+    if (JSON.stringify(fx.saved?.fixedStrength) !== JSON.stringify([{ day: 0, focus: "Beine" }, { day: 3, focus: "Oberkörper" }]) || !/2 feste Krafttage/.test(fx.msg)) errors.push(`${name}: Feste Krafttage falsch ${JSON.stringify(fx)}`);
     // Konstanz (#209): 12 Wochenkacheln, 3 erreicht, laufende Woche markiert.
     const cs = await p.evaluate(() => ({ vis: !document.getElementById("sec-consistency")?.hidden, n: document.querySelectorAll("#csWeeks .cs-w").length, met: document.querySelectorAll("#csWeeks .cs-w.met").length, cur: document.querySelectorAll("#csWeeks .cs-w.current").length, text: document.getElementById("csText")?.textContent ?? "" }));
     if (!cs.vis || cs.n !== 12 || cs.met !== 3 || cs.cur !== 1 || !cs.text.includes("in Folge")) errors.push(`${name}: Konstanz-Karte falsch ${JSON.stringify(cs)}`);
@@ -327,6 +335,11 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (!plan.startsWith("p:")) errors.push(`${name}: Gym-Modus bietet die Krafteinheit aus dem Wochenplan nicht an (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
+    // Verlauf und Prognose im Gym-Modus (#328)
+    await p.click("#gyBody .gy-last button").catch(() => errors.push(`${name}: Gym-Modus ohne „Verlauf“`)); await p.waitForTimeout(200);
+    const gh = await p.evaluate(() => ({ svg: !!document.querySelector("#gyBody .st-chart svg"), t: document.querySelector("#gyBody .st-detailbox .chart-cap")?.textContent ?? "" }));
+    if (!gh.svg || !/in 8 Wochen/.test(gh.t)) errors.push(`${name}: Gym-Verlauf falsch ${JSON.stringify(gh)}`);
+    await p.click("#gyBody .gy-last button"); await p.waitForTimeout(100);
     await p.fill("#gyBody .gy-set input[aria-label$='Gewicht in kg']", "105"); await p.press("#gyBody .gy-set input[aria-label$='Gewicht in kg']", "Tab");
     // Scheibenrechner (#143): 105 kg an der 20-kg-Stange = je Seite 25 + 15 + 2,5.
     const plates = await p.textContent("#gyPlates").catch(() => "");
@@ -339,6 +352,9 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (await p.$("#gyWarm")) errors.push(`${name}: Aufwärmsätze nach dem ersten Satz noch sichtbar`);
     if (!/Neuer Bestwert/.test(await p.textContent("#gyBody .gy-note"))) errors.push(`${name}: Gym-Modus meldet keinen Bestwert`);
     const rest = await p.evaluate(() => !document.getElementById("gyRest").hidden);
+    // Dauer seit letztem Satz (#107)
+    const since = await p.evaluate(() => ({ on: !document.getElementById("gySince")?.hidden, t: document.getElementById("gySinceT")?.textContent ?? "" }));
+    if (!since.on || !/^0:0\d$/.test(since.t)) errors.push(`${name}: „seit letztem Satz“ fehlt ${JSON.stringify(since)}`);
     if (!rest) errors.push(`${name}: Gym-Modus startet keine Pause`);
     // Reserve je Satz (#280): „3+“ macht den nächsten Satz 2,5 % schwerer (Langhantel: 107,5 kg).
     await p.click("#gyBody .gy-rir button:nth-of-type(3)").catch(() => errors.push(`${name}: keine Reserve-Knöpfe nach dem Satz`)); await p.waitForTimeout(100);
@@ -360,10 +376,43 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(7)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
     const saved = await p.evaluate(() => window.__gymSaved);
     if (!(saved?.exercises?.[0]?.sets?.length === 1 && saved.exercises[0].sets[0].rpe === 7 && saved.rpe === 7 && saved.startTime)) errors.push(`${name}: Gym-Modus speichert falsch ${JSON.stringify(saved)}`);
+    // Als Vorlage speichern (#319)
+    if (!(await p.$("#gyTplName"))) errors.push(`${name}: nach dem Speichern fehlt „Als Vorlage speichern“`);
+    else {
+      await p.fill("#gyTplName", "Beine Test"); await p.click("#gyBody .panel .primary"); await p.waitForTimeout(200);
+      const tpl = await p.evaluate(() => ({ t: window.__tplSaved, opt: [...document.querySelectorAll("#gySrc option")].some((o) => o.value === "t:Beine Test") }));
+      if (!(tpl.t?.name === "Beine Test" && tpl.t.exercises?.[0]?.sets === 1 && tpl.opt)) errors.push(`${name}: Vorlage aus Einheit falsch ${JSON.stringify(tpl)}`);
+    }
+    // Krafttraining-Abschnitt: Verlauf und Prognose (#328), Einheit als Vorlage (#319)
+    await p.click("#stProg tbody tr:first-child button").catch(() => errors.push(`${name}: Übung im Krafttraining nicht antippbar`)); await p.waitForTimeout(200);
+    const sp = await p.evaluate(() => ({ svg: !!document.querySelector("#stProg .st-detail svg"), t: document.querySelector("#stProg .st-detail .chart-cap")?.textContent ?? "" }));
+    if (!sp.svg || !/Schätzung/.test(sp.t)) errors.push(`${name}: Übungsverlauf falsch ${JSON.stringify(sp)}`);
+    await p.screenshot({ path: join(out, "phone-strength-forecast.png") });
+    await p.click("#stProg tbody tr.st-detail + tr button").catch(() => {}); await p.waitForTimeout(200);
+    const sp2 = await p.$$eval("#stProg .st-detail .chart-cap", (l) => l.map((x) => x.textContent));
+    if (!sp2.some((t) => /Zu wenig Daten/.test(t))) errors.push(`${name}: Übung ohne Prognose zeigt keinen Hinweis ${JSON.stringify(sp2)}`);
+    window_tpl: {
+      await p.click("#stSessions button.linkish").catch(() => errors.push(`${name}: Einheitenliste ohne „Als Vorlage speichern“`));
+      if (!(await p.$("#stSessions .st-tplrow"))) break window_tpl;
+      await p.fill("#stSessions .st-tplrow input", "Aus Liste"); await p.click("#stSessions .st-tplrow .primary"); await p.waitForTimeout(200);
+      const t = await p.evaluate(() => window.__tplSaved);
+      if (!(t?.name === "Aus Liste" && t.exercises?.length === 2 && t.exercises[0].sets === 2)) errors.push(`${name}: Vorlage aus Einheitenliste falsch ${JSON.stringify(t)}`);
+    }
+    // Übung beschreiben (#327) im Erfassen-Formular
+    await p.click("#stDescBtn"); await p.fill("#stDesc .st-desc-in", "am Kabel von oben ziehen"); await p.click("#stDesc .st-desc button"); await p.waitForTimeout(200);
+    await p.click("#stDesc .st-desc-pick").catch(() => errors.push(`${name}: „Übung beschreiben“ zeigt keine Vorschläge`)); await p.waitForTimeout(100);
+    const dsc = await p.$$eval("#stRows .ex", (l) => l.map((x) => x.value));
+    if (!dsc.includes("Latziehen")) errors.push(`${name}: Vorschlag nicht übernommen ${JSON.stringify(dsc)}`);
     // Express (#281): „Nur 30 min“ kürzt die Einheit über get_express_session.
     await p.selectOption("#gySrc", "s:s2"); await p.selectOption("#gyTime", "30"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     const ex = await p.evaluate(() => ({ min: window.__expressIn?.minutes, n: window.__expressIn?.exercises?.length, cards: [...document.querySelectorAll("#gyBody .gy-ex h3")].map((h) => h.textContent), sets: document.querySelectorAll("#gyBody .gy-ex")[0]?.querySelectorAll(".gy-set").length, ss: document.querySelectorAll("#gyBody .gy-ex")[1]?.querySelector(".gy-exh .muted")?.textContent ?? "", msg: document.getElementById("gyMsg")?.textContent ?? "" }));
     if (ex.min !== 30 || ex.n !== 2 || ex.cards.join("|") !== "Kniebeuge|Kurzhantelrudern" || ex.sets !== 2 || !/Supersatz A/.test(ex.ss) || !/Gekürzt/.test(ex.msg)) errors.push(`${name}: Express-Einheit falsch ${JSON.stringify(ex)}`);
+    // Übung beschreiben im Gym-Modus (#327): Unbekanntes als eigene Übung
+    await p.click("#gyBody .gy-row .linkish:text('Übung beschreiben')").catch(() => errors.push(`${name}: Gym-Modus ohne „Übung beschreiben“`)); await p.waitForTimeout(100);
+    await p.fill("#gyBody .st-desc-in", "Reifen umwerfen draußen"); await p.click("#gyBody .st-desc > .row button"); await p.waitForTimeout(200);
+    await p.click("#gyBody .st-desc-out .linkish").catch(() => errors.push(`${name}: keine eigene Übung anlegbar`)); await p.waitForTimeout(100);
+    const own = await p.$$eval("#gyBody .gy-ex h3", (l) => l.map((h) => h.textContent));
+    if (own.at(-1) !== "Reifen umwerfen") errors.push(`${name}: eigene Übung nicht angelegt ${JSON.stringify(own)}`);
   }
   if (name === "desktop-light") {
     // Favoriten (#291): Stern an „Trittfrequenz“ heftet sie oben auf „Heute“ an, Sprung, nach Neuladen gemerkt, lösen.

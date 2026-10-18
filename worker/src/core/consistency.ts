@@ -65,8 +65,10 @@ const median = (xs: number[]) => {
 
 export function consistencyTarget(
   completed: { strength: number; rides: number }[],
-  prefs: { strengthPerWeek?: number | null; ridesPerWeek?: number | null },
+  prefs: { strengthPerWeek?: number | null; ridesPerWeek?: number | null; fixedStrength?: unknown[] | null },
 ): ConsistencyTarget {
+  // Fester Wochenplan (#323) gibt die Zahl der Krafteinheiten vor.
+  if (prefs.fixedStrength?.length && prefs.strengthPerWeek == null) prefs = { ...prefs, strengthPerWeek: prefs.fixedStrength.length };
   // Schätzung aus den letzten 8 abgeschlossenen Wochen; mindestens 1, damit eine leere Woche nie „erreicht“ ist.
   const recent = completed.slice(-8);
   const est = (k: "strength" | "rides") => Math.max(1, Math.round(median(recent.map((w) => w[k]))));

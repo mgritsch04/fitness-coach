@@ -138,7 +138,8 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     hrZones: hrZoneReport(workouts, viewFrom, today),
     workouts: workouts
       .filter((w) => w.day >= viewFrom)
-      .map((w) => ({
+      .map((w) => ({ w, rpe: rpeBy.get(`${w.source}:${w.source_id}`) ?? w.strengthRpe ?? null }))
+      .map(({ w, rpe }) => ({
         day: w.day,
         start: w.start_time,
         sport: w.sport,
@@ -146,8 +147,9 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
         source: w.source,
         durationMin: Math.round((w.duration_s ?? 0) / 60),
         sourceId: w.source_id,
-        rpe: rpeBy.get(`${w.source}:${w.source_id}`) ?? null,
-        sessionRpe: rpeBy.has(`${w.source}:${w.source_id}`) ? sessionRpe(Math.round((w.duration_s ?? 0) / 60), rpeBy.get(`${w.source}:${w.source_id}`)!) : null,
+        // Workout-RPE (save_workout_rpe) vor der Anstrengung aus dem Gym-Modus (#320).
+        rpe,
+        sessionRpe: rpe != null ? sessionRpe(Math.round((w.duration_s ?? 0) / 60), rpe) : null,
         distanceKm: w.distance_m != null ? Number((w.distance_m / 1000).toFixed(2)) : null,
         energyKj: w.energy_kj != null ? Math.round(w.energy_kj) : null,
         avgHr: w.avg_hr,
