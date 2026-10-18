@@ -97,6 +97,18 @@ describe("Körperwerte-Werkzeuge", () => {
     expect(await readLatestBody(db)).toMatchObject({ weight_kg: 78, max_hr: 191 });
   });
 
+  it("frühere Werte nachtragen (#30): viele Tage auf einmal, letzter Wert je Tag zählt", async () => {
+    const { call } = tools();
+    const today = todayIn("Europe/Berlin");
+    const entries = Array.from({ length: 150 }, (_, i) => ({ day: addDays(today, -200 + i), weightKg: 80 - i * 0.01 }));
+    entries.push({ day: entries[0].day, weightKg: 81 });
+    const r = await call("log_weight", { entries });
+    expect(r.value.saved).toEqual({ count: 150, from: addDays(today, -200), to: addDays(today, -51) });
+    expect(r.value.points.find((p: { day: string }) => p.day === addDays(today, -200)).weightKg).toBe(81);
+    expect((await call("log_weight", { entries: [{ day: addDays(today, 1), weightKg: 80 }] })).error).toBe(true);
+    expect((await call("log_weight", {})).error).toBe(true);
+  });
+
   it("nur eigene Einträge: Gewicht trotzdem vorhanden", async () => {
     const { db, call } = tools();
     expect(await readLatestBody(db)).toBeNull();

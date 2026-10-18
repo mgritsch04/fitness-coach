@@ -1,4 +1,5 @@
 // Körperwerte (#30) aus get_body_history: Gewichtsverlauf mit 7-Tage-Mittel, W/kg, Ziel und eigener Eintrag (log_weight).
+// Frühere Werte nachtragen: Zeilen „Datum Gewicht“ einfügen oder eine CSV-Datei wählen (z. B. Export der Waage); gelesen wird nur im Browser.
 FC.section({
   id: "body",
   tab: "verlauf",
@@ -8,7 +9,11 @@ FC.section({
     .bd-stats div { display: grid; gap: 2px; } .bd-stats b { font-family: var(--font-display); font-size: 1.3rem; }
     .bd-log { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 10px; }
     .bd-log label { display: grid; gap: 4px; font-size: 0.88rem; color: var(--ink-2); }
-    .bd-log input { width: 8em; }`,
+    .bd-log input { width: 8em; }
+    .bd-past { margin-top: 12px; }
+    .bd-past summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+    .bd-past textarea { width: 100%; min-height: 7em; font: inherit; margin-top: 8px; }
+    .bd-past .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }`,
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-body">Gewicht</h2><span class="muted" id="bdRange"></span></div>
@@ -17,7 +22,13 @@ FC.section({
         <form class="bd-log" id="bdForm" autocomplete="off">
           <label for="bdKg">Gewicht heute (kg)<input id="bdKg" type="number" min="30" max="250" step="0.1" inputmode="decimal" required></label>
           <button type="submit" class="primary" id="bdSave">Eintragen</button><span class="muted" id="bdMsg" role="status"></span>
-        </form></div>`;
+        </form>
+        <details class="bd-past" id="bdPast"><summary>Frühere Werte nachtragen</summary>
+          <label for="bdLines" class="muted">Je Zeile ein Tag mit Gewicht, z. B. „2026-09-01 82,4“ oder „01.09.2026;82,4“. Eine CSV-Datei (z. B. Export deiner Waage) geht auch; sie wird nur hier im Browser gelesen.</label>
+          <textarea id="bdLines" spellcheck="false" placeholder="2026-09-01 82,4&#10;02.09.2026;82,1"></textarea>
+          <div class="row"><input type="file" id="bdFile" accept=".csv,.txt,text/csv,text/plain" aria-label="CSV-Datei mit Gewichten wählen">
+            <button type="button" class="primary" id="bdPastSave">Nachtragen</button><span class="muted" id="bdPastMsg" role="status"></span></div>
+        </details></div>`;
     FC.$("bdForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const { $ } = FC, kg = Number($("bdKg").value.replace(",", "."));
@@ -31,7 +42,46 @@ FC.section({
       finally { $("bdSave").disabled = false; }
     });
   },
-  ready() { this.load(); FC.onRange(() => this.load()); },
+  ready() {
+    this.load(); FC.onRange(() => this.load());
+    const { $ } = FC;
+    const count = () => { const r = this.parse($("bdLines").value); $("bdPastMsg").textContent = $("bdLines").value.trim() ? `${r.entries.length} Werte erkannt${r.skipped ? `, ${r.skipped} Zeilen übersprungen` : ""}.` : ""; return r; };
+    $("bdLines").oninput = count;
+    $("bdFile").onchange = async (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 2_000_000) { $("bdPastMsg").textContent = "Datei zu groß (höchstens 2 MB)."; return; } $("bdLines").value = await f.text(); count(); };
+    $("bdPastSave").onclick = async () => {
+      const r = count();
+      if (!r.entries.length) { $("bdPastMsg").textContent = "Keine Werte erkannt. Format: Datum und Gewicht je Zeile."; return; }
+      if (r.entries.length > 730) { $("bdPastMsg").textContent = "Höchstens 730 Tage auf einmal."; return; }
+      $("bdPastSave").disabled = true; $("bdPastMsg").textContent = "Speichere …";
+      try {
+        this.rep = await FC.call("log_weight", { entries: r.entries });
+        const s = this.rep.saved;
+        $("bdPastMsg").textContent = `${s.count} Tage nachgetragen (${FC.fmtDay(s.from)} bis ${FC.fmtDay(s.to)}). Für ältere Tage den Zeitraum oben größer stellen.`;
+        $("bdLines").value = ""; $("bdFile").value = "";
+        this.show(); this.load(); FC.invalidate();
+      } catch (err) { $("bdPastMsg").textContent = err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err); }
+      finally { $("bdPastSave").disabled = false; }
+    };
+  },
+  /** Zeilen „Datum Gewicht“ lesen: Datum als JJJJ-MM-TT oder TT.MM.JJJJ, Gewicht 30–250 kg mit Komma oder Punkt; Kopfzeilen werden übersprungen. */
+  parse(text) {
+    const entries = [], today = FC.state.data?.today ?? new Date().toISOString().slice(0, 10);
+    let skipped = 0;
+    for (const raw of String(text).split(/\r?\n/)) {
+      const line = raw.trim(); if (!line) continue;
+      let day = null, rest = line;
+      const iso = line.match(/(\d{4})-(\d{1,2})-(\d{1,2})/), de = line.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+      if (iso) { day = `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`; rest = line.replace(iso[0], " "); }
+      else if (de) { const y = de[3].length === 2 ? `20${de[3]}` : de[3]; day = `${y}-${de[2].padStart(2, "0")}-${de[1].padStart(2, "0")}`; rest = line.replace(de[0], " "); }
+      // Uhrzeit nach dem Datum nicht als Gewicht lesen.
+      rest = rest.replace(/\d{1,2}:\d{2}(:\d{2})?/g, " ");
+      const m = rest.match(/(?:^|[^\d])(\d{2,3}(?:[.,]\d{1,2})?)(?![\d])/);
+      const kg = m ? Number(m[1].replace(",", ".")) : NaN;
+      const ok = day && !isNaN(Date.parse(day + "T00:00:00Z")) && new Date(day + "T00:00:00Z").toISOString().slice(0, 10) === day && day <= today && kg >= 30 && kg <= 250;
+      if (ok) entries.push({ day, weightKg: Math.round(kg * 100) / 100 }); else skipped++;
+    }
+    return { entries, skipped };
+  },
   load() {
     this.stop?.();
     this.stop = FC.watch("get_body_history", { days: Math.max(30, FC.state.range) }, (data, err) => { this.rep = err ? { error: FC.errText(err) } : data; this.show(); });

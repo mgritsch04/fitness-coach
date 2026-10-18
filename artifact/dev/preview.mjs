@@ -53,7 +53,7 @@ const payloads = {
   list_bike_workouts: (i) => { const m = window.__MOCK__.list_bike_workouts; return { ...m, items: m.items.filter((x) => (!i?.category || x.category === i.category) && (!i?.maxMin || x.durationMin <= i.maxMin)) }; },
   get_ride_weather: () => window.__MOCK__.get_ride_weather,
   set_weather_location: (i) => ({ location: { name: i.name, lat: 47.1, lon: 15.4 } }),
-  log_weight: (i) => ({ saved: { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
+  log_weight: (i) => ((window.__weightIn = i), { saved: i.entries ? { count: i.entries.length, from: i.entries[0].day, to: i.entries.at(-1).day } : { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
   export_csv: (i) => ({ fileName: "fitness-" + i.dataset + ".csv", rows: 2, csv: "day;value\\n2026-03-30;1\\n2026-03-31;2\\n" }),
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
@@ -394,6 +394,15 @@ for (const [name, vp, scheme, tab] of shots) {
     if (at.dlg || at.tab !== "training" || at.folded || Math.abs(at.top) > 60 || !at.cad) errors.push(`${name}: Suche springt falsch ${JSON.stringify(at)}`);
     await p.screenshot({ path: join(out, `${name}-search.png`) });
     await p.click("#tabbar [data-tab=" + (tab ?? "heute") + "]").catch(() => {}); await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(200);
+  }
+  if (tab === "verlauf") {
+    // Gewicht nachtragen (#30): eingefügte Zeilen werden erkannt und als entries gespeichert.
+    await p.evaluate(() => { FC.goTo("body"); }); await p.waitForTimeout(400);
+    await p.evaluate(() => { document.getElementById("bdPast").open = true; });
+    await p.fill("#bdLines", "Datum;Gewicht\n2026-03-01 82,4\n02.03.2026;82,1");
+    await p.click("#bdPastSave"); await p.waitForTimeout(300);
+    const w = await p.evaluate(() => ({ in: window.__weightIn, msg: document.getElementById("bdPastMsg").textContent }));
+    if (JSON.stringify(w.in?.entries) !== JSON.stringify([{ day: "2026-03-01", weightKg: 82.4 }, { day: "2026-03-02", weightKg: 82.1 }]) || !/2 Tage nachgetragen/.test(w.msg)) errors.push(`${name}: Gewicht nachtragen falsch ${JSON.stringify(w)}`);
   }
   if (name === "desktop-light") {
     // Reiter am PC (#322): Leiste oben, nur Abschnitte des offenen Reiters, nach Neuladen derselbe Reiter.

@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { addDays, DEFAULT_TIMEZONE, todayIn } from "./core/analysis";
 import { analysisContext } from "./core/analytics";
-import { bodyReport, deleteManualWeight, EXPORT_COLUMNS, readBodyHistory, readExport, saveManualWeight, toCsv, type ExportDataset } from "./core/body";
+import { bodyReport, deleteManualWeight, EXPORT_COLUMNS, readBodyHistory, readExport, saveManualWeight, saveManualWeights, toCsv, type ExportDataset } from "./core/body";
 import { readGoals } from "./core/goals";
 import { readSettings } from "./core/settings";
 import type { Env } from "./env";
@@ -44,12 +44,29 @@ export function registerBodyTools(server: McpServer, env: Env) {
   server.registerTool(
     "log_weight",
     {
-      description: "Trägt das eigene Gewicht für einen Tag ein (ersetzt einen früheren eigenen Eintrag am selben Tag). Hat Vorrang vor dem WHOOP-Wert.",
-      inputSchema: { weightKg: z.number().min(30).max(250), day: DAY.optional().describe("Standard heute") },
+      description:
+        "Trägt das eigene Gewicht für einen Tag ein (ersetzt einen früheren eigenen Eintrag am selben Tag). Hat Vorrang vor dem WHOOP-Wert. " +
+        "Frühere Werte nachtragen (#30): entries mit bis zu 730 Einträgen {day, weightKg} auf einmal.",
+      inputSchema: {
+        weightKg: z.number().min(30).max(250).optional(),
+        day: DAY.optional().describe("Standard heute"),
+        entries: z.array(z.object({ day: DAY, weightKg: z.number().min(30).max(250) })).min(1).max(730).optional().describe("mehrere Tage nachtragen"),
+      },
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
-    async ({ weightKg, day }) => {
+    async ({ weightKg, day, entries }) => {
       const t = await today();
+      if (entries) {
+        const future = entries.filter((e) => e.day > t).map((e) => e.day);
+        if (future.length) return fail("future_day", `Datum in der Zukunft: ${future.slice(0, 3).join(", ")}.`);
+        // Je Tag zählt der letzte Eintrag der Liste.
+        const byDay = new Map(entries.map((e) => [e.day, Number(e.weightKg.toFixed(2))]));
+        await saveManualWeights(db, [...byDay].map(([d, kg]) => ({ day: d, weightKg: kg })));
+        const days = [...byDay.keys()].sort();
+        const span = Math.ceil((Date.parse(t) - Date.parse(days[0])) / 86_400_000) + 1;
+        return json({ saved: { count: byDay.size, from: days[0], to: days.at(-1) }, ...(await report(Math.min(730, Math.max(90, span)))) });
+      }
+      if (weightKg == null) return fail("missing_weight", "weightKg oder entries angeben.");
       const d = day ?? t;
       if (d > t) return fail("future_day", "Das Datum liegt in der Zukunft.");
       await saveManualWeight(db, d, Number(weightKg.toFixed(2)));
