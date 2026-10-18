@@ -87,6 +87,27 @@ describe("Wochenplan", () => {
     }
   });
 
+  it("übernimmt feste Krafttage unverändert und plant Rad drumherum (#323)", () => {
+    const fixedStrength = [{ day: 0, focus: "Beine" }, { day: 3, focus: "Oberkörper" }];
+    for (const hours of [4, 6, 8, 10]) {
+      const plan = buildWeekPlan(input({ goals: [goal({ targetDate: addDays(MONDAY, 50) })], prefs: { ...DEFAULT_PREFS, weeklyHours: hours, strengthPerWeek: 4, restDays: [0], fixedStrength } }));
+      const strengthDays = plan.days.map((d, i) => (d.strength ? i : -1)).filter((i) => i >= 0);
+      expect(strengthDays, `${hours} h`).toEqual([0, 3]);
+      expect(plan.days[0].strength?.focus).toBe("Beine");
+      expect(plan.days[3].strength?.focus).toBe("Oberkörper");
+      expect(plan.days[0].type).not.toBe("rest"); // fester Krafttag geht vor festem Ruhetag
+      // Keine harte Radeinheit und kein Langtag direkt neben dem Beintag (Sonntag davor, Dienstag danach).
+      for (const i of [1, 6]) expect(isHard(plan.days[i].type) || plan.days[i].type === "long", `${hours} h, Tag ${i}`).toBe(false);
+      expect(plan.notes.join(" ")).toMatch(/festen Tagen: Montag \(Beine\), Donnerstag \(Oberkörper\)/);
+    }
+  });
+
+  it("ohne feste Tage verteilt der Coach die Kraft wie bisher", () => {
+    const a = buildWeekPlan(input({ prefs: { ...DEFAULT_PREFS, weeklyHours: 6, strengthPerWeek: 2 } }));
+    const b = buildWeekPlan(input({ prefs: { ...DEFAULT_PREFS, weeklyHours: 6, strengthPerWeek: 2, fixedStrength: [] } }));
+    expect(b.days).toEqual(a.days);
+  });
+
   it("plant ohne Lastdaten nach der Zeit und nennt Watt-Bereiche", () => {
     const plan = buildWeekPlan(input({ ctl: 0, tsb: null, prefs: { ...DEFAULT_PREFS, weeklyHours: 5 } }));
     expect(plan.notes.join(" ")).toContain("wenig Belastungsdaten");

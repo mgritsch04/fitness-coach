@@ -23,6 +23,8 @@ FC.section({
     .goalform { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .goalform input, .goalform select { min-width: 0; }
     .goalform input[type=text] { flex: 1 1 160px; }
+    .fixdays { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; margin-bottom: 8px; }
+    .fixdays label { display: grid; gap: 2px; font-size: 13px; }
     .verdict { padding: 8px 10px; border-radius: 10px; background: var(--band, rgba(127,127,127,.12)); }
     @media (max-width: 640px) { .wplan { grid-template-columns: 1fr; } .wplan .pd { grid-template-columns: 3.4em 1fr; column-gap: 8px; } .wplan .pd .wd { grid-row: 1 / span 3; flex-direction: column; justify-content: flex-start; } }
   `,
@@ -41,6 +43,12 @@ FC.section({
         </div>
         <p class="muted" id="planMsg" hidden></p>
         <ul class="fine" id="planNotes"></ul>
+        <details id="fixBox">
+          <summary>Feste Krafttage (eigener Wochenplan)</summary>
+          <p class="fine muted" style="margin:6px 0">Trag ein, an welchen Tagen du fix Kraft machst. Der Plan übernimmt sie unverändert, der Coach plant nur Rad und Ruhe drumherum und legt keine harten Radeinheiten direkt neben Beintage.</p>
+          <div class="fixdays" id="fixDays"></div>
+          <div class="coach-actions"><button type="button" id="fixSave">Feste Tage speichern</button><span class="muted" id="fixMsg" role="status"></span></div>
+        </details>
       </div>
       <div class="sec-head"><h2>Ziele</h2><span class="muted">Ein A-Ziel mit Datum steuert die Phasen des Plans.</span></div>
       <div class="panel" style="display:grid; gap:12px;">
@@ -62,6 +70,7 @@ FC.section({
     $("planAccept").onclick = () => this.save({ accept: true }, "Plan gespeichert.");
     $("planReset").onclick = () => this.save({ reset: true }, "Gespeicherten Plan verworfen, es gilt wieder der Vorschlag.");
     $("planAdapt").onclick = () => this.adapt();
+    $("fixSave").onclick = () => this.saveFixed();
     $("goalForm").addEventListener("submit", (e) => { e.preventDefault(); this.addGoal(); });
     // Coach-Bereich bekommt Plan, Ziele und Tagebuch als zusätzliche Daten für Claude.
     const prevExtras = FC.state.coachExtras;
@@ -85,6 +94,7 @@ FC.section({
     this.root.hidden = !t;
     if (!t) return;
     const w = t.thisWeek, cmp = w.comparison;
+    this.renderFixed(t.prefs);
     $("planPhase").textContent = `${w.phaseLabel}${w.stored ? (w.plan.source === "coach" ? " · von Claude angepasst" : " · gespeichert") : " · Vorschlag"}`;
     const fToday = (t.fueling?.days ?? []).find((f) => f.day === d.today);
     $("planToday").textContent = t.today.text + (fToday && fToday.short !== "nur Wasser" ? ` Verpflegung: ${fToday.short}.` : "");
@@ -143,6 +153,34 @@ FC.section({
     }
     this.renderProjection(t.projection);
     this.busy(false);
+  },
+  // Fester Wochenplan Kraft (#323): je Wochentag frei oder eine Kraft-Art.
+  FIX_OPTIONS: ["", "Beine", "Oberkörper", "Oberkörper (Zug)", "Oberkörper (Druck)", "Ganzkörper", "Rumpf + Mobility"],
+  renderFixed(prefs) {
+    const { $, el } = FC, box = $("fixDays");
+    if (box.contains(document.activeElement)) return;
+    const cur = new Map((prefs?.fixedStrength ?? []).map((f) => [f.day, f.focus]));
+    const names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+    box.replaceChildren(...names.map((n, i) => {
+      const sel = el("select", { "data-day": String(i), "aria-label": `${n}: feste Krafteinheit` },
+        ...this.FIX_OPTIONS.map((o) => el("option", { value: o, text: o ? `Kraft: ${o}` : "nicht fix" })));
+      const v = cur.get(i) ?? "";
+      if (v && !this.FIX_OPTIONS.includes(v)) sel.append(el("option", { value: v, text: `Kraft: ${v}` }));
+      sel.value = v;
+      return el("label", {}, el("span", { text: n }), sel);
+    }));
+  },
+  async saveFixed() {
+    const { $ } = FC, msg = $("fixMsg");
+    const fixedStrength = [...$("fixDays").querySelectorAll("select")].filter((s) => s.value).map((s) => ({ day: Number(s.dataset.day), focus: s.value }));
+    $("fixSave").disabled = true; msg.textContent = "Speichere …";
+    try {
+      await FC.call("set_training_prefs", { fixedStrength: fixedStrength.length ? fixedStrength : null });
+      const stored = FC.state.data?.training?.thisWeek?.stored;
+      msg.textContent = `Gespeichert${fixedStrength.length ? `: ${fixedStrength.length} feste Krafttage` : ", der Coach verteilt die Kraft wieder selbst"}.${stored ? " Diese Woche gilt noch dein gespeicherter Plan; „Zurück zum Vorschlag“ übernimmt die festen Tage." : ""}`;
+      await FC.reload();
+    } catch (e) { msg.textContent = FC.errText(e); }
+    finally { $("fixSave").disabled = false; }
   },
   rerender(d) { if (d?.training) this.renderProjection(d.training.projection); },
   renderProjection(p) {

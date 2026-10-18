@@ -95,6 +95,12 @@ export function registerCoachTools(server: McpServer, env: Env) {
     strengthMin: z.number().int().min(15).max(120).nullable().optional().describe("Dauer einer Krafteinheit in min (null = wie in den letzten Wochen)"),
     strengthPhase: z.enum(["build", "maintain", "race"]).nullable().optional().describe("Saisonphase Kraft: build = Aufbau, maintain = Erhalt, race = Wettkampf (null = automatisch)"),
     ridesPerWeek: z.number().int().min(0).max(14).nullable().optional().describe("Radeinheiten pro Woche als Ziel für die Serien (null = wie in den letzten Wochen)"),
+    fixedStrength: z
+      .array(z.object({ day: z.number().int().min(0).max(6), focus: z.string().min(1).max(60), durationMin: z.number().int().min(15).max(150).nullable().optional() }))
+      .max(7)
+      .nullable()
+      .optional()
+      .describe("Fester Wochenplan Kraft: je Eintrag Wochentag (0 = Montag) und Art, z. B. Beine oder Oberkörper. Der Plan übernimmt diese Tage unverändert und plant nur Rad und Ruhe drumherum; null oder [] = Coach verteilt die Kraft."),
   };
 
   server.registerTool(
