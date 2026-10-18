@@ -14,6 +14,7 @@ FC.section({
               <span class="pill" id="readyPill">Bereitschaft</span>
               <h2 id="readyHead">Daten werden geladen</h2>
               <p id="readySug">Sobald der Connector antwortet, steht hier die Empfehlung für heute.</p>
+              <p id="readyRide" hidden></p>
             </div>
           </div>
           <div class="target" id="readyTarget"></div>
@@ -41,6 +42,9 @@ FC.section({
     const pill = $("readyPill"); pill.className = `pill ${c.readiness}`; pill.textContent = `Bereitschaft ${c.score}/100 · ${READY[c.readiness]}`;
     $("readyHead").textContent = c.headline;
     $("readySug").textContent = c.suggestion;
+    // Ruhetag (#324): locker ausfahren ja oder nein.
+    const rr = $("readyRide"); rr.hidden = !c.restRide;
+    if (c.restRide) rr.replaceChildren(el("b", { text: c.restRide.verdict === "spin" ? "Locker ausfahren: ja. " : "Locker ausfahren: heute nicht. " }), document.createTextNode(c.restRide.text), el("span", { class: "muted", text: ` ${c.restRide.disclaimer}` }));
     const tp = d.days.at(-1);
     const t = $("readyTarget"); t.replaceChildren();
     if (c.targetLoad) t.append(el("span", {}, "Ziel heute ", el("b", { text: c.targetLoad.max ? `${c.targetLoad.min}–${c.targetLoad.max}` : "0" }), " Belastungspunkte (Schätzung)"));

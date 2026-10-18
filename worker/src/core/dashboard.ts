@@ -17,6 +17,7 @@ import {
   type WorkoutRow,
 } from "./analysis";
 import { coachAdvice } from "./coach";
+import { restRideAdvice } from "./rest-ride";
 import { trainingOverview } from "./training";
 import { zoneTargets } from "./zone-targets";
 import { applyFeedback, feedbackAdjust, readFeedback } from "./feedback";
@@ -106,6 +107,8 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   // Wiedereinstieg nach Krankheit oder Pause (return-to-training.ts, #201): deckelt die Empfehlung stufenweise.
   const comeback = returnToTraining(series, journal, today);
   const coach = applyReturn(applyFeedback(applyJournal(applyHrvTrend(applyWarning(baseCoach, warning), hrvSignal), journalToday), fbAdjust), comeback);
+  // Ruhetag (#324): locker ausfahren ja oder nein, nach allen Deckeln oben.
+  coach.restRide = restRideAdvice({ coach, series, today, rhrTrend: trends.rhr, sleepNeedH: settings.sleepNeedH, warning, comeback, journalToday });
   const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
