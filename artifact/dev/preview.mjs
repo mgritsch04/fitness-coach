@@ -104,7 +104,7 @@ const mcp = {
   async invalidate() {},
   async listTools() { return { servers: [], fileArgs: true }; },
 };
-const sample = async (input, o = {}) => { if (o.tools) { const t = o.tools.find((x) => x.name === "krafttraining"); window.__toolResult = t ? String(await t.execute({ wochen: 4 }, { signal: new AbortController().signal })).length : -1; if (!window.__toolBad) { window.__toolBad = []; for (const x of o.tools) { try { if (String(await x.execute({}, { signal: new AbortController().signal })).length < 20) window.__toolBad.push(x.name + ": leer"); } catch (e) { window.__toolBad.push(x.name + ": " + e.message); } } window.__toolCount = o.tools.length; } } const text = "**Heute normales Training.** Deine Erholung ist gelb und die HRV liegt im Normalbereich.\\n- 45–60 min Grundlage auf dem Rad\\n- danach 10 min Mobility"; o.onText?.({ text, delta: text }); return { text, truncated: false }; };
+const sample = async (input, o = {}) => { if (window.__failSample) { const code = window.__failSample; window.__failSample = null; throw { code, message: "Testfehler" }; } if (o.tools && window.__failTools) { window.__failTools = false; throw { code: "tools_unavailable", message: "Testfehler" }; } if (o.tools) { const t = o.tools.find((x) => x.name === "krafttraining"); window.__toolResult = t ? String(await t.execute({ wochen: 4 }, { signal: new AbortController().signal })).length : -1; if (!window.__toolBad) { window.__toolBad = []; for (const x of o.tools) { try { if (String(await x.execute({}, { signal: new AbortController().signal })).length < 20) window.__toolBad.push(x.name + ": leer"); } catch (e) { window.__toolBad.push(x.name + ": " + e.message); } } window.__toolCount = o.tools.length; } } const text = "**Heute normales Training.** Deine Erholung ist gelb und die HRV liegt im Normalbereich.\\n- 45–60 min Grundlage auf dem Rad\\n- danach 10 min Mobility"; o.onText?.({ text, delta: text }); return { text, truncated: false }; };
 sample.limits = async () => ({ tools: {} });
 sample.json = async () => ({ hinweis: "Beispielplan.", tage: [{ tag: "2026-03-31", einheit: "Rad locker", dauerMin: 60, intensitaet: "locker", belastung: 45, ziel: "Grundlage" }] });
 const downloads = { async save(f) { const b = f.data instanceof Blob ? f.data : new Blob([f.data]); const u = new Uint8Array(await b.arrayBuffer()); window.__saved = { filename: f.filename, text: await b.text(), size: u.length, b64: u.length < 3e6 ? btoa(Array.from(u, (x) => String.fromCharCode(x)).join("")) : "" }; } };
@@ -516,6 +516,13 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.reload(); await p.waitForTimeout(800);
     const kept = await p.$$eval("#chat .q", (q) => q.length);
     if (kept !== 2) errors.push(`${name}: Coach-Chat nach Neuladen ${kept} statt 2 Fragen`);
+    // Werkzeuge abgelehnt: einmal ohne Werkzeuge neu fragen; sonst Meldung mit Fehlercode (#338).
+    await p.evaluate(() => { window.__failTools = true; }); await p.fill("#askInput", "Wie war die Woche?"); await p.click("#askBtn"); await p.waitForTimeout(400);
+    const retry = await p.evaluate(() => [document.querySelector("#chat .a:last-child")?.innerText ?? "", window.__failTools]);
+    if (!retry[0].includes("normales Training") || retry[1]) errors.push(`${name}: Coach fragt nach abgelehnten Werkzeugen nicht ohne neu (${JSON.stringify(retry)})`);
+    await p.evaluate(() => { window.__failSample = "upstream_error"; }); await p.fill("#askInput", "Und morgen?"); await p.click("#askBtn"); await p.waitForTimeout(400);
+    const errMsg = await p.evaluate(() => document.querySelector("#chat .a:last-child")?.innerText ?? "");
+    if (!errMsg.includes("kurz gestört") || !errMsg.includes("Fehlercode: upstream_error")) errors.push(`${name}: Coach-Fehlermeldung ohne Code (${errMsg})`);
   }
   const sw = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (sw > 0) errors.push(`${name}: horizontal overflow ${sw}px`);

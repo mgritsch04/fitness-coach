@@ -196,8 +196,13 @@
     tool_error: "Der Server hat einen Fehler gemeldet.",
   };
   const errText = (e) => (ERR[e?.code] ?? "Die Anfrage ist fehlgeschlagen.") + (e?.code === "tool_error" && e.message ? ` (${String(e.message).slice(0, 200)})` : "");
-  const SAMPLE_ERR = { not_granted: "Der Coach ist für diese Seite nicht freigegeben.", sampling_disabled: "Claude ist für dein Konto hier nicht verfügbar.", rate_limited: "Gerade zu viele Anfragen oder dein Limit ist erreicht. Bitte später noch einmal.", session_expired: "Bitte melde dich in claude.ai neu an.", refused: "Dazu kann der Coach nichts sagen. Formuliere die Frage anders.", invalid_json: "Die Antwort kam nicht im erwarteten Format. Bitte noch einmal versuchen.", prompt_too_large: "Zu viele Daten für eine Anfrage." };
-  const sampleErrText = (e) => SAMPLE_ERR[e?.code] ?? "Der Coach ist gerade nicht erreichbar. Bitte später noch einmal.";
+  const SAMPLE_ERR = { not_granted: "Der Coach ist für diese Seite nicht freigegeben.", sampling_disabled: "Claude ist für dein Konto hier nicht verfügbar.", rate_limited: "Gerade zu viele Anfragen oder dein Limit ist erreicht. Bitte später noch einmal.", session_expired: "Bitte melde dich in claude.ai neu an.", refused: "Dazu kann der Coach nichts sagen. Formuliere die Frage anders.", invalid_json: "Die Antwort kam nicht im erwarteten Format. Bitte noch einmal versuchen.", prompt_too_large: "Zu viele Daten für eine Anfrage.", upstream_error: "Claude ist gerade kurz gestört. Bitte gleich noch einmal versuchen.", empty_completion: "Der Coach hat keine Antwort geschrieben. Bitte die Frage einfacher stellen.", tools_unavailable: "Der Coach kann hier keine Zusatzdaten abrufen. Bitte noch einmal fragen." };
+  // Fehlercode immer mit anzeigen und protokollieren, damit die Ursache erkennbar ist (#338).
+  const sampleErrText = (e) => {
+    const code = e?.code ? String(e.code) : "unbekannt";
+    console.warn("Coach-Fehler", code, e?.message ?? e);
+    return `${SAMPLE_ERR[code] ?? "Der Coach ist gerade nicht erreichbar. Bitte später noch einmal."} (Fehlercode: ${code})`;
+  };
 
   /** Ein Werkzeug des Connectors aufrufen (Aktionen). Liefert die JSON-Antwort, wirft McpError. */
   async function call(tool, input = {}, opts = { cache: false }) {
