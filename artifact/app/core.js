@@ -322,7 +322,7 @@
   const saveLayout = () => {
     layout.updatedAt = new Date().toISOString();
     storeLocal();
-    if (layoutMode === "all") { clearTimeout(pushT); pushT = setTimeout(pushLayout, 600); }
+    if (layoutMode === "all" && !single) { clearTimeout(pushT); pushT = setTimeout(pushLayout, 600); }
   };
   async function pushLayout() {
     if (!state.mcp) return;
@@ -333,7 +333,7 @@
   }
   /** Gemeinsame Anordnung vom Worker übernehmen (oder die eigene hochladen, wenn dort noch keine liegt). */
   function syncLayout(remote) {
-    if (layoutMode !== "all") return;
+    if (layoutMode !== "all" || single) return;
     const custom = layout.hidden.size || Object.keys(layout.order).length || !layout.deskTabs;
     if (!remote) { if (!layoutSynced && custom) pushLayout(); layoutSynced = true; return; }
     if (!layoutSynced && layout.updatedAt && remote.updatedAt && layout.updatedAt > remote.updatedAt) { layoutSynced = true; pushLayout(); return; }
@@ -366,7 +366,9 @@
   // Mit Reitern laden Abschnitte ihre eigenen Werkzeuge erst, wenn ihr Reiter offen ist (#69); am Handy immer,
   // am Rechner standardmäßig auch (#322), außer „alles untereinander“ ist gewählt.
   const phone = window.matchMedia?.("(max-width: 640px)");
-  const tabsOn = () => !!phone?.matches || layout.deskTabs;
+  // Einzelseite (Gym-Seite, #321): ein Bereich, keine Reiter und keine gemeinsame Anordnung.
+  const single = document.documentElement.dataset.page === "single";
+  const tabsOn = () => !single && (!!phone?.matches || layout.deskTabs);
   const wanted = (s) => (!tabsOn() || (s.tab ?? "mehr") === tab) && !folded(s);
   // Handy: lange Tabs einklappbar (#188). Offen sind die ersten zwei Abschnitte und was man selbst aufklappt;
   // eingeklappte zeigen nur ihre Überschrift als Leiste und laden ihre Daten erst beim Aufklappen.
@@ -455,7 +457,7 @@
     tab = id;
     try { localStorage.setItem("fc-tab", id); } catch {}
     for (const s of sections) $(`sec-${s.id}`)?.classList.toggle("on", (s.tab ?? "mehr") === id);
-    for (const b of $("tabbar").children) b.setAttribute("aria-current", b.dataset.tab === id ? "page" : "false");
+    for (const b of $("tabbar")?.children ?? []) b.setAttribute("aria-current", b.dataset.tab === id ? "page" : "false");
     if (scroll) window.scrollTo({ top: 0 });
     applyFolds();
     readyWanted();
@@ -498,9 +500,12 @@
     }
     // Leiste in den Seitenfluss unter die Kopfzeile: am PC oben (sticky), am Handy weiter unten fixiert.
     $("app").insertBefore(bar, $("banner"));
-    document.body.classList.add("tabs");
-    applyDeskTabs();
-    showTab(tab);
+    if (single) { bar.remove(); document.body.classList.add("single"); readyWanted(); }
+    else {
+      document.body.classList.add("tabs");
+      applyDeskTabs();
+      showTab(tab);
+    }
     let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(rerender, 120); }).observe(root);
     const claude = window.claude;
     if (!claude?.use) { banner("Diese Seite funktioniert nur in claude.ai mit dem Connector „Fitness Coach“."); document.body.classList.add("no-connector"); return; }

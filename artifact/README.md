@@ -13,6 +13,9 @@ Die Oberfläche des Fitness Coach als Claude-Artefakt:
 ## Veröffentlichen
 Mit dem Artifact-Werkzeug `dashboard.html` auf dieselbe URL veröffentlichen, `root` = `artifact/`, und in `files` `app/core.js` sowie jede Datei unter `sections/` angeben (neue Abschnitte nicht vergessen). Kommt ein neues Connector-Werkzeug dazu, die `capabilities` vollständig neu angeben (Liste der Werkzeuge erweitern).
 
+## Gym-Seite (#321)
+`gym.html` ist eine schlanke Einzelseite nur fürs Krafttraining (Gym-Modus, Vorlagen, Übungsverlauf) mit denselben Daten wie das Dashboard. Sie wird aus `dashboard.html` erzeugt: `node artifact/dev/build-gym.mjs` (nach jeder Änderung an `dashboard.html`; die Vorschau meldet eine veraltete `gym.html`). Veröffentlichen als eigenes Artefakt: `gym.html` mit `root` = `artifact/`, in `files` `app/core.js`, `sections/gym.js` und `sections/strength.js`, gleiche `capabilities` (Connector „Fitness Coach“).
+
 ## Vorschau mit synthetischen Daten
 ```bash
 cd worker && npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json && cd ..

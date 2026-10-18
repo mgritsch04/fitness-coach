@@ -8,6 +8,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const out = resolve(process.argv[2] ?? join(here, "out"));
 mkdirSync(out, { recursive: true });
 const page = readFileSync(join(here, "..", "dashboard.html"), "utf8");
+// Gym-Seite (#321) wird aus dashboard.html erzeugt und muss aktuell sein.
+const { buildGym, GYM_SECTIONS } = await import("./build-gym.mjs");
+const gymPage = buildGym(page);
+const gymStale = readFileSync(join(here, "..", "gym.html"), "utf8") !== gymPage;
 const mock = readFileSync(join(here, "mock-dashboard.json"), "utf8");
 const shim = `<script>
 window.__MOCK__ = ${mock};
@@ -103,6 +107,7 @@ window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample
 </script>`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
 writeFileSync(join(out, "preview.html"), html);
+writeFileSync(join(out, "preview-gym.html"), html.replace(page, gymPage));
 for (const d of ["app", "sections"]) cpSync(join(here, "..", d), join(out, d), { recursive: true });
 // Nur die Seite bauen (für die automatischen User-Tests, scripts/usertest/run.mjs), ohne Browser.
 if (process.argv.includes("--build-only")) process.exit(0);
@@ -111,6 +116,7 @@ const pw = await import("playwright").catch(() => import("/opt/node22/lib/node_m
 const chromium = pw.chromium ?? pw.default.chromium;
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
 const errors = [];
+if (gymStale) errors.push("artifact/gym.html ist veraltet: node artifact/dev/build-gym.mjs ausführen (#321)");
 // axe-core ist eine Dev-Abhängigkeit nur für die Vorschau (in der CI per npm install --no-save).
 const axeSrc = await import("node:module").then(({ createRequire }) => readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8")).catch(() => null);
 if (!axeSrc && process.env.CI) errors.push("axe-core fehlt in der CI (#211)");
@@ -119,13 +125,14 @@ const a11y = [];
 // Jede Abschnittsdatei muss in dashboard.html eingetragen sein (sonst fehlt sie nach dem Veröffentlichen).
 for (const f of readdirSync(join(here, "..", "sections"))) if (f.endsWith(".js") && !page.includes(`src="sections/${f}"`)) errors.push(`sections/${f} fehlt in dashboard.html`);
 const shots = [["desktop-light", { width: 1280, height: 900 }, "light"], ["desktop-dark", { width: 1280, height: 900 }, "dark"],
-  ...["heute", "coach", "verlauf", "training", "mehr"].map((t) => [`phone-${t}`, { width: 390, height: 844 }, t === "verlauf" ? "dark" : "light", t])];
-for (const [name, vp, scheme, tab] of shots) {
+  ...["heute", "coach", "verlauf", "training", "mehr"].map((t) => [`phone-${t}`, { width: 390, height: 844 }, t === "verlauf" ? "dark" : "light", t]),
+  ["phone-gympage", { width: 390, height: 844 }, "light", null, "preview-gym.html"], ["desktop-gympage", { width: 1280, height: 900 }, "dark", null, "preview-gym.html"]];
+for (const [name, vp, scheme, tab, file] of shots) {
   const ctx = await browser.newContext({ viewport: vp, colorScheme: scheme, hasTouch: name.startsWith("phone") });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
   p.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
-  await p.goto("file://" + join(out, "preview.html"));
+  await p.goto("file://" + join(out, file ?? "preview.html"));
   await p.waitForTimeout(800);
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
   if (tab === "training") {
@@ -199,6 +206,12 @@ for (const [name, vp, scheme, tab] of shots) {
     if (!/^wochenbilanz-\d{4}-\d{2}-\d{2}\.png$/.test(img?.filename ?? "") || png.length < 20000 || png.subarray(1, 4).toString() !== "PNG" || png.readUInt32BE(16) !== 1080 || png.readUInt32BE(20) !== 1350) errors.push(`${name}: Wochenbilanz-Bild falsch ${img?.filename} ${png.length}`);
     else writeFileSync(join(out, "wochenbilanz.png"), png);
     if (!/gespeichert/.test(await p.locator("#rvMsg").innerText())) errors.push(`${name}: Wochenbilanz ohne Rückmeldung`);
+  }
+  if (file) {
+    // Gym-Seite (#321): nur Gym-Modus und Krafttraining, keine Reiter, beide Abschnitte geladen.
+    const g = await p.evaluate(() => ({ ids: [...document.querySelectorAll("#sections > section")].map((s) => s.id), vis: [...document.querySelectorAll("#sections > section")].filter((s) => s.offsetParent).length, bar: !!document.getElementById("tabbar"), title: document.title, calls: window.__calls ?? [] }));
+    if ([...g.ids].sort().join() !== GYM_SECTIONS.map((s) => `sec-${s}`).sort().join()) errors.push(`${name}: falsche Abschnitte ${JSON.stringify(g.ids)}`);
+    if (g.vis !== GYM_SECTIONS.length || g.bar || g.title !== "Gym Tracker" || !g.calls.includes("get_strength")) errors.push(`${name}: Gym-Seite falsch ${JSON.stringify({ ...g, calls: undefined, strength: g.calls.includes("get_strength") })}`);
   }
   if (tab === "verlauf") {
     // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.
