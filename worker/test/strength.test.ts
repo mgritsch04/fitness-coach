@@ -122,6 +122,14 @@ describe("Belastung", () => {
     expect(out[0]).toMatchObject({ load: 80, method: "srpe" });
   });
 
+  it("merkt die verknüpfte Krafteinheit nur, wenn Sätze eingetragen sind (#331)", () => {
+    const linked = applyStrengthLoads([whoop()], [session("2026-03-10", [set("Kniebeuge", 5, 100)])]);
+    expect(linked[0].strengthSessionId).toBe("s-2026-03-10");
+    expect(applyStrengthLoads([whoop()], [session("2026-03-10", [])])[0].strengthSessionId).toBeUndefined();
+    const manual = applyStrengthLoads([], [session("2026-03-11", [set("Bankdrücken", 8, 60)])]);
+    expect(manual[0]).toMatchObject({ source: "manual", strengthSessionId: "s-2026-03-11" });
+  });
+
   it("lässt die Puls-Schätzung stehen, wenn sie höher ist oder RPE fehlt", () => {
     expect(applyStrengthLoads([whoop({ load: 90 })], [session("2026-03-10", [], { rpe: 5 })])[0]).toMatchObject({ load: 90, method: "hr" });
     expect(applyStrengthLoads([whoop()], [session("2026-03-10", [], { rpe: null })])[0]).toMatchObject({ load: 35, method: "hr" });

@@ -150,6 +150,8 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
         // Workout-RPE (save_workout_rpe) vor der Anstrengung aus dem Gym-Modus (#320).
         rpe,
         sessionRpe: rpe != null ? sessionRpe(Math.round((w.duration_s ?? 0) / 60), rpe) : null,
+        // Krafteinheit mit Sätzen: Workout-Übersicht bietet „Als Vorlage speichern“ an (#331).
+        strengthSessionId: w.strengthSessionId ?? null,
         distanceKm: w.distance_m != null ? Number((w.distance_m / 1000).toFixed(2)) : null,
         energyKj: w.energy_kj != null ? Math.round(w.energy_kj) : null,
         avgHr: w.avg_hr,
