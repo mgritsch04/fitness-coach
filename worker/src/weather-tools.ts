@@ -4,7 +4,7 @@ import { z } from "zod";
 import { addDays, DEFAULT_TIMEZONE, weekStart } from "./core/analysis";
 import { buildDashboard } from "./core/dashboard";
 import { weekView } from "./core/training";
-import { bestWindow, clothingAdvice, FORECAST_URL, GEOCODE_URL, parseForecast, parseGeocode, readLocation, rideAdvice, round1, writeLocation, type WeatherHour, type WeatherLocation } from "./core/weather";
+import { bestWindow, clothingAdvice, FORECAST_URL, GEOCODE_URL, parseForecast, parseGeocodeAll, readLocation, rideAdvice, round1, writeLocation, type WeatherHour, type WeatherLocation } from "./core/weather";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -36,27 +36,34 @@ export function registerWeatherTools(server: McpServer, env: Env, fetchJson: (ur
     "set_weather_location",
     {
       description:
-        "Ort für die Wetter-Empfehlung setzen: name (Ort, z. B. „Graz“) wird über die Open-Meteo-Suche aufgelöst, oder lat/lon direkt. " +
+        "Ort für die Wetter-Empfehlung setzen: name (Ort, z. B. „Graz“) wird über die Open-Meteo-Suche aufgelöst, oder lat/lon direkt (mit name als Anzeigename). " +
+        "Passt der Name zu mehreren Orten, wird nichts gespeichert: die Antwort enthält candidates (Name mit Region und Land, lat, lon); " +
+        "den richtigen Treffer dann mit name, lat und lon dieses Treffers setzen (oder pick=1 für den ersten). " +
         "Gespeichert wird nur auf eine Nachkommastelle gerundet (ca. 10 km). clear=true löscht den Ort.",
       inputSchema: {
         name: z.string().min(2).max(80).optional(),
         lat: z.number().min(-90).max(90).optional(),
         lon: z.number().min(-180).max(180).optional(),
         clear: z.boolean().optional(),
+        pick: z.number().int().min(1).max(5).optional(),
       },
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
-    async ({ name, lat, lon, clear }) => {
+    async ({ name, lat, lon, clear, pick }) => {
       if (clear) return json({ location: await writeLocation(db, null) });
       if (lat != null && lon != null) return json({ location: await writeLocation(db, { name: name ?? `${round1(lat)}, ${round1(lon)}`, lat, lon }) });
       if (!name) return fail("missing_location", "name oder lat und lon angeben.");
-      let loc: WeatherLocation | null;
+      let found: WeatherLocation[];
       try {
-        loc = parseGeocode(await fetchJson(GEOCODE_URL(name)));
+        found = parseGeocodeAll(await fetchJson(GEOCODE_URL(name)));
       } catch (err) {
         return fail("geocode_failed", (err as Error).message);
       }
-      if (!loc) return fail("not_found", `Ort „${name}“ nicht gefunden.`);
+      if (!found.length) return fail("not_found", `Ort „${name}“ nicht gefunden.`);
+      // Mehrdeutig (#325): nicht raten, sondern Auswahl zurückgeben; gespeichert wird erst der gewählte Treffer.
+      const loc = pick ? found[pick - 1] : found.length === 1 ? found[0] : null;
+      if (pick && !loc) return fail("bad_pick", `Es gibt nur ${found.length} Treffer.`);
+      if (!loc) return json({ location: null, candidates: found, message: `„${name}“ passt zu ${found.length} Orten. Bitte den richtigen wählen.` });
       return json({ location: await writeLocation(db, loc) });
     },
   );

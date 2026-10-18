@@ -1,5 +1,6 @@
 // Radwetter (#66): bestes Zeitfenster heute und morgen, Empfehlung draußen oder Rolle (get_ride_weather, set_weather_location).
 // Kleidungsempfehlung (#224) aus clothing: gefühlte Temperatur mit Fahrtwind, Liste und Hinweise.
+// Ortssuche (#325): bei mehreren Treffern Auswahl mit Region und Land; nach dem Speichern frisch laden statt alter Antwort.
 FC.section({
   id: "weather",
   tab: "heute",
@@ -19,6 +20,8 @@ FC.section({
     #sec-weather .linkish { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
     .wx-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
     .wx-form label { display: grid; gap: 4px; font-size: .88rem; color: var(--ink-2); }
+    .wx-picks { flex-basis: 100%; display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .wx-picks button { width: 100%; text-align: left; }
     .wx-cl { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: .92rem; }
     .wx-cl .wx-clh { color: var(--ink-2); }`,
   mount(root) {
@@ -29,33 +32,66 @@ FC.section({
         <label for="wxName">Ort für die Vorhersage<input id="wxName" type="text" maxlength="80" placeholder="z. B. Graz" required></label>
         <button type="submit" class="primary" id="wxSave">Speichern</button><button type="button" id="wxCancel">Abbrechen</button>
         <span class="muted" id="wxMsg" role="status"></span>
+        <ul class="wx-picks" id="wxPicks" aria-label="Gefundene Orte" hidden></ul>
         <p class="chart-cap" style="flex-basis:100%;margin:0">Gespeichert wird nur der Ort, auf etwa 10 km gerundet. Die Vorhersage kommt von Open-Meteo.</p>
       </form>
       <p class="chart-cap" id="wxCap"></p>`;
     const { $ } = FC;
     $("wxForm").onsubmit = (e) => { e.preventDefault(); this.save(); };
-    $("wxCancel").onclick = () => { $("wxForm").hidden = true; };
+    $("wxCancel").onclick = () => { $("wxForm").hidden = true; this.picks([]); };
   },
   ready() { this.subscribe(); },
   subscribe() {
     this.unwatch?.();
-    this.unwatch = FC.watch("get_ride_weather", {}, (p, err) => { this.rep = p ?? { error: err }; if (FC.state.data) this.show(); },
-      { cache: { staleTime: 1_800_000, gcTime: 86_400_000 } });
+    this.unwatch = FC.watch("get_ride_weather", {}, (p, err) => {
+      // Gerade gewechselt: ältere Antwort mit dem alten Ort aus dem Zwischenspeicher nicht mehr anzeigen.
+      if (p && this.want) { if (p.location?.name !== this.want) return; this.want = null; }
+      this.rep = p ?? { error: err }; if (FC.state.data) this.show();
+    },
+      { cache: { staleTime: 300_000, gcTime: 86_400_000 } });
   },
   render() { this.show(); },
   rerender() { if (this.rep) this.show(); },
   toolErr(err) { try { return JSON.parse(err.message); } catch { return { message: String(err?.message ?? "") }; } },
-  async save() {
+  async save(pick) {
     const { $ } = FC, name = $("wxName").value.trim();
-    if (name.length < 2) return;
-    $("wxSave").disabled = true; $("wxMsg").textContent = "Suche …";
+    if (!pick && name.length < 2) return;
+    $("wxSave").disabled = true; $("wxMsg").textContent = pick ? "Speichere …" : "Suche …";
     try {
-      const r = await FC.call("set_weather_location", { name });
+      const r = await FC.call("set_weather_location", pick ?? { name });
+      if (!r.location && r.candidates?.length) {
+        $("wxMsg").textContent = r.message || "Mehrere Orte gefunden, bitte wählen:";
+        this.picks(r.candidates);
+        return;
+      }
+      this.picks([]);
       $("wxMsg").textContent = `Gespeichert: ${r.location.name}`; $("wxForm").hidden = true; $("wxName").value = "";
-      await FC.state.mcp.invalidate(FC.SERVER, "get_ride_weather").catch(() => {});
-      this.rep = null; this.show(); this.subscribe();
+      $("wxLoc").textContent = r.location.name; this.want = r.location.name;
+      await this.refresh();
     } catch (err) { $("wxMsg").textContent = err?.code === "tool_error" ? this.toolErr(err).message : FC.errText(err); }
     finally { $("wxSave").disabled = false; }
+  },
+  /** Trefferliste der Ortssuche; Antippen speichert genau diesen Treffer. */
+  picks(list) {
+    const { $, el } = FC, ul = $("wxPicks");
+    ul.hidden = !list.length;
+    ul.replaceChildren(...list.map((c) => {
+      const b = el("button", { type: "button", text: c.name });
+      b.onclick = () => this.save({ name: c.name, lat: c.lat, lon: c.lon });
+      return el("li", {}, b);
+    }));
+    ul.querySelector("button")?.focus();
+  },
+  /** Nach Ortswechsel neu vom Worker holen (sonst zeigt der Zwischenspeicher kurz den alten Ort). */
+  async refresh() {
+    this.rep = null; this.show();
+    await FC.state.mcp.invalidate(FC.SERVER, "get_ride_weather").catch(() => {});
+    try {
+      const fresh = await FC.state.mcp.callTool(FC.SERVER, "get_ride_weather", {}, { cache: { staleTime: 0, gcTime: 86_400_000, refresh: true } });
+      if (fresh.payload?.location?.name === this.want) this.want = null;
+      this.rep = fresh.payload; this.show();
+    } catch (err) { this.rep = { error: err }; this.show(); }
+    this.subscribe();
   },
   show() {
     const { $, el, cssVar } = FC, r = this.rep, body = $("wxBody");
