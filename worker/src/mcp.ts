@@ -12,6 +12,7 @@ import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
 import { readIndoor, writeIndoor } from "./core/indoor";
+import { readLayout, writeLayout } from "./core/ui-layout";
 import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, indoorOutdoorView, powerCompareView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
@@ -205,6 +206,11 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     sleepNeedH: z.number().min(5).max(11).nullable().optional().describe("Schlafbedarf in Stunden"),
     timezone: z.string().max(60).nullable().optional().describe("IANA-Zeitzone, z. B. Europe/Berlin"),
     indoorOnly: z.boolean().nullable().optional().describe("Winterbetrieb: nur Rolle (true) oder auch draußen (false)"),
+    dashboardLayout: z
+      .object({ hidden: z.array(z.string().max(40)).max(100), order: z.record(z.string().max(40), z.number()), deskTabs: z.boolean().optional() })
+      .nullable()
+      .optional()
+      .describe("Anordnung des Dashboards für alle Geräte (ausgeblendete Bereiche, Reihenfolge, Reiter am PC); null = Standard"),
     indoorUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe("letzter Tag des Winterbetriebs (YYYY-MM-DD), null = ohne Ende"),
   };
 
@@ -221,7 +227,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       inputSchema: settingsShape,
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
-    async ({ indoorOnly, indoorUntil, ...patch }) => {
+    async ({ indoorOnly, indoorUntil, dashboardLayout, ...patch }) => {
       if (patch.timezone) {
         try {
           new Intl.DateTimeFormat("en", { timeZone: patch.timezone });
@@ -230,7 +236,8 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         }
       }
       const indoor = indoorOnly !== undefined || indoorUntil !== undefined ? await writeIndoor(env.DB, { on: indoorOnly, until: indoorUntil }) : await readIndoor(env.DB);
-      return json({ ...(await writeSettings(env.DB, patch)), indoor });
+      const layout = dashboardLayout !== undefined ? await writeLayout(env.DB, dashboardLayout) : await readLayout(env.DB);
+      return json({ ...(await writeSettings(env.DB, patch)), indoor, dashboardLayout: layout });
     },
   );
 

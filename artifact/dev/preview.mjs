@@ -57,7 +57,7 @@ const payloads = {
   export_csv: (i) => ({ fileName: "fitness-" + i.dataset + ".csv", rows: 2, csv: "day;value\\n2026-03-30;1\\n2026-03-31;2\\n" }),
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
-  update_settings: (i) => i,
+  update_settings: (i) => ((window.__settingsIn = i), i),
   get_strength: () => { const t = window.__MOCK__.get_dashboard.today, d = (n) => { const x = new Date(t + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }; const wk = d(-((new Date(t + "T12:00:00Z").getUTCDay() + 6) % 7));
     const sq = [{ exercise: "squat", exerciseName: "Kniebeuge", reps: 5, weightKg: 100 }, { exercise: "squat", exerciseName: "Kniebeuge", reps: 5, weightKg: 100 }, { exercise: "bench_press", exerciseName: "Bankdrücken", reps: 8, weightKg: 72.5 }];
     return { today: t, range: { from: d(-83), to: t },
@@ -76,7 +76,6 @@ const payloads = {
   get_express_session: (i) => { window.__expressIn = i; return { minutes: i.minutes, fullMin: 52, estimatedMin: 28, fits: true, dropped: ["Bankdrücken"], changes: ["Grundübungen 2 Sätze"], note: "", text: "Gekürzt von etwa 52 auf 28 min: Grundübungen 2 Sätze. Weggelassen: Bankdrücken.",
     exercises: [{ exercise: "back_squat", name: "Kniebeuge", sets: 2, reps: 5, weightKg: 100, unit: "Wdh", restS: 120, superset: null, priority: 1 }, { exercise: "dumbbell_row", name: "Kurzhantelrudern", sets: 2, reps: 10, weightKg: 26, unit: "Wdh", restS: 60, superset: "A", priority: 2 }] }; },
   get_exercise_alternatives: (i) => ({ exercise: "bench_press", name: i.exercise, known: true, pattern: "push", alternatives: [{ exercise: "dumbbell_bench", name: "Kurzhantel-Bankdrücken", startKg: 30, lastDay: null, basis: "history" }], note: "Startgewicht aus deiner letzten Einheit." }),
-  update_settings: (i) => i,
   save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
   save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
@@ -397,6 +396,22 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.click("#tabbar [data-tab=" + (tab ?? "heute") + "]").catch(() => {}); await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(200);
   }
   if (name === "desktop-light") {
+    // Reiter am PC (#322): Leiste oben, nur Abschnitte des offenen Reiters, nach Neuladen derselbe Reiter.
+    const dt = await p.evaluate(() => ({ bar: getComputedStyle(document.getElementById("tabbar")).display, vis: [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.offsetParent).map((s) => s.id) }));
+    if (dt.bar === "none" || !dt.vis.includes("sec-today") || dt.vis.includes("sec-cadence") || dt.vis.includes("sec-settings")) errors.push(`${name}: Reiter am PC falsch ${JSON.stringify(dt)}`);
+    await p.click("#tabbar [data-tab=training]"); await p.reload(); await p.waitForTimeout(800);
+    const dt2 = await p.evaluate(() => ({ tab: document.querySelector("#tabbar [aria-current=page]")?.dataset.tab, today: !!document.getElementById("sec-today").offsetParent, cad: !!document.getElementById("sec-cadence").offsetParent }));
+    if (dt2.tab !== "training" || dt2.today || !dt2.cad) errors.push(`${name}: Reiter nach Neuladen falsch ${JSON.stringify(dt2)}`);
+    // Anordnung für alle Geräte (#67): Ausblenden speichert über update_settings; „nur dieses Gerät“ speichert nichts.
+    await p.evaluate(() => FC.layout.setHidden("cadence", true)); await p.waitForTimeout(900);
+    const up = await p.evaluate(() => window.__settingsIn?.dashboardLayout);
+    if (!up?.hidden?.includes("cadence") || up.deskTabs !== true) errors.push(`${name}: Anordnung nicht für alle Geräte gespeichert ${JSON.stringify(up)}`);
+    await p.evaluate(() => { window.__settingsIn = null; FC.layout.setMode("device"); FC.layout.setHidden("cadence", false); }); await p.waitForTimeout(900);
+    if (await p.evaluate(() => window.__settingsIn)) errors.push(`${name}: „nur dieses Gerät“ speichert trotzdem im Worker`);
+    // Alles untereinander (Schalter in „Dashboard anpassen“): dann alle Abschnitte wie bisher.
+    await p.evaluate(() => { FC.layout.setMode("all"); FC.layout.setDeskTabs(false); window.scrollTo(0, 0); }); await p.waitForTimeout(1200);
+    const all = await p.evaluate(() => ({ bar: getComputedStyle(document.getElementById("tabbar")).display, today: !!document.getElementById("sec-today").offsetParent, coach: !!document.getElementById("sec-coach").offsetParent }));
+    if (all.bar !== "none" || !all.today || !all.coach) errors.push(`${name}: „alles untereinander“ falsch ${JSON.stringify(all)}`);
     const stuck = await p.evaluate(() => [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.innerText.includes("Lädt …")).map((s) => s.id));
     if (stuck.length) errors.push(`${name}: noch „Lädt …“ in ${stuck.join(", ")}`);
     await p.click("[data-coach=explain]"); await p.waitForTimeout(300);

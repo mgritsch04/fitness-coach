@@ -19,6 +19,7 @@ import {
 import { coachAdvice } from "./coach";
 import { restRideAdvice } from "./rest-ride";
 import { INDOOR_HINT, indoorState, readIndoor } from "./indoor";
+import { readLayout } from "./ui-layout";
 import { trainingOverview } from "./training";
 import { zoneTargets } from "./zone-targets";
 import { applyFeedback, feedbackAdjust, readFeedback } from "./feedback";
@@ -42,7 +43,7 @@ const BASELINE_DAYS = 35;
 
 export async function buildDashboard(db: D1Database, opts: { days?: number; now?: number } = {}) {
   const days = Math.min(365, Math.max(7, opts.days ?? 90));
-  const [userSettings, indoorMode] = await Promise.all([readSettings(db), readIndoor(db).catch(() => ({ on: false, until: null }))]);
+  const [userSettings, indoorMode, uiLayout] = await Promise.all([readSettings(db), readIndoor(db).catch(() => ({ on: false, until: null })), readLayout(db).catch(() => null)]);
   const today = todayIn(userSettings.timezone ?? "Europe/Berlin", opts.now);
   const viewFrom = addDays(today, -(days - 1));
   const loadFrom = addDays(viewFrom, -LOAD_WARMUP_DAYS);
@@ -123,6 +124,8 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     range: { from: viewFrom, to: today, days },
     settings,
     indoor,
+    /** Gemeinsame Anordnung des Dashboards (#67), null = Standard oder je Gerät. */
+    uiLayout,
     ftpEstimate,
     body: body ? { weightKg: body.weight_kg, heightM: body.height_m } : null,
     coach,
