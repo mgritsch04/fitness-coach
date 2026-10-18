@@ -465,6 +465,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
       return json({
         today: dash.today,
         readiness: dash.coach,
+        indoor: dash.indoor,
         earlyWarning: dash.earlyWarning,
         returnToTraining: dash.returnToTraining,
         sleepTarget: dash.sleepTarget,

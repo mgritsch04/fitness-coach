@@ -11,6 +11,7 @@ import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
+import { readIndoor, writeIndoor } from "./core/indoor";
 import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, indoorOutdoorView, powerCompareView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
@@ -203,22 +204,24 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     thresholdHr: z.number().int().min(100).max(220).nullable().optional().describe("Puls an der Schwelle (LTHR)"),
     sleepNeedH: z.number().min(5).max(11).nullable().optional().describe("Schlafbedarf in Stunden"),
     timezone: z.string().max(60).nullable().optional().describe("IANA-Zeitzone, z. B. Europe/Berlin"),
+    indoorOnly: z.boolean().nullable().optional().describe("Winterbetrieb: nur Rolle (true) oder auch draußen (false)"),
+    indoorUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe("letzter Tag des Winterbetriebs (YYYY-MM-DD), null = ohne Ende"),
   };
 
   server.registerTool(
     "get_settings",
     { description: "Persönliche Einstellungen für die Auswertung (nur die selbst gesetzten Werte).", annotations: { readOnlyHint: true } },
-    async () => json(await readSettings(env.DB)),
+    async () => json({ ...(await readSettings(env.DB)), indoor: await readIndoor(env.DB) }),
   );
 
   server.registerTool(
     "update_settings",
     {
-      description: "Setzt persönliche Einstellungen (FTP, Pulswerte, Schlafbedarf, Zeitzone). null löscht einen Wert, dann wird er wieder aus den Daten geschätzt.",
+      description: "Setzt persönliche Einstellungen (FTP, Pulswerte, Schlafbedarf, Zeitzone, Winterbetrieb „nur Rolle“ mit optionalem Enddatum). null löscht einen Wert, dann wird er wieder aus den Daten geschätzt.",
       inputSchema: settingsShape,
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
-    async (patch) => {
+    async ({ indoorOnly, indoorUntil, ...patch }) => {
       if (patch.timezone) {
         try {
           new Intl.DateTimeFormat("en", { timeZone: patch.timezone });
@@ -226,7 +229,8 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
           return { ...json({ error: "invalid_timezone", message: `Unbekannte Zeitzone: ${patch.timezone}` }), isError: true };
         }
       }
-      return json(await writeSettings(env.DB, patch));
+      const indoor = indoorOnly !== undefined || indoorUntil !== undefined ? await writeIndoor(env.DB, { on: indoorOnly, until: indoorUntil }) : await readIndoor(env.DB);
+      return json({ ...(await writeSettings(env.DB, patch)), indoor });
     },
   );
 

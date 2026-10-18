@@ -5,6 +5,7 @@ import { addDays, DEFAULT_TIMEZONE, weekStart } from "./core/analysis";
 import { buildDashboard } from "./core/dashboard";
 import { weekView } from "./core/training";
 import { bestWindow, clothingAdvice, FORECAST_URL, GEOCODE_URL, parseForecast, parseGeocodeAll, readLocation, rideAdvice, round1, writeLocation, type WeatherHour, type WeatherLocation } from "./core/weather";
+import { indoorState, readIndoor } from "./core/indoor";
 import type { Env } from "./env";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -82,6 +83,8 @@ export function registerWeatherTools(server: McpServer, env: Env, fetchJson: (ur
       if (!loc) return fail("no_location", "Noch kein Ort eingestellt (set_weather_location).");
       const dash = await buildDashboard(db, { days: 56 });
       const tz = dash.settings.timezone ?? DEFAULT_TIMEZONE;
+      // Winterbetrieb (#326): Vorhersage zeigen, aber nicht zum Fahren draußen raten.
+      const indoor = dash.indoor ?? indoorState(await readIndoor(db), dash.today);
       let fc;
       try {
         fc = await forecast(loc, tz);
@@ -100,17 +103,19 @@ export function registerWeatherTools(server: McpServer, env: Env, fetchJson: (ur
         const planned = s && { type: s.type, title: s.title, durationMin: s.durationMin };
         const hours = Math.ceil(Math.max(60, Math.min(360, planned?.durationMin || 120)) / 60);
         const best = bestWindow(fc.hours, day, hours, i === 0 ? now : undefined);
+        let advice = rideAdvice(best, planned, i === 0 ? dash.coach.readiness : null);
+        if (indoor.active && (advice.verdict === "outside" || advice.verdict === "indoor")) advice = { verdict: "indoor", text: "Winterbetrieb: Radeinheiten auf der Rolle (MyWhoosh, ERG-Modus). Ventilator an und genug trinken." };
         out.push({
           day,
           planned,
           best,
-          advice: rideAdvice(best, planned, i === 0 ? dash.coach.readiness : null),
-          // Kleidung (#224) nur, wenn draußen fahren überhaupt in Frage kommt.
-          clothing: best && best.rating !== "schlecht" ? clothingAdvice(best, fc.hours.filter((h) => h.time.startsWith(day))) : null,
+          advice,
+          // Kleidung (#224) nur, wenn draußen fahren überhaupt in Frage kommt (nicht im Winterbetrieb).
+          clothing: !indoor.active && best && best.rating !== "schlecht" ? clothingAdvice(best, fc.hours.filter((h) => h.time.startsWith(day))) : null,
           hours: fc.hours.filter((h) => h.time.startsWith(day)),
         });
       }
-      return json({ location: loc, timezone: tz, fetchedAt: fc.fetchedAt, source: "Open-Meteo (open-meteo.com, CC BY 4.0)", days: out,
+      return json({ location: loc, timezone: tz, indoor, fetchedAt: fc.fetchedAt, source: "Open-Meteo (open-meteo.com, CC BY 4.0)", days: out,
         note: "Bewertung nach Faustregeln für Rennrad (Temperatur, Regen, Wind, Tageslicht); keine Unwetterwarnung." });
     },
   );

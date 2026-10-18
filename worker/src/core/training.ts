@@ -39,6 +39,8 @@ export interface TrainingInputs {
   workouts: { day: string; sport: string | null; durationMin: number; load: number | null; avgHr?: number | null }[];
   settings: Pick<EffectiveSettings, "ftpW" | "thresholdHr" | "maxHr"> & Partial<Pick<EffectiveSettings, "origin">>;
   coach: CoachAdvice;
+  /** Winterbetrieb (#326). */
+  indoor?: { active: boolean } | null;
 }
 
 export interface TodayCheck {
@@ -154,6 +156,7 @@ export function proposePlan(inp: TrainingInputs, week: string, goals: Goal[], pr
     thresholdHr: inp.settings.thresholdHr,
     maxHr: inp.settings.maxHr,
     block: blockWeekFor(inp, block, week),
+    indoor: inp.indoor?.active ?? false,
   });
 }
 

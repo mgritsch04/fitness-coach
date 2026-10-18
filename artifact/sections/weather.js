@@ -113,6 +113,7 @@ FC.section({
     edit.onclick = () => { $("wxForm").hidden = false; $("wxName").focus(); };
     $("wxLoc").replaceChildren(document.createTextNode(`${r.location.name} · `), edit);
     const LABEL = { outside: "draußen", indoor: "Rolle", rest: "Pause", no_ride: "kein Rad" };
+    if (r.indoor?.active) $("wxLoc").append(document.createTextNode(" · Winterbetrieb: nur Rolle"));
     const col = (s) => cssVar(s >= 70 ? "--good" : s >= 45 ? "--warn" : "--bad");
     body.replaceChildren(el("div", { class: "wx-grid" }, ...r.days.map((d, i) => {
       const inWin = (t) => d.best && t >= d.best.start && t < d.best.end;

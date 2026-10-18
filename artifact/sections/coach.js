@@ -88,6 +88,7 @@ Begriffe: Erholung (WHOOP Recovery %), HRV in ms (rMSSD), Ruhepuls, Strain (WHOO
       empfehlungRegelbasiert: { bereitschaft: d.coach.readiness, score: d.coach.score, ueberschrift: d.coach.headline, vorschlag: d.coach.suggestion, ruhetagAusfahren: d.coach.restRide ?? null, zielBelastung: d.coach.targetLoad, gruende: d.coach.reasons.map((r) => r.text), warnungen: d.coach.warnings },
       trends: d.trends,
       einstellungen: { ftpW: d.settings.ftpW, maxPuls: d.settings.maxHr, ruhepuls: d.settings.restingHr, schwellenpuls: d.settings.thresholdHr, schlafbedarfH: d.settings.sleepNeedH },
+      winterbetriebNurRolle: d.indoor?.active ? { aktiv: true, bis: d.indoor.until } : false,
       letzte21Tage: d.days.slice(-21).map(pick),
       wochen: d.weeks.slice(-6),
       workoutsLetzte14Tage: d.workouts.filter((w) => w.day > from).map((w) => ({ tag: w.day, sport: FC.sport(w.sport), min: w.durationMin, pulsAvg: w.avgHr, pulsMax: w.maxHr, np: w.normalizedPowerW, strain: w.strain, belastung: w.load })),
