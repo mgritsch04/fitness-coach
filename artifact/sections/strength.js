@@ -19,9 +19,12 @@ FC.section({
     .pill.decline { background: var(--bad-wash); color: var(--bad-ink); }
     .pill.new, .pill.unknown { background: var(--accent-wash); color: var(--accent); }
     .st-spark { width: 90px; height: 24px; }
+    .st-detailbox { padding: 6px 0 10px; display: grid; gap: 6px; }
+    .st-detailbox p { margin: 0; }
   `,
   mount(root) {
     const { $, el } = FC;
+    FC.state.exerciseDetail = (p) => this.exerciseDetail(p);
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-strength">Krafttraining</h2><span class="muted">1RM nach Epley und Belastung aus Dauer × Anstrengung sind Schätzungen</span></div>
       <div class="grid2">
@@ -125,6 +128,7 @@ FC.section({
     });
 
     let data = null;
+    const openEx = new Set();
     const show = () => {
       if (!data) return;
       const { de, fmtDay, fmtDayLong, spark, cssVar } = FC;
@@ -156,14 +160,28 @@ FC.section({
       for (const p of data.progress) {
         const last = p.history.at(-1);
         const sp = spark(p.history.slice(-12).map((h) => h.e1rmKg), cssVar("--accent")); sp.classList.add("st-spark");
-        tb.append(el("tr", {},
-          el("td", { text: p.name }),
+        // Verlauf und Prognose je Übung (#328): Antippen öffnet das Diagramm unter der Zeile.
+        const nameBtn = el("button", { type: "button", class: "linkish", text: p.name, "aria-expanded": "false", "aria-label": `Verlauf und Prognose für ${p.name}` });
+        // Offene Übungen bleiben beim Neuzeichnen offen.
+        const openDetail = (tr) => {
+          tr.after(el("tr", { class: "st-detail" }, el("td", { colspan: 7, class: "l" }, FC.state.exerciseDetail(p))));
+          nameBtn.setAttribute("aria-expanded", "true");
+        };
+        nameBtn.onclick = () => {
+          const tr = nameBtn.closest("tr");
+          if (tr.nextElementSibling?.classList.contains("st-detail")) { tr.nextElementSibling.remove(); nameBtn.setAttribute("aria-expanded", "false"); openEx.delete(p.exercise); return; }
+          openEx.add(p.exercise); openDetail(tr);
+        };
+        const row = el("tr", {},
+          el("td", {}, nameBtn),
           el("td", { "data-k": "Einheiten", text: de(p.sessions) }),
           el("td", { "data-k": "Letzter Top-Satz", text: last ? `${last.topSet.reps} × ${de(last.topSet.weightKg, last.topSet.weightKg % 1 ? 1 : 0)} kg (${fmtDay(last.day)})` : "–" }),
           el("td", { "data-k": "Geschätztes 1RM", text: p.bestE1rmKg == null ? "–" : `${de(p.bestE1rmKg, 1)} kg` }),
           el("td", { "data-k": "4 Wochen", text: p.change4wPct == null ? "–" : `${p.change4wPct > 0 ? "+" : ""}${de(p.change4wPct, 1)} %` }),
           el("td", { "data-k": "Verlauf" }, sp),
-          el("td", { "data-k": "Status" }, el("span", { class: `pill ${p.status}`, text: STATUS[p.status] }))));
+          el("td", { "data-k": "Status" }, el("span", { class: `pill ${p.status}`, text: STATUS[p.status] })));
+        tb.append(row);
+        if (openEx.has(p.exercise)) openDetail(row);
       }
 
       // Kraft pro kg (#203): grobe Stufen als Orientierung.
@@ -207,6 +225,29 @@ FC.section({
     };
     this.load = load;
     this.show = show;
+  },
+  /** Diagramm geschätztes 1RM je Einheit plus gestrichelte Prognose und Text (#328); nutzt auch der Gym-Modus. */
+  exerciseDetail(p) {
+    const { el, de, cssVar, fmtDayLong } = FC, f = p.forecast;
+    const box = el("div", { class: "chart st-chart" });
+    const fc = f?.available ? f.points : [];
+    const last = p.history.at(-1);
+    const days = [...p.history.map((h) => ({ day: h.day, e1: h.e1rmKg, top: h.topSet, fc: h === last && fc.length ? h.e1rmKg : null })), ...fc.map((x) => ({ day: x.day, e1: null, top: null, fc: x.e1rmKg }))];
+    const kg = (v) => `${de(v, v % 1 ? 1 : 0)} kg`;
+    const wrap = el("div", { class: "st-detailbox" }, box,
+      el("p", { class: "chart-cap", text: f ? f.text : "Noch keine Prognose verfügbar." }),
+      el("p", { class: "fine muted", text: `${p.sessions} ${p.sessions === 1 ? "Einheit" : "Einheiten"}. Linie: bestes geschätztes Maximum (1RM nach Epley) je Einheit${fc.length ? ", gestrichelt: Prognose (Schätzung)" : ""}.` }));
+    requestAnimationFrame(() => FC.chart(box, {
+      days,
+      series: [
+        { label: "Geschätztes 1RM", color: cssVar("--accent"), kind: "line", dots: true, value: (x) => x.e1, fmt: kg },
+        ...(fc.length ? [{ label: "Prognose (Schätzung)", color: cssVar("--ink-3"), kind: "line", dash: "5 4", value: (x) => x.fc, fmt: kg }] : []),
+      ],
+      tipTitle: (x) => `${fmtDayLong(x.day)}${x.top ? ` · ${x.top.reps} × ${kg(x.top.weightKg)}` : x.e1 == null ? " · Prognose" : ""}`,
+      height: 170,
+      aria: `Verlauf des geschätzten Maximums für ${p.name}${fc.length ? " mit Prognose" : ""}`,
+    }));
+    return wrap;
   },
   /** Vorlage aus einer gespeicherten Einheit (#319): je Übung Satzzahl und bester Satz (schwerster). */
   templateFrom(session) {

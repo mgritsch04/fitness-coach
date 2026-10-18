@@ -63,8 +63,8 @@ const payloads = {
     return { today: t, range: { from: d(-83), to: t },
       sessions: [{ id: "s2", day: t, name: "Beine & Brust", durationMin: 60, rpe: 8, load: 70, sets: sq }, { id: "s1", day: d(-4), name: null, durationMin: 45, rpe: 6.5, load: 38, sets: sq.slice(2) }],
       weeks: [{ week: wk, sessions: 2, sets: 4, tonnageKg: 2740, muscles: [{ muscle: "quads", label: "Oberschenkel vorne", sets: 2, tonnageKg: 1000 }, { muscle: "chest", label: "Brust", sets: 2, tonnageKg: 1160 }, { muscle: "glutes", label: "Gesäß", sets: 1, tonnageKg: 0 }, { muscle: "triceps", label: "Trizeps", sets: 1, tonnageKg: 0 }] }],
-      progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress" },
-        { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau" }],
+      progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress", forecast: { available: true, reason: null, weeks: 8, currentKg: 116.7, perWeekKg: 1.2, points: [1, 2, 3, 4, 5, 6, 7, 8].map((k) => ({ day: d(7 * k), e1rmKg: Math.round((116.7 + 1.2 * k) * 10) / 10 })), targetKg: 126.3, target: { reps: 5, weightKg: 107.5 }, text: "Bei gleichem Tempo in 8 Wochen etwa 126,3 kg geschätztes Maximum (jetzt ≈ 116,7 kg), das wären 5 × 107,5 kg. Schätzung aus dem Trend der letzten 12 Wochen." } },
+        { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau", forecast: { available: false, reason: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen).", weeks: 8, currentKg: null, perWeekKg: null, points: [], targetKg: null, target: null, text: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen)." } }],
       repRecords: [{ exercise: "bench_press", name: "Bankdrücken", marks: [{ kg: 72.5, reps: 8, day: d(-4) }] }, { exercise: "dumbbell_bench_press", name: "Kurzhantel-Bankdrücken", marks: [{ kg: 32, reps: 6, day: d(-11) }, { kg: 28, reps: 8, day: d(-11) }] }],
       standards: { available: true, weightKg: 75, note: "Grobe Richtwerte für trainierte Erwachsene, keine Norm.", text: "", exercises: [{ exercise: "back_squat", name: "Kniebeuge", e1rmKg: 116.7, perKg: 1.56, level: "Stark", next: { level: "Sehr stark", e1rmKg: 150 }, day: t }, { exercise: "bench_press", name: "Bankdrücken", e1rmKg: 91.8, perKg: 1.22, level: "Stark", next: { level: "Sehr stark", e1rmKg: 113 }, day: d(-4) }] },
       templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", sets: 3, reps: 5, weightKg: 100 }] }],
@@ -315,6 +315,11 @@ for (const [name, vp, scheme, tab] of shots) {
     if (!plan.startsWith("p:")) errors.push(`${name}: Gym-Modus bietet die Krafteinheit aus dem Wochenplan nicht an (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
+    // Verlauf und Prognose im Gym-Modus (#328)
+    await p.click("#gyBody .gy-last button").catch(() => errors.push(`${name}: Gym-Modus ohne „Verlauf“`)); await p.waitForTimeout(200);
+    const gh = await p.evaluate(() => ({ svg: !!document.querySelector("#gyBody .st-chart svg"), t: document.querySelector("#gyBody .st-detailbox .chart-cap")?.textContent ?? "" }));
+    if (!gh.svg || !/in 8 Wochen/.test(gh.t)) errors.push(`${name}: Gym-Verlauf falsch ${JSON.stringify(gh)}`);
+    await p.click("#gyBody .gy-last button"); await p.waitForTimeout(100);
     await p.fill("#gyBody .gy-set input[aria-label$='Gewicht in kg']", "105"); await p.press("#gyBody .gy-set input[aria-label$='Gewicht in kg']", "Tab");
     // Scheibenrechner (#143): 105 kg an der 20-kg-Stange = je Seite 25 + 15 + 2,5.
     const plates = await p.textContent("#gyPlates").catch(() => "");
@@ -357,6 +362,21 @@ for (const [name, vp, scheme, tab] of shots) {
       await p.fill("#gyTplName", "Beine Test"); await p.click("#gyBody .panel .primary"); await p.waitForTimeout(200);
       const tpl = await p.evaluate(() => ({ t: window.__tplSaved, opt: [...document.querySelectorAll("#gySrc option")].some((o) => o.value === "t:Beine Test") }));
       if (!(tpl.t?.name === "Beine Test" && tpl.t.exercises?.[0]?.sets === 1 && tpl.opt)) errors.push(`${name}: Vorlage aus Einheit falsch ${JSON.stringify(tpl)}`);
+    }
+    // Krafttraining-Abschnitt: Verlauf und Prognose (#328), Einheit als Vorlage (#319)
+    await p.click("#stProg tbody tr:first-child button").catch(() => errors.push(`${name}: Übung im Krafttraining nicht antippbar`)); await p.waitForTimeout(200);
+    const sp = await p.evaluate(() => ({ svg: !!document.querySelector("#stProg .st-detail svg"), t: document.querySelector("#stProg .st-detail .chart-cap")?.textContent ?? "" }));
+    if (!sp.svg || !/Schätzung/.test(sp.t)) errors.push(`${name}: Übungsverlauf falsch ${JSON.stringify(sp)}`);
+    await p.screenshot({ path: join(out, "phone-strength-forecast.png") });
+    await p.click("#stProg tbody tr.st-detail + tr button").catch(() => {}); await p.waitForTimeout(200);
+    const sp2 = await p.$$eval("#stProg .st-detail .chart-cap", (l) => l.map((x) => x.textContent));
+    if (!sp2.some((t) => /Zu wenig Daten/.test(t))) errors.push(`${name}: Übung ohne Prognose zeigt keinen Hinweis ${JSON.stringify(sp2)}`);
+    window_tpl: {
+      await p.click("#stSessions button.linkish").catch(() => errors.push(`${name}: Einheitenliste ohne „Als Vorlage speichern“`));
+      if (!(await p.$("#stSessions .st-tplrow"))) break window_tpl;
+      await p.fill("#stSessions .st-tplrow input", "Aus Liste"); await p.click("#stSessions .st-tplrow .primary"); await p.waitForTimeout(200);
+      const t = await p.evaluate(() => window.__tplSaved);
+      if (!(t?.name === "Aus Liste" && t.exercises?.length === 2 && t.exercises[0].sets === 2)) errors.push(`${name}: Vorlage aus Einheitenliste falsch ${JSON.stringify(t)}`);
     }
     // Express (#281): „Nur 30 min“ kürzt die Einheit über get_express_session.
     await p.selectOption("#gySrc", "s:s2"); await p.selectOption("#gyTime", "30"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);

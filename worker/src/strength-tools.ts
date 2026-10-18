@@ -1,4 +1,5 @@
 // Connector-Werkzeuge fürs Krafttraining (Logik in core/strength.ts).
+import { exerciseForecast } from "./core/exercise-forecast";
 import { rirTrend } from "./core/autoregulation";
 import { repRecords } from "./core/rep-records";
 import { strengthExpress } from "./core/strength-express";
@@ -145,7 +146,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
     {
       description:
         "Krafttraining-Überblick: Einheiten mit Sätzen, Volumen je Muskelgruppe und Woche (Sätze, Tonnage), geschätztes 1RM je Übung im Verlauf " +
-        "mit Status (progress/plateau/decline/new), Kraft pro kg Körpergewicht mit groben Stufen (standards), Reserve je Satz über die letzten 3 Wochen (autoregulation), Wiederholungsrekorde je Gewicht als Bestmarken-Treppe (repRecords), Vorlagen und Hinweise zum Zusammenspiel mit dem Radtraining. 1RM nach Epley (Schätzung).",
+        "mit Status (progress/plateau/decline/new) und Prognose für 8 Wochen (forecast, Schätzung; bei Plateau oder zu wenig Daten available=false), Kraft pro kg Körpergewicht mit groben Stufen (standards), Reserve je Satz über die letzten 3 Wochen (autoregulation), Wiederholungsrekorde je Gewicht als Bestmarken-Treppe (repRecords), Vorlagen und Hinweise zum Zusammenspiel mit dem Radtraining. 1RM nach Epley (Schätzung).",
       inputSchema: { weeks: z.number().int().min(1).max(52).optional().describe("Zeitraum in Wochen, Standard 8") },
       annotations: { readOnlyHint: true },
     },
@@ -159,7 +160,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         range: { from, to: t },
         sessions: inRange.map((s) => ({ ...s, load: srpeLoad(s.durationMin, s.rpe) })),
         weeks: weeklyVolume(inRange),
-        progress: exerciseProgress(all, t),
+        progress: exerciseProgress(all, t).map((p) => ({ ...p, forecast: exerciseForecast(p, t) })),
         deload: strengthDeload(all, t),
         standards: strengthStandards(all, ((await readLatestBody(env.DB).catch(() => null)) as { weight_kg?: number | null } | null)?.weight_kg ?? null, t),
         autoregulation: rirTrend(all, t),

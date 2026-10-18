@@ -215,7 +215,11 @@ FC.section({
         const last = x.name ? this.prog(x.name)?.history?.at(-1) : null;
         if (!last) return null;
         const kg = last.topSet.weightKg ? ` mit ${FC.de(last.topSet.weightKg, last.topSet.weightKg % 1 ? 1 : 0)} kg` : "";
-        return el("div", { class: "muted gy-last", text: `Letztes Mal (${FC.fmtDayLong(last.day)}): ${last.sets} ${last.sets === 1 ? "Satz" : "Sätze"}, bester Satz ${last.topSet.reps}${x.unit === "s" ? " s" : ""}${kg}` });
+        // Verlauf und Prognose (#328) aus dem Krafttraining-Abschnitt.
+        const hist = FC.state.exerciseDetail ? el("button", { type: "button", class: "linkish", text: this.histAt === i ? "Verlauf schließen" : "Verlauf", "aria-expanded": String(this.histAt === i) }) : null;
+        if (hist) hist.onclick = () => { this.histAt = this.histAt === i ? null : i; this.draw(); };
+        return el("div", {}, el("div", { class: "muted gy-last" }, `Letztes Mal (${FC.fmtDayLong(last.day)}): ${last.sets} ${last.sets === 1 ? "Satz" : "Sätze"}, bester Satz ${last.topSet.reps}${x.unit === "s" ? " s" : ""}${kg} `, hist ?? ""),
+          this.histAt === i && hist ? FC.state.exerciseDetail(this.prog(x.name)) : "");
       })(),
       i === st.cur && this.isBar(x.name) ? this.plateRow(x) : null,
       el("div", { class: "gy-head", "aria-hidden": "true" }, el("span", { text: "Satz" }), el("span", { text: x.unit === "s" ? "Sekunden" : "Wdh" }), el("span", { text: "kg" }), el("span", { text: "" })));
