@@ -17,6 +17,9 @@ import {
   type WorkoutRow,
 } from "./analysis";
 import { coachAdvice } from "./coach";
+import { restRideAdvice } from "./rest-ride";
+import { INDOOR_HINT, indoorState, readIndoor } from "./indoor";
+import { readLayout } from "./ui-layout";
 import { trainingOverview } from "./training";
 import { zoneTargets } from "./zone-targets";
 import { applyFeedback, feedbackAdjust, readFeedback } from "./feedback";
@@ -40,7 +43,7 @@ const BASELINE_DAYS = 35;
 
 export async function buildDashboard(db: D1Database, opts: { days?: number; now?: number } = {}) {
   const days = Math.min(365, Math.max(7, opts.days ?? 90));
-  const userSettings = await readSettings(db);
+  const [userSettings, indoorMode, uiLayout] = await Promise.all([readSettings(db), readIndoor(db).catch(() => ({ on: false, until: null })), readLayout(db).catch(() => null)]);
   const today = todayIn(userSettings.timezone ?? "Europe/Berlin", opts.now);
   const viewFrom = addDays(today, -(days - 1));
   const loadFrom = addDays(viewFrom, -LOAD_WARMUP_DAYS);
@@ -106,6 +109,11 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   // Wiedereinstieg nach Krankheit oder Pause (return-to-training.ts, #201): deckelt die Empfehlung stufenweise.
   const comeback = returnToTraining(series, journal, today);
   const coach = applyReturn(applyFeedback(applyJournal(applyHrvTrend(applyWarning(baseCoach, warning), hrvSignal), journalToday), fbAdjust), comeback);
+  // Winterbetrieb (#326): Einheiten auf der Rolle.
+  const indoor = indoorState(indoorMode, today);
+  if (indoor.active && coach.readiness !== "rest") coach.suggestion = `${coach.suggestion} ${INDOOR_HINT}`;
+  // Ruhetag (#324): locker ausfahren ja oder nein, nach allen Deckeln oben.
+  coach.restRide = restRideAdvice({ coach, series, today, rhrTrend: trends.rhr, sleepNeedH: settings.sleepNeedH, warning, comeback, journalToday, indoor: indoor.active });
   const rpeBy = new Map(rpeRows.map((r) => [`${r.source}:${r.sourceId}`, r.rpe]));
   const weeks = weeklySummaries(view, workouts, settings.sleepNeedH);
   const unestimated = workouts.filter((w) => w.day >= viewFrom && w.method === "none").length;
@@ -115,6 +123,9 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
     today,
     range: { from: viewFrom, to: today, days },
     settings,
+    indoor,
+    /** Gemeinsame Anordnung des Dashboards (#67), null = Standard oder je Gerät. */
+    uiLayout,
     ftpEstimate,
     body: body ? { weightKg: body.weight_kg, heightM: body.height_m } : null,
     coach,

@@ -182,6 +182,12 @@ export async function saveManualWeight(db: D1Database, day: string, weightKg: nu
     .run();
 }
 
+/** Mehrere eigene Einträge auf einmal (Nachtragen, #30); in Blöcken, damit D1 nicht zu viele Befehle auf einmal bekommt. */
+export async function saveManualWeights(db: D1Database, list: { day: string; weightKg: number }[]) {
+  const stmt = "INSERT OR REPLACE INTO body_measurements (source, measured_at, height_m, weight_kg, max_hr) VALUES (?, ?, NULL, ?, NULL)";
+  for (let i = 0; i < list.length; i += 100) await db.batch(list.slice(i, i + 100).map((e) => db.prepare(stmt).bind(MANUAL, e.day, e.weightKg)));
+}
+
 /** Löscht nur eigene Einträge; WHOOP-Werte bleiben. */
 export async function deleteManualWeight(db: D1Database, day: string) {
   const found = await db.prepare("SELECT 1 FROM body_measurements WHERE source = ? AND measured_at = ?").bind(MANUAL, day).first();

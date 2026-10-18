@@ -64,17 +64,36 @@ export async function writeLocation(db: D1Database, loc: WeatherLocation | null)
   return v;
 }
 
-export const GEOCODE_URL = (name: string) => `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=de&format=json`;
+export const GEOCODE_URL = (name: string) => `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=8&language=de&format=json`;
 export const FORECAST_URL = (loc: WeatherLocation, tz: string) =>
   `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}` +
   "&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,weather_code,is_day" +
   `&timezone=${encodeURIComponent(tz)}&forecast_days=2&wind_speed_unit=kmh`;
 
-/** Antwort der Geocoding-API → Ort (gerundet) oder null. */
+type GeoResult = { name: string; latitude: number; longitude: number; admin1?: string; country?: string };
+const geoLabel = (r: GeoResult) => [r.name, r.admin1 && r.admin1 !== r.name ? r.admin1 : null, r.country].filter(Boolean).join(", ");
+
+/** Antwort der Geocoding-API → erster Ort (gerundet) oder null. */
 export function parseGeocode(json: unknown): WeatherLocation | null {
-  const r = (json as { results?: { name: string; latitude: number; longitude: number; admin1?: string; country?: string }[] })?.results?.[0];
-  if (!r || typeof r.latitude !== "number") return null;
-  return { name: [r.name, r.admin1 && r.admin1 !== r.name ? r.admin1 : null, r.country].filter(Boolean).join(", "), lat: round1(r.latitude), lon: round1(r.longitude) };
+  return parseGeocodeAll(json)[0] ?? null;
+}
+
+/**
+ * Alle Treffer der Geocoding-API (#325), gerundet und ohne doppelte Einträge (gleicher Name samt Region und Land
+ * oder gleiche gerundete Koordinate). Höchstens `max` Treffer, in der Reihenfolge der API.
+ */
+export function parseGeocodeAll(json: unknown, max = 5): WeatherLocation[] {
+  const list = (json as { results?: GeoResult[] })?.results;
+  if (!Array.isArray(list)) return [];
+  const out: WeatherLocation[] = [];
+  for (const r of list) {
+    if (!r || typeof r.latitude !== "number" || typeof r.longitude !== "number") continue;
+    const loc = { name: geoLabel(r), lat: round1(r.latitude), lon: round1(r.longitude) };
+    if (out.some((o) => o.name === loc.name || (o.lat === loc.lat && o.lon === loc.lon))) continue;
+    out.push(loc);
+    if (out.length >= max) break;
+  }
+  return out;
 }
 
 /** Antwort der Forecast-API → bewertete Stunden. */

@@ -173,6 +173,8 @@ export interface PlanInput {
   maxHr: number | null;
   /** Wochenziel aus einem gespeicherten 4-Wochen-Block (#206); Termin-Phasen (Spitze, Tapering, Wettkampf) haben Vorrang. */
   block?: { targetLoad: number; deload: boolean; label: string } | null;
+  /** Winterbetrieb (#326): Radeinheiten nur auf der Rolle beschreiben. */
+  indoor?: boolean;
 }
 
 const WEEKDAY = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -225,11 +227,18 @@ function intensityText(type: SessionType, inp: Pick<PlanInput, "ftpW" | "thresho
   }
 }
 
-function describe(type: SessionType, min: number, noun: string): { title: string; description: string } {
+function describe(type: SessionType, min: number, noun: string, indoor = false): { title: string; description: string } {
+  const d = describeBase(type, min, noun, indoor);
+  // Winterbetrieb (#326): Radeinheiten für die Rolle formulieren.
+  if (indoor && noun === "Fahrt" && !["rest", "strength", "race"].includes(type)) d.description += " Auf der Rolle: ERG-Modus, Ventilator, genug trinken.";
+  return d;
+}
+
+function describeBase(type: SessionType, min: number, noun: string, indoor: boolean): { title: string; description: string } {
   switch (type) {
     case "rest": return { title: "Ruhetag", description: "Frei, Spaziergang oder Mobility. Erholung ist Teil des Trainings." };
     case "recovery": return { title: `Lockere ${noun}`, description: `${min} min ganz locker zum Durchbewegen.` };
-    case "endurance": return { title: `Grundlagen-${noun}`, description: `${min} min gleichmäßig in Zone 2, ruhig atmen, sprechen möglich${noun === "Fahrt" ? " (Rolle/MyWhoosh im ERG-Modus oder draußen)" : ""}.` };
+    case "endurance": return { title: `Grundlagen-${noun}`, description: `${min} min gleichmäßig in Zone 2, ruhig atmen, sprechen möglich${noun === "Fahrt" ? (indoor ? "" : " (Rolle/MyWhoosh im ERG-Modus oder draußen)") : ""}.` };
     case "long": return { title: `Lange ${noun}`, description: `${min} min Zone 2, unterwegs essen und trinken. Wichtigste Ausdauereinheit der Woche.` };
     case "tempo": return { title: "Tempo", description: `${min} min mit 2–3 × 12–15 min Zone 3, dazwischen 5 min locker.` };
     case "threshold": return { title: "Schwelle", description: `${min} min mit 3 × 10 min (oder 2 × 15 min) an der Schwelle, 5 min Pause dazwischen.` };
@@ -381,7 +390,7 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
     const day = addDays(week, d);
     const t: SessionType = types.get(d) ?? "rest";
     const min = t === "rest" ? 0 : minutes.get(d)!;
-    const { title, description } = t === "race" && goal ? { title: goal.title, description: describe("race", min, sport.noun).description } : describe(t, min, sport.noun);
+    const { title, description } = t === "race" && goal ? { title: goal.title, description: describe("race", min, sport.noun).description } : describe(t, min, sport.noun, inp.indoor);
     days.push({
       day,
       type: t,

@@ -15,13 +15,19 @@ FC.section({
           <label for="sSleep">Schlafbedarf (h)<input id="sSleep" type="number" min="5" max="11" step="0.25" inputmode="decimal"><span class="hint" id="hSleep"></span></label>
           <label for="sTz">Zeitzone<input id="sTz" type="text" placeholder="Europe/Berlin"><span class="hint" id="hTz"></span></label>
         </div>
+        <fieldset class="form" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px">
+          <legend>Winterbetrieb</legend>
+          <label style="display:flex;gap:8px;align-items:center" for="sIndoor"><input id="sIndoor" type="checkbox"> Winter: nur Rolle</label>
+          <label for="sIndoorUntil">bis einschließlich (optional)<input id="sIndoorUntil" type="date"><span class="hint" id="hIndoor"></span></label>
+        </fieldset>
         <div class="row"><button type="submit" class="primary" id="saveSettings" disabled>Speichern</button><span id="settingsMsg" class="muted" role="status"></span></div>
       </form>`;
     const { $ } = FC;
     $("settingsForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const num = (id) => { const v = $(id).value.trim(); return v === "" ? null : Number(v.replace(",", ".")); };
-      const patch = { ftpW: num("sFtp"), maxHr: num("sMax"), restingHr: num("sRest"), thresholdHr: num("sThr"), sleepNeedH: num("sSleep"), timezone: $("sTz").value.trim() || null };
+      const patch = { ftpW: num("sFtp"), maxHr: num("sMax"), restingHr: num("sRest"), thresholdHr: num("sThr"), sleepNeedH: num("sSleep"), timezone: $("sTz").value.trim() || null,
+        indoorOnly: $("sIndoor").checked, indoorUntil: $("sIndoorUntil").value || null };
       for (const k of ["maxHr", "restingHr", "thresholdHr"]) if (patch[k] != null) patch[k] = Math.round(patch[k]);
       const msg = $("settingsMsg"); msg.textContent = "Speichere …"; $("saveSettings").disabled = true;
       try { await FC.call("update_settings", patch); msg.textContent = "Gespeichert."; await FC.reload(); }
@@ -39,6 +45,11 @@ FC.section({
     if (!s.ftpW) $("hFtp").textContent = "nicht gesetzt: Belastung wird aus dem Puls geschätzt";
     const tz = $("sTz"); if (document.activeElement !== tz) tz.value = o.timezone === "user" ? s.timezone : "";
     $("hTz").textContent = o.timezone === "user" ? "selbst gesetzt" : `Standard: ${s.timezone}`;
+    // Winterbetrieb (#326): Radwetter, Wochenplan und Tagesempfehlung gehen dann von der Rolle aus.
+    const ind = d.indoor ?? { on: false, until: null, active: false };
+    if (document.activeElement !== $("sIndoor")) $("sIndoor").checked = ind.on;
+    if (document.activeElement !== $("sIndoorUntil")) $("sIndoorUntil").value = ind.until ?? "";
+    $("hIndoor").textContent = ind.active ? "aktiv: der Coach plant alle Radeinheiten auf der Rolle" : ind.on ? "abgelaufen: gilt nicht mehr" : "aus: Radwetter rät je nach Wetter";
   },
   rerender() {},
 });

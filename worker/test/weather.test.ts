@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { describe, expect, it } from "vitest";
 import { addDays } from "../src/core/analysis";
-import { bestWindow, parseForecast, parseGeocode, rideAdvice, scoreHour } from "../src/core/weather";
+import { bestWindow, parseForecast, parseGeocode, parseGeocodeAll, rideAdvice, scoreHour } from "../src/core/weather";
 import type { Env } from "../src/env";
 import { registerWeatherTools } from "../src/weather-tools";
 import { fakeD1 } from "./fake-d1";
@@ -85,5 +85,31 @@ describe("Wetter-Werkzeuge", () => {
     expect(r.value.days[0].advice.text).toBeTruthy();
     expect(urls.at(-1)).toContain("latitude=47.1&longitude=15.4");
     expect((await call("set_weather_location", { name: "Nirgendwo" })).error).toBe(false); // gleicher Fake findet immer Graz
+  });
+
+  it("mehrdeutiger Ortsname: Auswahl statt erstem Treffer, gespeichert wird der gewählte (#325)", async () => {
+    const results = [
+      { name: "Wolfsberg", latitude: 46.84, longitude: 14.84, admin1: "Kärnten", country: "Österreich" },
+      { name: "Wolfsberg", latitude: 50.35, longitude: 11.0, admin1: "Thüringen", country: "Deutschland" },
+      { name: "Wolfsberg", latitude: 46.84, longitude: 14.84, admin1: "Kärnten", country: "Österreich" },
+    ];
+    const call = tools(async (url) => (url.includes("geocoding") ? { results } : forecast(new Date().toISOString().slice(0, 10))));
+    const r = await call("set_weather_location", { name: "Wolfsberg" });
+    expect(r.value.location).toBeNull();
+    expect(r.value.candidates.map((c: { name: string }) => c.name)).toEqual(["Wolfsberg, Kärnten, Österreich", "Wolfsberg, Thüringen, Deutschland"]);
+    expect((await call("get_ride_weather")).value.error).toBe("no_location"); // nichts geraten
+    const de = r.value.candidates[1];
+    expect((await call("set_weather_location", de)).value.location).toEqual({ name: "Wolfsberg, Thüringen, Deutschland", lat: 50.4, lon: 11 });
+    expect((await call("get_ride_weather")).value.location.name).toBe("Wolfsberg, Thüringen, Deutschland");
+    expect((await call("set_weather_location", { name: "Wolfsberg", pick: 1 })).value.location.name).toBe("Wolfsberg, Kärnten, Österreich");
+    expect((await call("set_weather_location", { name: "Wolfsberg", pick: 4 })).value.error).toBe("bad_pick");
+  });
+});
+
+describe("parseGeocodeAll", () => {
+  it("höchstens 5, ohne Doppelte, überspringt kaputte Einträge", () => {
+    const results = Array.from({ length: 8 }, (_, i) => ({ name: `Ort${i}`, latitude: 40 + i, longitude: 10, country: "X" }));
+    expect(parseGeocodeAll({ results: [{ name: "kaputt" }, ...results] })).toHaveLength(5);
+    expect(parseGeocodeAll({ results: null })).toEqual([]);
   });
 });

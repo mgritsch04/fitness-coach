@@ -8,6 +8,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const out = resolve(process.argv[2] ?? join(here, "out"));
 mkdirSync(out, { recursive: true });
 const page = readFileSync(join(here, "..", "dashboard.html"), "utf8");
+// Gym-Seite (#321) wird aus dashboard.html erzeugt und muss aktuell sein.
+const { buildGym, GYM_SECTIONS } = await import("./build-gym.mjs");
+const gymPage = buildGym(page);
+const gymStale = readFileSync(join(here, "..", "gym.html"), "utf8") !== gymPage;
 const mock = readFileSync(join(here, "mock-dashboard.json"), "utf8");
 const shim = `<script>
 window.__MOCK__ = ${mock};
@@ -53,11 +57,11 @@ const payloads = {
   list_bike_workouts: (i) => { const m = window.__MOCK__.list_bike_workouts; return { ...m, items: m.items.filter((x) => (!i?.category || x.category === i.category) && (!i?.maxMin || x.durationMin <= i.maxMin)) }; },
   get_ride_weather: () => window.__MOCK__.get_ride_weather,
   set_weather_location: (i) => ({ location: { name: i.name, lat: 47.1, lon: 15.4 } }),
-  log_weight: (i) => ({ saved: { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
+  log_weight: (i) => ((window.__weightIn = i), { saved: i.entries ? { count: i.entries.length, from: i.entries[0].day, to: i.entries.at(-1).day } : { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
   export_csv: (i) => ({ fileName: "fitness-" + i.dataset + ".csv", rows: 2, csv: "day;value\\n2026-03-30;1\\n2026-03-31;2\\n" }),
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),
-  update_settings: (i) => i,
+  update_settings: (i) => ((window.__settingsIn = i), i),
   get_strength: () => { const t = window.__MOCK__.get_dashboard.today, d = (n) => { const x = new Date(t + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }; const wk = d(-((new Date(t + "T12:00:00Z").getUTCDay() + 6) % 7));
     const sq = [{ exercise: "squat", exerciseName: "Kniebeuge", reps: 5, weightKg: 100 }, { exercise: "squat", exerciseName: "Kniebeuge", reps: 5, weightKg: 100 }, { exercise: "bench_press", exerciseName: "Bankdrücken", reps: 8, weightKg: 72.5 }];
     return { today: t, range: { from: d(-83), to: t },
@@ -78,7 +82,6 @@ const payloads = {
   get_express_session: (i) => { window.__expressIn = i; return { minutes: i.minutes, fullMin: 52, estimatedMin: 28, fits: true, dropped: ["Bankdrücken"], changes: ["Grundübungen 2 Sätze"], note: "", text: "Gekürzt von etwa 52 auf 28 min: Grundübungen 2 Sätze. Weggelassen: Bankdrücken.",
     exercises: [{ exercise: "back_squat", name: "Kniebeuge", sets: 2, reps: 5, weightKg: 100, unit: "Wdh", restS: 120, superset: null, priority: 1 }, { exercise: "dumbbell_row", name: "Kurzhantelrudern", sets: 2, reps: 10, weightKg: 26, unit: "Wdh", restS: 60, superset: "A", priority: 2 }] }; },
   get_exercise_alternatives: (i) => ({ exercise: "bench_press", name: i.exercise, known: true, pattern: "push", alternatives: [{ exercise: "dumbbell_bench", name: "Kurzhantel-Bankdrücken", startKg: 30, lastDay: null, basis: "history" }], note: "Startgewicht aus deiner letzten Einheit." }),
-  update_settings: (i) => i,
   save_plan: () => window.__MOCK__.get_dashboard.training.thisWeek,
   set_goals: () => ({ saved: [], deleted: [], goals: [] }),
   save_journal: (i) => ({ day: window.__MOCK__.get_dashboard.today, ...i }),
@@ -106,6 +109,7 @@ window.claude = { use: async (n) => (n === "mcp" ? mcp : n === "sample" ? sample
 </script>`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${shim}${page}</body></html>`;
 writeFileSync(join(out, "preview.html"), html);
+writeFileSync(join(out, "preview-gym.html"), html.replace(page, gymPage));
 for (const d of ["app", "sections"]) cpSync(join(here, "..", d), join(out, d), { recursive: true });
 // Nur die Seite bauen (für die automatischen User-Tests, scripts/usertest/run.mjs), ohne Browser.
 if (process.argv.includes("--build-only")) process.exit(0);
@@ -114,6 +118,7 @@ const pw = await import("playwright").catch(() => import("/opt/node22/lib/node_m
 const chromium = pw.chromium ?? pw.default.chromium;
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
 const errors = [];
+if (gymStale) errors.push("artifact/gym.html ist veraltet: node artifact/dev/build-gym.mjs ausführen (#321)");
 // axe-core ist eine Dev-Abhängigkeit nur für die Vorschau (in der CI per npm install --no-save).
 const axeSrc = await import("node:module").then(({ createRequire }) => readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8")).catch(() => null);
 if (!axeSrc && process.env.CI) errors.push("axe-core fehlt in der CI (#211)");
@@ -122,13 +127,14 @@ const a11y = [];
 // Jede Abschnittsdatei muss in dashboard.html eingetragen sein (sonst fehlt sie nach dem Veröffentlichen).
 for (const f of readdirSync(join(here, "..", "sections"))) if (f.endsWith(".js") && !page.includes(`src="sections/${f}"`)) errors.push(`sections/${f} fehlt in dashboard.html`);
 const shots = [["desktop-light", { width: 1280, height: 900 }, "light"], ["desktop-dark", { width: 1280, height: 900 }, "dark"],
-  ...["heute", "coach", "verlauf", "training", "mehr"].map((t) => [`phone-${t}`, { width: 390, height: 844 }, t === "verlauf" ? "dark" : "light", t])];
-for (const [name, vp, scheme, tab] of shots) {
+  ...["heute", "coach", "verlauf", "training", "mehr"].map((t) => [`phone-${t}`, { width: 390, height: 844 }, t === "verlauf" ? "dark" : "light", t]),
+  ["phone-gympage", { width: 390, height: 844 }, "light", null, "preview-gym.html"], ["desktop-gympage", { width: 1280, height: 900 }, "dark", null, "preview-gym.html"]];
+for (const [name, vp, scheme, tab, file] of shots) {
   const ctx = await browser.newContext({ viewport: vp, colorScheme: scheme, hasTouch: name.startsWith("phone") });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
   p.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
-  await p.goto("file://" + join(out, "preview.html"));
+  await p.goto("file://" + join(out, file ?? "preview.html"));
   await p.waitForTimeout(800);
   if (tab) { await p.click(`#tabbar [data-tab=${tab}]`); await p.waitForTimeout(300); }
   if (tab === "training") {
@@ -208,6 +214,12 @@ for (const [name, vp, scheme, tab] of shots) {
     if (!/^wochenbilanz-\d{4}-\d{2}-\d{2}\.png$/.test(img?.filename ?? "") || png.length < 20000 || png.subarray(1, 4).toString() !== "PNG" || png.readUInt32BE(16) !== 1080 || png.readUInt32BE(20) !== 1350) errors.push(`${name}: Wochenbilanz-Bild falsch ${img?.filename} ${png.length}`);
     else writeFileSync(join(out, "wochenbilanz.png"), png);
     if (!/gespeichert/.test(await p.locator("#rvMsg").innerText())) errors.push(`${name}: Wochenbilanz ohne Rückmeldung`);
+  }
+  if (file) {
+    // Gym-Seite (#321): nur Gym-Modus und Krafttraining, keine Reiter, beide Abschnitte geladen.
+    const g = await p.evaluate(() => ({ ids: [...document.querySelectorAll("#sections > section")].map((s) => s.id), vis: [...document.querySelectorAll("#sections > section")].filter((s) => s.offsetParent).length, bar: !!document.getElementById("tabbar"), title: document.title, calls: window.__calls ?? [] }));
+    if ([...g.ids].sort().join() !== GYM_SECTIONS.map((s) => `sec-${s}`).sort().join()) errors.push(`${name}: falsche Abschnitte ${JSON.stringify(g.ids)}`);
+    if (g.vis !== GYM_SECTIONS.length || g.bar || g.title !== "Gym Tracker" || !g.calls.includes("get_strength")) errors.push(`${name}: Gym-Seite falsch ${JSON.stringify({ ...g, calls: undefined, strength: g.calls.includes("get_strength") })}`);
   }
   if (tab === "verlauf") {
     // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.
@@ -445,7 +457,32 @@ for (const [name, vp, scheme, tab] of shots) {
     await p.screenshot({ path: join(out, `${name}-search.png`) });
     await p.click("#tabbar [data-tab=" + (tab ?? "heute") + "]").catch(() => {}); await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(200);
   }
+  if (tab === "verlauf") {
+    // Gewicht nachtragen (#30): eingefügte Zeilen werden erkannt und als entries gespeichert.
+    await p.evaluate(() => { FC.goTo("body"); }); await p.waitForTimeout(400);
+    await p.evaluate(() => { document.getElementById("bdPast").open = true; });
+    await p.fill("#bdLines", "Datum;Gewicht\n2026-03-01 82,4\n02.03.2026;82,1");
+    await p.click("#bdPastSave"); await p.waitForTimeout(300);
+    const w = await p.evaluate(() => ({ in: window.__weightIn, msg: document.getElementById("bdPastMsg").textContent }));
+    if (JSON.stringify(w.in?.entries) !== JSON.stringify([{ day: "2026-03-01", weightKg: 82.4 }, { day: "2026-03-02", weightKg: 82.1 }]) || !/2 Tage nachgetragen/.test(w.msg)) errors.push(`${name}: Gewicht nachtragen falsch ${JSON.stringify(w)}`);
+  }
   if (name === "desktop-light") {
+    // Reiter am PC (#322): Leiste oben, nur Abschnitte des offenen Reiters, nach Neuladen derselbe Reiter.
+    const dt = await p.evaluate(() => ({ bar: getComputedStyle(document.getElementById("tabbar")).display, vis: [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.offsetParent).map((s) => s.id) }));
+    if (dt.bar === "none" || !dt.vis.includes("sec-today") || dt.vis.includes("sec-cadence") || dt.vis.includes("sec-settings")) errors.push(`${name}: Reiter am PC falsch ${JSON.stringify(dt)}`);
+    await p.click("#tabbar [data-tab=training]"); await p.reload(); await p.waitForTimeout(800);
+    const dt2 = await p.evaluate(() => ({ tab: document.querySelector("#tabbar [aria-current=page]")?.dataset.tab, today: !!document.getElementById("sec-today").offsetParent, cad: !!document.getElementById("sec-cadence").offsetParent }));
+    if (dt2.tab !== "training" || dt2.today || !dt2.cad) errors.push(`${name}: Reiter nach Neuladen falsch ${JSON.stringify(dt2)}`);
+    // Anordnung für alle Geräte (#67): Ausblenden speichert über update_settings; „nur dieses Gerät“ speichert nichts.
+    await p.evaluate(() => FC.layout.setHidden("cadence", true)); await p.waitForTimeout(900);
+    const up = await p.evaluate(() => window.__settingsIn?.dashboardLayout);
+    if (!up?.hidden?.includes("cadence") || up.deskTabs !== true) errors.push(`${name}: Anordnung nicht für alle Geräte gespeichert ${JSON.stringify(up)}`);
+    await p.evaluate(() => { window.__settingsIn = null; FC.layout.setMode("device"); FC.layout.setHidden("cadence", false); }); await p.waitForTimeout(900);
+    if (await p.evaluate(() => window.__settingsIn)) errors.push(`${name}: „nur dieses Gerät“ speichert trotzdem im Worker`);
+    // Alles untereinander (Schalter in „Dashboard anpassen“): dann alle Abschnitte wie bisher.
+    await p.evaluate(() => { FC.layout.setMode("all"); FC.layout.setDeskTabs(false); window.scrollTo(0, 0); }); await p.waitForTimeout(1200);
+    const all = await p.evaluate(() => ({ bar: getComputedStyle(document.getElementById("tabbar")).display, today: !!document.getElementById("sec-today").offsetParent, coach: !!document.getElementById("sec-coach").offsetParent }));
+    if (all.bar !== "none" || !all.today || !all.coach) errors.push(`${name}: „alles untereinander“ falsch ${JSON.stringify(all)}`);
     const stuck = await p.evaluate(() => [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.innerText.includes("Lädt …")).map((s) => s.id));
     if (stuck.length) errors.push(`${name}: noch „Lädt …“ in ${stuck.join(", ")}`);
     await p.click("[data-coach=explain]"); await p.waitForTimeout(300);

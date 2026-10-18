@@ -25,6 +25,8 @@ export interface CoachAdvice {
   /** Warnungen, die über den Tag hinausgehen (z. B. zu schneller Anstieg der Trainingslast). */
   warnings: string[];
   disclaimer: string;
+  /** Nur bei „Ruhe“: locker ausfahren ja oder nein (rest-ride.ts, #324). */
+  restRide?: import("./rest-ride").RestRide | null;
 }
 
 const LEVELS: Readiness[] = ["rest", "easy", "moderate", "hard"];

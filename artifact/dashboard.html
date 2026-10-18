@@ -224,6 +224,14 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
 
 /* Handy: eigene Navigation unten, je Reiter nur die zugehörigen Abschnitte */
 .tabbar { display: none; }
+/* PC (#322): Reiter oben statt einer langen Seite, abschaltbar in „Dashboard anpassen“ */
+body.tabs.desk-tabs #sections > section:not(.on) { display: none; }
+@media (min-width: 641px) {
+  body.desk-tabs .tabbar { display: flex; gap: 4px; position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 6px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  body.desk-tabs .tabbar button { border: 0; background: none; padding: 8px 14px; border-radius: 10px; font-size: 0.95rem; font-weight: 600; color: var(--ink-2); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  body.desk-tabs .tabbar button svg { width: 18px; height: 18px; }
+  body.desk-tabs .tabbar button[aria-current="page"] { color: var(--accent); background: var(--accent-wash); }
+}
 @media (max-width: 640px) {
   .wrap { padding-block: 12px calc(84px + env(safe-area-inset-bottom, 0px)); gap: 18px; }
   header.top h1 { font-size: 1.8rem; }

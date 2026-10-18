@@ -257,7 +257,9 @@
   function setData(p, storedAt) {
     if (p && typeof p === "object" && p.compact) p = { ...p, days: expand(p.days), workouts: expand(p.workouts) };
     if (!p || typeof p !== "object" || !Array.isArray(p.days)) { banner("Unerwartete Antwort vom Server.", "bad", { label: "Erneut laden", run: () => reload() }); return; }
-    state.data = p; state.storedAt = storedAt ?? null; banner(null); document.body.classList.add("has-data"); renderAll(); fresh(p.freshness);
+    state.data = p; state.storedAt = storedAt ?? null; banner(null); document.body.classList.add("has-data");
+    if ("uiLayout" in p) syncLayout(p.uiLayout);
+    renderAll(); fresh(p.freshness);
   }
   /** Datenstand je Quelle (#212) in der Kopfzeile: Punkt plus Text, „veraltet“ auch als Wort; Tippen öffnet „Datenquellen“. */
   function fresh(f) {
@@ -302,14 +304,58 @@
   ];
   let tab = "heute";
   try { const t = localStorage.getItem("fc-tab"); if (TABS.some((x) => x.id === t)) tab = t; } catch {}
-  // ---------- Anpassung (#67): Bereiche ein-/ausblenden und sortieren, im Browser gemerkt ----------
-  const LAYOUT_KEY = "fc-layout";
+  // ---------- Anpassung (#67): Bereiche ein-/ausblenden und sortieren, Reiter am PC (#322) ----------
+  // Standard: eine Anordnung für alle Geräte (im Worker, update_settings dashboardLayout, kommt mit get_dashboard als uiLayout);
+  // wahlweise nur für dieses Gerät (nur im Browser). Der Browser behält immer eine Kopie, damit die Seite sofort richtig aufbaut.
+  const LAYOUT_KEY = "fc-layout", LAYOUT_MODE_KEY = "fc-layout-mode";
   const layout = (() => {
-    try { const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "{}"); return { hidden: new Set(v.hidden ?? []), order: v.order ?? {} }; }
-    catch { return { hidden: new Set(), order: {} }; }
+    try { const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "{}"); return { hidden: new Set(v.hidden ?? []), order: v.order ?? {}, deskTabs: v.deskTabs !== false, updatedAt: v.updatedAt ?? null }; }
+    catch { return { hidden: new Set(), order: {}, deskTabs: true, updatedAt: null }; }
   })();
-  let booted = false;
-  const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ hidden: [...layout.hidden], order: layout.order })); } catch {} };
+  let layoutMode = "all";
+  try { if (localStorage.getItem(LAYOUT_MODE_KEY) === "device") layoutMode = "device"; } catch {}
+  let booted = false, layoutSynced = false, layoutStatus = "", pushT = null;
+  const layoutListeners = new Set();
+  const layoutJson = () => ({ hidden: [...layout.hidden], order: layout.order, deskTabs: layout.deskTabs });
+  const storeLocal = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ ...layoutJson(), updatedAt: layout.updatedAt })); } catch {} };
+  const layoutChanged = () => { for (const f of layoutListeners) try { f(layoutStatus); } catch {} };
+  const saveLayout = () => {
+    layout.updatedAt = new Date().toISOString();
+    storeLocal();
+    if (layoutMode === "all" && !single) { clearTimeout(pushT); pushT = setTimeout(pushLayout, 600); }
+  };
+  async function pushLayout() {
+    if (!state.mcp) return;
+    layoutStatus = "saving"; layoutChanged();
+    try { await call("update_settings", { dashboardLayout: layoutJson() }); layoutStatus = "saved"; layoutSynced = true; }
+    catch { layoutStatus = "error"; }
+    layoutChanged();
+  }
+  /** Gemeinsame Anordnung vom Worker übernehmen (oder die eigene hochladen, wenn dort noch keine liegt). */
+  function syncLayout(remote) {
+    if (layoutMode !== "all" || single) return;
+    const custom = layout.hidden.size || Object.keys(layout.order).length || !layout.deskTabs;
+    if (!remote) { if (!layoutSynced && custom) pushLayout(); layoutSynced = true; return; }
+    if (!layoutSynced && layout.updatedAt && remote.updatedAt && layout.updatedAt > remote.updatedAt) { layoutSynced = true; pushLayout(); return; }
+    layoutSynced = true;
+    if (JSON.stringify(layoutJson()) === JSON.stringify({ hidden: remote.hidden ?? [], order: remote.order ?? {}, deskTabs: remote.deskTabs !== false })) return;
+    applyLayout(remote);
+  }
+  function applyLayout(l) {
+    layout.hidden = new Set(l.hidden ?? []); layout.order = { ...(l.order ?? {}) }; layout.deskTabs = l.deskTabs !== false; layout.updatedAt = l.updatedAt ?? null;
+    storeLocal();
+    if (!$("sections")?.children.length) return;
+    for (const s of sections) {
+      const host = $(`sec-${s.id}`); if (!host) continue;
+      const hid = layout.hidden.has(s.id) && !s.locked;
+      host.hidden = hid;
+      if (!hid && !s.mounted) mountOne(s);
+    }
+    sortSections();
+    const root = $("sections"); for (const x of sections) root.append($(`sec-${x.id}`));
+    applyDeskTabs(); applyFolds(); readyWanted(); jump(); layoutChanged();
+  }
+  const applyDeskTabs = () => document.body.classList.toggle("desk-tabs", layout.deskTabs);
   const rank = (s) => layout.order[s.id] ?? s.order;
   const sortSections = () => sections.sort((a, b) => rank(a) - rank(b) || a.order - b.order);
   /** Abschnitte, die eingebaut und sichtbar sind; ausgeblendete laden keine Daten. */
@@ -317,9 +363,13 @@
   function mountOne(s) {
     try { s.mount?.($(`sec-${s.id}`)); s.mounted = true; } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
   }
-  // Am Handy laden Abschnitte ihre eigenen Werkzeuge erst, wenn ihr Reiter offen ist (#69); am Rechner sind alle sichtbar.
+  // Mit Reitern laden Abschnitte ihre eigenen Werkzeuge erst, wenn ihr Reiter offen ist (#69); am Handy immer,
+  // am Rechner standardmäßig auch (#322), außer „alles untereinander“ ist gewählt.
   const phone = window.matchMedia?.("(max-width: 640px)");
-  const wanted = (s) => (!phone?.matches || (s.tab ?? "mehr") === tab) && !folded(s);
+  // Einzelseite (Gym-Seite, #321): ein Bereich, keine Reiter und keine gemeinsame Anordnung.
+  const single = document.documentElement.dataset.page === "single";
+  const tabsOn = () => !single && (!!phone?.matches || layout.deskTabs);
+  const wanted = (s) => (!tabsOn() || (s.tab ?? "mehr") === tab) && !folded(s);
   // Handy: lange Tabs einklappbar (#188). Offen sind die ersten zwei Abschnitte und was man selbst aufklappt;
   // eingeklappte zeigen nur ihre Überschrift als Leiste und laden ihre Daten erst beim Aufklappen.
   // Je Tab: wie viele Abschnitte oben standardmäßig offen sind (Heute: bis „Heute dran“, #191).
@@ -387,14 +437,27 @@
       const root = $("sections"); for (const x of sections) root.append($(`sec-${x.id}`));
       applyFolds(); readyWanted(); jump();
     },
-    reset() { layout.hidden.clear(); layout.order = {}; saveLayout(); },
+    reset() { layout.hidden.clear(); layout.order = {}; layout.deskTabs = true; saveLayout(); applyDeskTabs(); readyWanted(); },
+    deskTabs: () => layout.deskTabs,
+    setDeskTabs(on) { layout.deskTabs = !!on; saveLayout(); applyDeskTabs(); readyWanted(); rerender(); jump(); },
+    mode: () => layoutMode,
+    status: () => layoutStatus,
+    onChange: (f) => { layoutListeners.add(f); return () => layoutListeners.delete(f); },
+    /** "all" = für alle Geräte, "device" = nur dieses Gerät. upload: aktuelle Anordnung als gemeinsame speichern. */
+    setMode(m, upload) {
+      layoutMode = m === "device" ? "device" : "all";
+      try { localStorage.setItem(LAYOUT_MODE_KEY, layoutMode); } catch {}
+      layoutStatus = ""; layoutSynced = false;
+      if (layoutMode === "all") { if (upload) { layoutSynced = true; pushLayout(); } else if (state.data) syncLayout(state.data.uiLayout ?? null); }
+      layoutChanged();
+    },
   };
 
   function showTab(id, scroll) {
     tab = id;
     try { localStorage.setItem("fc-tab", id); } catch {}
     for (const s of sections) $(`sec-${s.id}`)?.classList.toggle("on", (s.tab ?? "mehr") === id);
-    for (const b of $("tabbar").children) b.setAttribute("aria-current", b.dataset.tab === id ? "page" : "false");
+    for (const b of $("tabbar")?.children ?? []) b.setAttribute("aria-current", b.dataset.tab === id ? "page" : "false");
     if (scroll) window.scrollTo({ top: 0 });
     applyFolds();
     readyWanted();
@@ -435,8 +498,14 @@
       b.onclick = () => showTab(t.id, true);
       bar.append(b);
     }
-    document.body.classList.add("tabs");
-    showTab(tab);
+    // Leiste in den Seitenfluss unter die Kopfzeile: am PC oben (sticky), am Handy weiter unten fixiert.
+    $("app").insertBefore(bar, $("banner"));
+    if (single) { bar.remove(); document.body.classList.add("single"); readyWanted(); }
+    else {
+      document.body.classList.add("tabs");
+      applyDeskTabs();
+      showTab(tab);
+    }
     let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(rerender, 120); }).observe(root);
     const claude = window.claude;
     if (!claude?.use) { banner("Diese Seite funktioniert nur in claude.ai mit dem Connector „Fitness Coach“."); document.body.classList.add("no-connector"); return; }
