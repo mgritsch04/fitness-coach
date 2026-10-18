@@ -26,6 +26,16 @@ describe("WHOOP-Mapping", () => {
     expect(d).toMatchObject({ source: "whoop", sourceId: "101", day: "2026-03-02", strain: 12.5, energyKj: 9000, endTime: null });
   });
 
+  it("Zyklus zählt zum Tag des Aufwachens, auch wenn vor Mitternacht eingeschlafen", () => {
+    const base = { score_state: "SCORED", timezone_offset: "+02:00", score: { strain: 10 } };
+    // 22:30 Ortszeit eingeschlafen → nächster Tag
+    expect(mapCycle({ ...base, id: 1, start: "2026-03-01T20:30:00.000Z" }).day).toBe("2026-03-02");
+    // 01:15 Ortszeit eingeschlafen → derselbe Tag
+    expect(mapCycle({ ...base, id: 2, start: "2026-03-01T23:15:00.000Z" }).day).toBe("2026-03-02");
+    // 11:00 Ortszeit (z. B. Nachtschicht) → derselbe Tag
+    expect(mapCycle({ ...base, id: 3, start: "2026-03-02T09:00:00.000Z" }).day).toBe("2026-03-02");
+  });
+
   it("ungewertete Daten bleiben leer statt 0", () => {
     const d = mapCycle({ id: 1, start: "2026-03-01T06:00:00.000Z", score_state: "PENDING_SCORE" });
     expect(d.strain).toBeNull();

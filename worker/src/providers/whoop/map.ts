@@ -74,12 +74,20 @@ const scored = (s: string) => s === "SCORED";
 const sec = (ms: number | undefined) => (ms == null ? null : Math.round(ms / 1000));
 const n = <T>(v: T | undefined) => (v === undefined ? null : v);
 
+/**
+ * Ein WHOOP-Zyklus beginnt mit dem Einschlafen; Recovery und Strain gehören zum Tag des Aufwachens.
+ * Beginnt der Zyklus ab 12:00 Ortszeit (vor Mitternacht eingeschlafen), zählt er zum nächsten Tag.
+ */
+export function cycleDay(start: string, offset: string | null | undefined): string {
+  return localDay(new Date(Date.parse(start) + 12 * 3_600_000).toISOString(), offset);
+}
+
 export function mapCycle(c: WhoopCycle): Daily {
   const s = scored(c.score_state) ? c.score : undefined;
   return {
     source: "whoop",
     sourceId: String(c.id),
-    day: localDay(c.start, c.timezone_offset),
+    day: cycleDay(c.start, c.timezone_offset),
     startTime: c.start,
     endTime: c.end ?? null,
     strain: n(s?.strain),
