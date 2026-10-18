@@ -132,7 +132,7 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
     } finally { this.busy(false); }
   },
   async canUseTools() {
-    if (this.toolsOk === undefined) { try { this.toolsOk = !!(await FC.state.sample.limits?.())?.tools; } catch { this.toolsOk = false; } }
+    if (this.toolsOk === undefined) { try { const t = (await FC.state.sample.limits?.())?.tools; this.toolsOk = !!t; this.maxTools = Number(t?.maxCount) || Infinity; } catch { this.toolsOk = false; } }
     return this.toolsOk;
   },
   /** Lesende Werkzeuge für den Chat: rufen Connector-Werkzeuge auf, Ergebnis gekürzt (max. 32 KB je Aufruf). */
@@ -183,7 +183,7 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
           const list = d.workouts.filter((w) => w.day >= from && w.day <= to).slice(0, 120);
           return cut({ von: from, bis: to, geladenAb: d.range.from, workouts: list.map((w) => ({ tag: w.day, sport: FC.sport(w.sport), min: w.durationMin, km: w.distanceKm, pulsAvg: w.avgHr, wattAvg: w.avgPowerW, np: w.normalizedPowerW, belastung: w.load, strain: w.strain, rpe: w.rpe, zonenMin: w.hrZoneMin })) });
         } },
-    ].map((t) => (t.inputSchema ? t : (({ inputSchema, ...rest }) => rest)(t)));
+    ].map((t) => (t.inputSchema ? t : (({ inputSchema, ...rest }) => rest)(t))).slice(0, this.maxTools ?? Infinity);
   },
   async ask() {
     const { $, el, richText, sampleErrText, state } = FC;
@@ -196,13 +196,24 @@ ${data}`, { signal: this.ctl.signal, cache: { gcTime: 3_600_000 } });
     this.ctl = new AbortController(); this.busy(true);
     try {
       // Mit Werkzeugen holt sich Claude zur Frage passende Daten selbst (#100); ohne bleibt es bei der Übersicht.
+      const send = (tools) => {
+        const hint = tools ? "\nWenn die Übersicht für die Frage nicht reicht, hol dir mit den Werkzeugen gezielt mehr Daten (sparsam, höchstens drei Abrufe; für Analysen zuerst „befunde“). Nenne kurz, worauf sich die Antwort stützt." : "";
+        // Verlauf beginnt immer mit einer Frage; Regeln und Daten stehen in dieser ersten Nachricht (nie zwei Nutzer-Nachrichten hintereinander).
+        const msgs = this.chat.slice(-9).map((m) => ({ ...m }));
+        msgs[0].content = `${this.rules}\n\nBeantworte die Fragen der Person zu ihren Daten.${hint}\n\nDaten (Übersicht):\n${this.data()}\n\nFrage: ${msgs[0].content}`;
+        return state.sample(msgs, { cache: false, signal: this.ctl.signal, onText: ({ text }) => richText(a, text), ...(tools ? { tools } : {}) });
+      };
       const tools = (await this.canUseTools()) ? this.tools(a) : null;
-      const hint = tools ? "\nWenn die Übersicht für die Frage nicht reicht, hol dir mit den Werkzeugen gezielt mehr Daten (sparsam, höchstens drei Abrufe; für Analysen zuerst „befunde“). Nenne kurz, worauf sich die Antwort stützt." : "";
-      // Verlauf beginnt immer mit einer Frage; Regeln und Daten stehen in dieser ersten Nachricht (nie zwei Nutzer-Nachrichten hintereinander).
-      const msgs = this.chat.slice(-9).map((m) => ({ ...m }));
-      msgs[0].content = `${this.rules}\n\nBeantworte die Fragen der Person zu ihren Daten.${hint}\n\nDaten (Übersicht):\n${this.data()}\n\nFrage: ${msgs[0].content}`;
-      const { text } = await state.sample(msgs,
-        { cache: false, signal: this.ctl.signal, onText: ({ text }) => richText(a, text), ...(tools ? { tools } : {}) });
+      let res;
+      try { res = await send(tools); }
+      catch (err) {
+        // Werkzeuge in dieser Ansicht nicht nutzbar: einmal ohne Werkzeuge fragen, danach nicht mehr anbieten (#338).
+        if (!tools || err?.text || !["tools_unavailable", "invalid_request"].includes(err?.code)) throw err;
+        console.warn("Coach: Werkzeuge abgelehnt, frage ohne Werkzeuge", err.code, err.message);
+        this.toolsOk = false;
+        res = await send(null);
+      }
+      const { text } = res;
       this.chat.push({ role: "assistant", content: text });
       this.saveChat(); $("chatClear").hidden = false;
     } catch (err) {
