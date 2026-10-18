@@ -279,18 +279,22 @@ export function findLinkedWorkout<W extends { source: string; source_id: string;
 }
 
 type LoadedWorkout = MergedWorkout & WorkoutLoad;
+/** strengthRpe: Anstrengung der verknüpften Krafteinheit (strength_sessions.rpe). */
+export type StrengthLoadedWorkout = LoadedWorkout & { strengthRpe?: number | null };
 
 /**
  * Setzt für Krafteinheiten mit RPE die Belastung aus Session-RPE (statt Puls) und ergänzt
  * Einheiten ohne passendes Workout als eigene Einträge (Quelle „manual“). Liefert eine neue Liste.
  */
-export function applyStrengthLoads(workouts: LoadedWorkout[], sessions: StrengthSession[]): LoadedWorkout[] {
-  const out = workouts.map((w) => ({ ...w }));
+export function applyStrengthLoads(workouts: LoadedWorkout[], sessions: StrengthSession[]): StrengthLoadedWorkout[] {
+  const out: StrengthLoadedWorkout[] = workouts.map((w) => ({ ...w }));
   for (const s of sessions) {
     const linked = findLinkedWorkout(s, out);
     const duration = s.durationMin ?? (linked?.duration_s != null ? linked.duration_s / 60 : null);
     const load = srpeLoad(duration, s.rpe);
     if (linked) {
+      // Anstrengung aus dem Gym-Modus gilt auch für das verknüpfte Workout (#320).
+      if (s.rpe != null && linked.strengthRpe == null) linked.strengthRpe = s.rpe;
       if (load != null && load > (linked.load ?? 0)) Object.assign(linked, { load, method: "srpe" as const, intensity: null });
       continue;
     }
@@ -315,6 +319,7 @@ export function applyStrengthLoads(workouts: LoadedWorkout[], sessions: Strength
       load,
       method: load != null ? "srpe" : "none",
       intensity: null,
+      strengthRpe: s.rpe,
     });
   }
   return out.sort((a, b) => b.start_time.localeCompare(a.start_time));
@@ -448,7 +453,7 @@ export async function saveStrengthSession(db: D1Database, s: StrengthSession): P
         `INSERT INTO strength_sessions (id, day, start_time, duration_min, rpe, name, notes, linked_source, linked_source_id, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT (id) DO UPDATE SET day = excluded.day, start_time = excluded.start_time, duration_min = excluded.duration_min,
-           rpe = excluded.rpe, name = excluded.name, notes = excluded.notes, linked_source = excluded.linked_source,
+           rpe = COALESCE(excluded.rpe, strength_sessions.rpe), name = excluded.name, notes = excluded.notes, linked_source = excluded.linked_source,
            linked_source_id = excluded.linked_source_id, updated_at = excluded.updated_at`,
       )
       .bind(s.id, s.day, s.startTime, s.durationMin, s.rpe, s.name, s.notes, s.linkedSource, s.linkedSourceId),
