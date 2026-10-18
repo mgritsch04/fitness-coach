@@ -73,6 +73,7 @@ const payloads = {
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   save_strength_template: (i) => { window.__tplSaved = i; return i; },
+  describe_exercise: (i) => (/reifen/i.test(i.text) ? { query: i.text, suggestions: [], custom: { name: "Reifen umwerfen" }, note: "Keine passende Übung im Katalog gefunden. Du kannst sie als eigene Übung anlegen." } : { query: i.text, suggestions: [{ exercise: "lat_pulldown", name: "Latziehen", muscles: ["Rücken", "Bizeps"], match: 100, why: ["kabel"] }, { exercise: "cable_row", name: "Rudern am Kabel", muscles: ["Rücken", "Bizeps"], match: 60, why: ["kabel"] }], custom: { name: "Am Kabel ziehen" }, note: "Vorschläge aus dem Übungskatalog." }),
   get_express_session: (i) => { window.__expressIn = i; return { minutes: i.minutes, fullMin: 52, estimatedMin: 28, fits: true, dropped: ["Bankdrücken"], changes: ["Grundübungen 2 Sätze"], note: "", text: "Gekürzt von etwa 52 auf 28 min: Grundübungen 2 Sätze. Weggelassen: Bankdrücken.",
     exercises: [{ exercise: "back_squat", name: "Kniebeuge", sets: 2, reps: 5, weightKg: 100, unit: "Wdh", restS: 120, superset: null, priority: 1 }, { exercise: "dumbbell_row", name: "Kurzhantelrudern", sets: 2, reps: 10, weightKg: 26, unit: "Wdh", restS: 60, superset: "A", priority: 2 }] }; },
   get_exercise_alternatives: (i) => ({ exercise: "bench_press", name: i.exercise, known: true, pattern: "push", alternatives: [{ exercise: "dumbbell_bench", name: "Kurzhantel-Bankdrücken", startKg: 30, lastDay: null, basis: "history" }], note: "Startgewicht aus deiner letzten Einheit." }),
@@ -378,10 +379,21 @@ for (const [name, vp, scheme, tab] of shots) {
       const t = await p.evaluate(() => window.__tplSaved);
       if (!(t?.name === "Aus Liste" && t.exercises?.length === 2 && t.exercises[0].sets === 2)) errors.push(`${name}: Vorlage aus Einheitenliste falsch ${JSON.stringify(t)}`);
     }
+    // Übung beschreiben (#327) im Erfassen-Formular
+    await p.click("#stDescBtn"); await p.fill("#stDesc .st-desc-in", "am Kabel von oben ziehen"); await p.click("#stDesc .st-desc button"); await p.waitForTimeout(200);
+    await p.click("#stDesc .st-desc-pick").catch(() => errors.push(`${name}: „Übung beschreiben“ zeigt keine Vorschläge`)); await p.waitForTimeout(100);
+    const dsc = await p.$$eval("#stRows .ex", (l) => l.map((x) => x.value));
+    if (!dsc.includes("Latziehen")) errors.push(`${name}: Vorschlag nicht übernommen ${JSON.stringify(dsc)}`);
     // Express (#281): „Nur 30 min“ kürzt die Einheit über get_express_session.
     await p.selectOption("#gySrc", "s:s2"); await p.selectOption("#gyTime", "30"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     const ex = await p.evaluate(() => ({ min: window.__expressIn?.minutes, n: window.__expressIn?.exercises?.length, cards: [...document.querySelectorAll("#gyBody .gy-ex h3")].map((h) => h.textContent), sets: document.querySelectorAll("#gyBody .gy-ex")[0]?.querySelectorAll(".gy-set").length, ss: document.querySelectorAll("#gyBody .gy-ex")[1]?.querySelector(".gy-exh .muted")?.textContent ?? "", msg: document.getElementById("gyMsg")?.textContent ?? "" }));
     if (ex.min !== 30 || ex.n !== 2 || ex.cards.join("|") !== "Kniebeuge|Kurzhantelrudern" || ex.sets !== 2 || !/Supersatz A/.test(ex.ss) || !/Gekürzt/.test(ex.msg)) errors.push(`${name}: Express-Einheit falsch ${JSON.stringify(ex)}`);
+    // Übung beschreiben im Gym-Modus (#327): Unbekanntes als eigene Übung
+    await p.click("#gyBody .gy-row .linkish:text('Übung beschreiben')").catch(() => errors.push(`${name}: Gym-Modus ohne „Übung beschreiben“`)); await p.waitForTimeout(100);
+    await p.fill("#gyBody .st-desc-in", "Reifen umwerfen draußen"); await p.click("#gyBody .st-desc > .row button"); await p.waitForTimeout(200);
+    await p.click("#gyBody .st-desc-out .linkish").catch(() => errors.push(`${name}: keine eigene Übung anlegbar`)); await p.waitForTimeout(100);
+    const own = await p.$$eval("#gyBody .gy-ex h3", (l) => l.map((h) => h.textContent));
+    if (own.at(-1) !== "Reifen umwerfen") errors.push(`${name}: eigene Übung nicht angelegt ${JSON.stringify(own)}`);
   }
   if (name === "desktop-light") {
     // Favoriten (#291): Stern an „Trittfrequenz“ heftet sie oben auf „Heute“ an, Sprung, nach Neuladen gemerkt, lösen.

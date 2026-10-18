@@ -199,7 +199,11 @@ FC.section({
     const finish = el("button", { type: "button", class: "primary", text: "Einheit beenden" });
     finish.onclick = () => { st.finishing = true; this.persist(); this.draw(); FC.$("gyFinish")?.scrollIntoView({ block: "nearest" }); };
 
-    body.replaceChildren(bar, list, el("div", { class: "gy-row", style: "margin-top:12px" }, addName, add), st.finishing ? this.finishPanel() : el("div", { class: "gy-row", style: "margin-top:12px" }, finish));
+    // Übung beschreiben (#327), Vorschläge aus dem Krafttraining-Abschnitt.
+    const descB = FC.state.describePanel ? el("button", { type: "button", class: "linkish", text: "Übung beschreiben", "aria-expanded": String(!!this.descOpen) }) : null;
+    if (descB) descB.onclick = () => { this.descOpen = !this.descOpen; this.draw(); };
+    const desc = this.descOpen && descB ? FC.state.describePanel((n) => { this.descOpen = false; st.exercises.push({ name: n, rest: this.restFor(n), sets: [{ reps: 8, kg: 0, done: false }] }); st.cur = st.exercises.length - 1; this.persist(); this.draw(); }) : "";
+    body.replaceChildren(bar, list, el("div", { class: "gy-row", style: "margin-top:12px" }, addName, add, descB ?? ""), desc, st.finishing ? this.finishPanel() : el("div", { class: "gy-row", style: "margin-top:12px" }, finish));
     this.tickNow();
     this.tick = setInterval(() => this.tickNow(), 500);
   },

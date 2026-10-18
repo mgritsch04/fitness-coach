@@ -1,4 +1,5 @@
 // Connector-Werkzeuge fürs Krafttraining (Logik in core/strength.ts).
+import { describeExercise } from "./core/exercise-describe";
 import { exerciseForecast } from "./core/exercise-forecast";
 import { rirTrend } from "./core/autoregulation";
 import { repRecords } from "./core/rep-records";
@@ -188,6 +189,18 @@ export function registerStrengthTools(server: McpServer, env: Env) {
       const t = await today();
       return json(exerciseAlternatives(exercise, await readStrengthSessions(env.DB, addDays(t, -180)), exclude ?? []));
     },
+  );
+
+  server.registerTool(
+    "describe_exercise",
+    {
+      description:
+        "Übung in eigenen Worten beschreiben (Gerät, Bewegung, Zielmuskel), z. B. „am Kabel sitzend von oben zur Brust ziehen“: " +
+        "liefert 0 bis 3 passende Übungen aus dem Katalog mit Muskelgruppen und gefundenen Stichworten, dazu einen Namen für eine eigene Übung. Stichwortsuche, Vorschläge.",
+      inputSchema: { text: z.string().min(3).max(300) },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ text }) => json(describeExercise(text)),
   );
 
   server.registerTool(

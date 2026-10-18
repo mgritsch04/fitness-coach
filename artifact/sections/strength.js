@@ -21,10 +21,16 @@ FC.section({
     .st-spark { width: 90px; height: 24px; }
     .st-detailbox { padding: 6px 0 10px; display: grid; gap: 6px; }
     .st-detailbox p { margin: 0; }
+    .st-desc { display: grid; gap: 8px; padding: 8px 0; }
+    .st-desc-in { flex: 1 1 14em; min-width: 0; }
+    .st-desc-out { display: grid; gap: 6px; }
+    .st-desc-out p { margin: 0; }
+    .st-desc-pick { text-align: left; }
   `,
   mount(root) {
     const { $, el } = FC;
     FC.state.exerciseDetail = (p) => this.exerciseDetail(p);
+    FC.state.describePanel = (onPick) => this.describePanel(onPick);
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-strength">Krafttraining</h2><span class="muted">1RM nach Epley und Belastung aus Dauer × Anstrengung sind Schätzungen</span></div>
       <div class="grid2">
@@ -38,9 +44,10 @@ FC.section({
           </div>
           <div class="st-rows" id="stRows"></div>
           <datalist id="stEx"></datalist>
-          <div class="row"><button type="button" id="stAdd">+ Übung</button>
+          <div class="row"><button type="button" id="stAdd">+ Übung</button><button type="button" id="stDescBtn" class="linkish" aria-expanded="false">Übung beschreiben</button>
             <label class="row" style="gap:6px; font-size:0.88rem;"><input type="checkbox" id="stSaveTpl"> als Vorlage speichern</label>
             <input id="stTplName" type="text" placeholder="Name der Vorlage" maxlength="80" hidden style="max-width:14em"></div>
+          <div id="stDesc" hidden></div>
           <div class="row"><button type="submit" class="primary" id="stSave" disabled>Speichern</button><span id="stMsg" class="muted" role="status"></span></div>
         </form>
         <div class="panel"><h3>Volumen je Muskelgruppe</h3><p class="muted" id="stVolWeek" style="margin:0 0 8px"></p><div class="st-vol" id="stVol"><div class="empty">Noch keine Krafteinheiten.</div></div>
@@ -76,6 +83,19 @@ FC.section({
     const resetRows = (list) => { $("stRows").replaceChildren(); (list?.length ? list : [{}, {}, {}]).forEach(addRow); };
     resetRows();
     $("stAdd").onclick = () => addRow();
+    // Übung beschreiben (#327): Vorschlag füllt die erste leere Zeile.
+    $("stDescBtn").onclick = () => {
+      const box = $("stDesc"), open = box.hidden;
+      box.hidden = !open; $("stDescBtn").setAttribute("aria-expanded", String(open));
+      if (!open) return;
+      box.replaceChildren(this.describePanel((name) => {
+        const empty = [...$("stRows").querySelectorAll(".ex")].find((i) => !i.value.trim());
+        if (empty) empty.value = name; else addRow({ name });
+        box.hidden = true; $("stDescBtn").setAttribute("aria-expanded", "false");
+        $("stMsg").textContent = `„${name}“ übernommen.`;
+      }));
+      box.querySelector("input")?.focus();
+    };
     $("stSaveTpl").onchange = (e) => { $("stTplName").hidden = !e.target.checked; if (e.target.checked) $("stTplName").focus(); };
 
     $("stTpl").onchange = async (e) => {
@@ -225,6 +245,34 @@ FC.section({
     };
     this.load = load;
     this.show = show;
+  },
+  /** Übung in eigenen Worten beschreiben (#327): bis zu 3 Vorschläge aus dem Katalog oder eine eigene Übung. */
+  describePanel(onPick) {
+    const { el } = FC;
+    const txt = el("input", { type: "text", maxlength: 300, class: "st-desc-in", placeholder: "z. B. am Kabel sitzend von oben zur Brust ziehen", "aria-label": "Übung beschreiben: Gerät, Bewegung, Muskel" });
+    const go = el("button", { type: "button", text: "Vorschlagen" });
+    const out = el("div", { class: "st-desc-out", role: "status" });
+    const run = async () => {
+      const text = txt.value.trim();
+      if (text.length < 3) { out.replaceChildren(el("span", { class: "muted", text: "Bitte kurz beschreiben: Gerät, Bewegung, Muskel." })); return; }
+      go.disabled = true; out.replaceChildren(el("span", { class: "muted", text: "Suche …" }));
+      try {
+        const r = await FC.call("describe_exercise", { text });
+        const picks = r.suggestions.map((s) => {
+          const b = el("button", { type: "button", class: "st-desc-pick" }, el("b", { text: s.name }), el("span", { class: "muted", text: ` · ${s.muscles.join(", ")}` }));
+          b.onclick = () => onPick(s.name);
+          return b;
+        });
+        const own = el("input", { type: "text", maxlength: 80, "aria-label": "Name der eigenen Übung" }); own.value = r.custom?.name ?? "";
+        const ownB = el("button", { type: "button", class: "linkish", text: "Als eigene Übung anlegen" });
+        ownB.onclick = () => { const n = own.value.trim(); if (n) onPick(n); else own.focus(); };
+        out.replaceChildren(...picks, el("p", { class: "fine muted", text: r.note }), el("div", { class: "row", style: "gap:6px" }, own, ownB));
+      } catch (err) { out.replaceChildren(el("span", { class: "muted", text: FC.errText(err) })); }
+      finally { go.disabled = false; }
+    };
+    go.onclick = run;
+    txt.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); run(); } };
+    return el("div", { class: "st-desc" }, el("div", { class: "row", style: "gap:6px" }, txt, go), out);
   },
   /** Diagramm geschätztes 1RM je Einheit plus gestrichelte Prognose und Text (#328); nutzt auch der Gym-Modus. */
   exerciseDetail(p) {
