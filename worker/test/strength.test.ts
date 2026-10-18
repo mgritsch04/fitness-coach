@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MergedWorkout, WorkoutLoad } from "../src/core/analysis";
 import { buildDashboard } from "../src/core/dashboard";
+import { saveRpe } from "../src/core/journal";
 import { runBatched, upsertDaily, upsertWorkout } from "../src/core/repository";
 import {
   applyStrengthLoads,
@@ -193,9 +194,26 @@ describe("D1", () => {
     await saveStrengthSession(db, session(day, [...times(4, set("Kniebeuge", 5, 100)), ...times(3, set("Beinpresse", 10, 150))], { rpe: 8, durationMin: null }));
     const d = await buildDashboard(db, { days: 7, now: Date.parse("2026-03-20T10:00:00Z") });
     expect(d.workouts[0]).toMatchObject({ sport: "weightlifting", load: 80, loadMethod: "srpe" });
+    // #320: Anstrengung aus dem Gym-Modus steht auch beim verknüpften WHOOP-Workout.
+    expect(d.workouts[0]).toMatchObject({ rpe: 8, sessionRpe: 480 });
     expect(d.strength.sessions).toHaveLength(1);
     expect(d.strength.weeks[0].muscles[0].muscle).toBe("quads");
     expect(d.coach.reasons.some((r) => r.factor === "strength")).toBe(true);
     expect(d.notes.join(" ")).toMatch(/Session-RPE/);
+  });
+
+  it("Anstrengung bleibt beim Neuspeichern und lässt sich bei Einheiten ohne Workout nachtragen (#320)", async () => {
+    const db = fakeD1();
+    const day = "2026-03-19";
+    await saveStrengthSession(db, session(day, [set("Kniebeuge", 5, 100)], { rpe: 7, durationMin: 50 }));
+    await saveStrengthSession(db, session(day, [set("Kniebeuge", 5, 105)], { rpe: null, durationMin: 50 }));
+    expect((await readStrengthSessions(db, "2026-03-01"))[0].rpe).toBe(7);
+    let d = await buildDashboard(db, { days: 7, now: Date.parse("2026-03-20T10:00:00Z") });
+    const w = d.workouts.find((x) => x.source === "manual")!;
+    expect(w).toMatchObject({ sourceId: `s-${day}`, rpe: 7, sessionRpe: 350 });
+    expect(await saveRpe(db, { source: "manual", sourceId: `s-${day}`, rpe: 9 })).toMatchObject({ rpe: 9, day });
+    d = await buildDashboard(db, { days: 7, now: Date.parse("2026-03-20T10:00:00Z") });
+    expect(d.workouts.find((x) => x.source === "manual")?.rpe).toBe(9);
+    await expect(saveRpe(db, { source: "manual", sourceId: "gibtsnicht", rpe: 5 })).rejects.toThrow();
   });
 });
