@@ -1,6 +1,6 @@
 // Krafttraining: schnelle Eingabe (log_strength_session, Vorlagen), Volumen je Muskelgruppe, 1RM-Verlauf je Übung.
 // Daten von get_strength (Worker core/strength.ts). 1RM und Belastung sind Schätzungen.
-FC.section({
+const STRENGTH = {
   id: "strength",
   tab: "training",
   order: 45,
@@ -149,6 +149,8 @@ FC.section({
 
     let data = null;
     const openEx = new Set();
+    // Offene Vorlagen-Formulare je Einheit (#332): überleben das Neuzeichnen samt eingetipptem Namen und Fokus.
+    const openTpl = new Map();
     const show = () => {
       if (!data) return;
       const { de, fmtDay, fmtDayLong, spark, cssVar } = FC;
@@ -216,7 +218,8 @@ FC.section({
         el("td", { "data-k": "Stufe", text: e.level }),
         el("td", { "data-k": "Nächste Stufe", text: e.next ? `${e.next.level} ab ${de(e.next.e1rmKg)} kg` : "–" }))));
 
-      const list = $("stSessions"); list.replaceChildren();
+      const list = $("stSessions"), focused = list.contains(document.activeElement) ? document.activeElement : null;
+      list.replaceChildren();
       const sessions = data.sessions.slice(0, 8);
       if (!sessions.length) list.append(el("div", { class: "empty", text: "Noch keine Krafteinheiten." }));
       for (const s of sessions) {
@@ -230,12 +233,17 @@ FC.section({
         const row = el("div", { class: "row", style: "justify-content:space-between; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line)" },
           el("div", {}, el("b", { text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }), el("div", { class: "muted", text: ex.join(", ") })),
           el("span", { class: "muted" }, meta, meta ? " · " : "", tplBtn));
+        const openForm = (box) => { row.after(box); tplBtn.setAttribute("aria-expanded", "true"); };
         tplBtn.onclick = () => {
-          if (row.nextElementSibling?.classList.contains("st-tplrow")) { row.nextElementSibling.remove(); tplBtn.setAttribute("aria-expanded", "false"); return; }
-          row.after(this.tplForm(s, () => tplBtn.setAttribute("aria-expanded", "false"))); tplBtn.setAttribute("aria-expanded", "true");
+          if (openTpl.has(s.id)) { openTpl.get(s.id).remove(); openTpl.delete(s.id); tplBtn.setAttribute("aria-expanded", "false"); return; }
+          const box = this.tplForm(s, () => { openTpl.delete(s.id); tplBtn.setAttribute("aria-expanded", "false"); });
+          openTpl.set(s.id, box); openForm(box); box.querySelector("input")?.focus();
         };
         list.append(row);
+        if (openTpl.has(s.id)) openForm(openTpl.get(s.id));
       }
+      for (const id of openTpl.keys()) if (!sessions.some((x) => x.id === id)) openTpl.delete(id);
+      if (focused && list.contains(focused)) focused.focus();
       $("stNotes").textContent = (data.coachNotes ?? []).map((n) => n.text).join(" ");
     };
 
@@ -328,4 +336,7 @@ FC.section({
   },
   ready() { this.load?.(false); },
   render() { this.show?.(); },
-});
+};
+FC.section(STRENGTH);
+// Vorlage aus einer Einheit (#331) auch für andere Abschnitte (Workout-Übersicht), unabhängig davon, ob Krafttraining sichtbar ist.
+FC.state.tplForm = (session, closed) => STRENGTH.tplForm(session, closed);

@@ -59,6 +59,20 @@ FC.section({
     }), msg);
     return box;
   },
+  /** Übungen der Krafteinheit holen (get_strength reicht bis 52 Wochen zurück) und das Vorlagen-Formular zeigen. */
+  async openTpl(w, id, tr, cell) {
+    const { el } = FC;
+    const today = FC.state.data?.today ?? w.day;
+    const weeks = Math.min(52, Math.max(1, Math.ceil((Date.parse(today) - Date.parse(w.day)) / 604_800_000) + 1));
+    const close = () => { tr.remove(); if (this.tplRow === tr) this.tplId = this.tplRow = null; if (FC.state.data) this.render(FC.state.data); };
+    try {
+      const st = await FC.call("get_strength", { weeks }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } });
+      if (this.tplRow !== tr) return;
+      const session = st.sessions.find((s) => s.id === id);
+      cell.replaceChildren(session?.sets?.length ? FC.state.tplForm(session, close) : el("span", { class: "muted", text: "Zu diesem Training sind keine Übungen gespeichert (oder es ist älter als ein Jahr)." }));
+      cell.querySelector("input")?.focus();
+    } catch (err) { if (this.tplRow === tr) cell.replaceChildren(el("span", { class: "muted", text: FC.errText(err) })); }
+  },
   render(d) {
     const { $, el, de, fmtDayLong, sport, SOURCES, state } = FC;
     const from = d.days.at(-state.range)?.day ?? d.range.from;
@@ -82,9 +96,11 @@ FC.section({
     for (const w of ws.slice(0, this.shown)) {
       const name = state.openWorkout ? el("button", { type: "button", class: "link", text: sport(w.sport) }) : document.createTextNode(sport(w.sport));
       if (state.openWorkout) name.onclick = () => state.openWorkout(w);
+      // Vorlage aus jedem Krafttraining mit eingetragenen Übungen (#331).
+      const tplBtn = w.strengthSessionId && state.tplForm ? el("button", { type: "button", class: "link wo-tpl", text: "Als Vorlage speichern", "aria-expanded": String(this.tplId === w.strengthSessionId), "aria-label": `${sport(w.sport)} am ${fmtDayLong(w.day)} als Vorlage speichern` }) : null;
       const rpe = el("button", { type: "button", class: "link", text: w.rpe ? `${w.rpe}${w.sessionRpe ? ` (${de(w.sessionRpe)})` : ""}` : "eintragen", "aria-label": `Anstrengung für ${sport(w.sport)} am ${fmtDayLong(w.day)}${w.rpe ? `: ${w.rpe}` : " eintragen"}` });
       const row = el("tr", {},
-        el("td", { class: "l", text: fmtDayLong(w.day) }), el("td", { class: "l" }, name), el("td", { "data-k": "Dauer", text: `${de(w.durationMin)} min` }), el("td", { "data-k": "Ø Puls", text: de(w.avgHr) }), el("td", { "data-k": "Max", text: de(w.maxHr) }),
+        el("td", { class: "l", text: fmtDayLong(w.day) }), el("td", { class: "l" }, name, tplBtn ? el("br") : "", tplBtn ?? ""), el("td", { "data-k": "Dauer", text: `${de(w.durationMin)} min` }), el("td", { "data-k": "Ø Puls", text: de(w.avgHr) }), el("td", { "data-k": "Max", text: de(w.maxHr) }),
         el("td", { "data-k": "Leistung", text: w.normalizedPowerW ? `${de(w.normalizedPowerW)} W NP` : w.avgPowerW ? `${de(w.avgPowerW)} W` : "–" }), el("td", { "data-k": "Strain", text: de(w.strain, 1) }),
         el("td", { "data-k": "Belastung" }, w.load == null ? "–" : de(w.load), " ", el("span", { class: `badge ${w.loadMethod === "power" ? "pw" : ""}`, text: w.loadMethod === "power" ? "Leistung" : w.loadMethod === "hr" ? "Puls" : "–" })),
         el("td", { "data-k": "Anstrengung" }, rpe),
@@ -94,6 +110,19 @@ FC.section({
       const key = `${w.source ?? w.sources[0]}:${w.sourceId}`;
       const openPick = () => row.after(el("tr", { class: "rpe-row" }, el("td", { colspan: 10, class: "l" }, el("span", { class: "muted", text: "Wie anstrengend war es? 1 sehr leicht, 10 maximal. " }), this.picker(w, () => { this.openKey = null; }))));
       if (this.openKey === key) openPick();
+      if (tplBtn) {
+        const id = w.strengthSessionId;
+        if (this.tplId === id && this.tplRow) row.after(this.tplRow);
+        tplBtn.onclick = () => {
+          if (this.tplId === id) { this.tplRow?.remove(); this.tplId = this.tplRow = null; tplBtn.setAttribute("aria-expanded", "false"); return; }
+          this.tplRow?.remove();
+          this.tplId = id; tplBtn.setAttribute("aria-expanded", "true");
+          const cell = el("td", { colspan: 10, class: "l" }, el("span", { class: "muted", role: "status", text: "Lädt die Übungen …" }));
+          const tr = this.tplRow = el("tr", { class: "wo-tplrow" }, cell);
+          row.after(tr);
+          this.openTpl(w, id, tr, cell);
+        };
+      }
       rpe.onclick = () => {
         if (row.nextElementSibling?.classList.contains("rpe-row")) { row.nextElementSibling.remove(); this.openKey = null; return; }
         this.openKey = key; openPick();

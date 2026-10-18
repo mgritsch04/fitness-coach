@@ -506,7 +506,12 @@
       applyDeskTabs();
       showTab(tab);
     }
-    let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(rerender, 120); }).observe(root);
+    // Nur bei geänderter Breite neu zeichnen (Diagramme): reine Höhenänderungen, etwa ein aufgeklapptes
+    // Formular, würden sonst offene Eingaben schließen (#332).
+    let rt, lastW = -1; new ResizeObserver((es) => {
+      const w = Math.round(es.at(-1).contentRect.width); if (w === lastW) return;
+      lastW = w; clearTimeout(rt); rt = setTimeout(rerender, 120);
+    }).observe(root);
     const claude = window.claude;
     if (!claude?.use) { banner("Diese Seite funktioniert nur in claude.ai mit dem Connector „Fitness Coach“."); document.body.classList.add("no-connector"); return; }
     const [mcp, sample] = await Promise.all([claude.use("mcp"), claude.use("sample")]);

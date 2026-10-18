@@ -279,8 +279,11 @@ export function findLinkedWorkout<W extends { source: string; source_id: string;
 }
 
 type LoadedWorkout = MergedWorkout & WorkoutLoad;
-/** strengthRpe: Anstrengung der verknüpften Krafteinheit (strength_sessions.rpe). */
-export type StrengthLoadedWorkout = LoadedWorkout & { strengthRpe?: number | null };
+/**
+ * strengthRpe: Anstrengung der verknüpften Krafteinheit (strength_sessions.rpe).
+ * strengthSessionId: verknüpfte Krafteinheit mit eingetragenen Sätzen (Vorlage aus der Workout-Übersicht, #331).
+ */
+export type StrengthLoadedWorkout = LoadedWorkout & { strengthRpe?: number | null; strengthSessionId?: string | null };
 
 /**
  * Setzt für Krafteinheiten mit RPE die Belastung aus Session-RPE (statt Puls) und ergänzt
@@ -295,6 +298,7 @@ export function applyStrengthLoads(workouts: LoadedWorkout[], sessions: Strength
     if (linked) {
       // Anstrengung aus dem Gym-Modus gilt auch für das verknüpfte Workout (#320).
       if (s.rpe != null && linked.strengthRpe == null) linked.strengthRpe = s.rpe;
+      if (s.sets.length && !linked.strengthSessionId) linked.strengthSessionId = s.id;
       if (load != null && load > (linked.load ?? 0)) Object.assign(linked, { load, method: "srpe" as const, intensity: null });
       continue;
     }
@@ -320,6 +324,7 @@ export function applyStrengthLoads(workouts: LoadedWorkout[], sessions: Strength
       method: load != null ? "srpe" : "none",
       intensity: null,
       strengthRpe: s.rpe,
+      strengthSessionId: s.sets.length ? s.id : null,
     });
   }
   return out.sort((a, b) => b.start_time.localeCompare(a.start_time));

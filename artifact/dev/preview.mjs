@@ -15,6 +15,9 @@ const gymStale = readFileSync(join(here, "..", "gym.html"), "utf8") !== gymPage;
 const mock = readFileSync(join(here, "mock-dashboard.json"), "utf8");
 const shim = `<script>
 window.__MOCK__ = ${mock};
+// #331: genau ein Krafttraining ist mit der Einheit „s1“ (mit Sätzen) verknüpft.
+{ const ws = window.__MOCK__.get_dashboard.workouts; for (const w of ws) delete w.strengthSessionId;
+  if (ws[0]) ws[0].strengthSessionId = "s1"; }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const payloads = {
   get_dashboard: (i) => { const d = window.__MOCK__.get_dashboard; if (!i?.compact) return d;
@@ -393,10 +396,26 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (!sp2.some((t) => /Zu wenig Daten/.test(t))) errors.push(`${name}: Übung ohne Prognose zeigt keinen Hinweis ${JSON.stringify(sp2)}`);
     window_tpl: {
       await p.click("#stSessions button.linkish").catch(() => errors.push(`${name}: Einheitenliste ohne „Als Vorlage speichern“`));
-      if (!(await p.$("#stSessions .st-tplrow"))) break window_tpl;
+      // #332: Das Feld muss das Neuzeichnen (ResizeObserver, Zeitraumwechsel) überleben, samt Text.
+      await p.waitForTimeout(400);
+      if (!(await p.$("#stSessions .st-tplrow"))) { errors.push(`${name}: Namensfeld der Vorlage verschwindet wieder`); break window_tpl; }
+      await p.fill("#stSessions .st-tplrow input", "Getippt");
+      await p.evaluate(() => FC.rerender()); await p.waitForTimeout(100);
+      const kept = await p.evaluate(() => document.querySelector("#stSessions .st-tplrow input")?.value);
+      if (kept !== "Getippt") errors.push(`${name}: Vorlagen-Feld nach Neuzeichnen weg oder leer ${JSON.stringify(kept)}`);
       await p.fill("#stSessions .st-tplrow input", "Aus Liste"); await p.click("#stSessions .st-tplrow .primary"); await p.waitForTimeout(200);
       const t = await p.evaluate(() => window.__tplSaved);
       if (!(t?.name === "Aus Liste" && t.exercises?.length === 2 && t.exercises[0].sets === 2)) errors.push(`${name}: Vorlage aus Einheitenliste falsch ${JSON.stringify(t)}`);
+    }
+    // Vorlage aus der Workout-Übersicht (#331): nur Krafttrainings mit verknüpfter Einheit haben den Knopf.
+    window_wotpl: {
+      const n = await p.$$eval("#tWorkouts .wo-tpl", (l) => l.length);
+      if (n !== 1) { errors.push(`${name}: Workout-Übersicht zeigt ${n} statt 1 „Als Vorlage speichern“`); break window_wotpl; }
+      await p.click("#tWorkouts .wo-tpl"); await p.waitForTimeout(500);
+      if (!(await p.$("#tWorkouts .wo-tplrow input"))) { errors.push(`${name}: Vorlagen-Feld in der Workout-Übersicht fehlt`); break window_wotpl; }
+      await p.fill("#tWorkouts .wo-tplrow input", "Aus Übersicht"); await p.click("#tWorkouts .wo-tplrow .primary"); await p.waitForTimeout(200);
+      const t = await p.evaluate(() => window.__tplSaved);
+      if (!(t?.name === "Aus Übersicht" && t.exercises?.length === 1 && t.exercises[0].exercise === "bench_press")) errors.push(`${name}: Vorlage aus Workout-Übersicht falsch ${JSON.stringify(t)}`);
     }
     // Übung beschreiben (#327) im Erfassen-Formular
     await p.click("#stDescBtn"); await p.fill("#stDesc .st-desc-in", "am Kabel von oben ziehen"); await p.click("#stDesc .st-desc button"); await p.waitForTimeout(200);
