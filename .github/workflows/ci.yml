@@ -4,6 +4,11 @@ on:
     branches: [main]
   pull_request:
 
+# Neuer Push auf denselben PR bricht den laufenden Lauf ab; auf main läuft alles zu Ende.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   worker:
     runs-on: ubuntu-latest
@@ -23,22 +28,54 @@ jobs:
 
   dashboard:
     # Vorschau des Artefakts mit synthetischen Daten: Skriptfehler, Überlauf am Handy, fehlende Abschnitte (#68), Barrierefreiheit mit axe-core (#211)
+    # Der Job startet immer (Check-Name bleibt für Pflichtprüfungen erfüllbar); die teuren Schritte laufen
+    # bei PRs nur, wenn sich Pfade des Dashboards ändern, auf main immer.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git fetch --no-tags --depth=1 origin "$BASE"
+          files=$(git diff --name-only "$BASE" HEAD)
+          echo "$files"
+          if printf '%s\n' "$files" | grep -Eq '^(artifact/|worker/src/core/|worker/dev/|worker/package(-lock)?\.json$|\.github/workflows/ci\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Keine Dashboard-relevanten Änderungen: Vorschau übersprungen."
+          fi
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: worker/package-lock.json
       - run: npm ci
+        if: steps.changes.outputs.run == 'true'
         working-directory: worker
       - run: npx vite-node dev/mock-dashboard.ts > ../artifact/dev/mock-dashboard.json
+        if: steps.changes.outputs.run == 'true'
         working-directory: worker
-      - run: npm install --no-save --no-package-lock playwright@1.56.1 axe-core@4.10.3 && npx playwright install --with-deps chromium
+      - run: npm install --no-save --no-package-lock playwright@1.56.1 axe-core@4.10.3
+        if: steps.changes.outputs.run == 'true'
+      - id: pwcache
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.56.1-${{ runner.os }}
+      - run: npx playwright install --with-deps chromium
+        if: steps.changes.outputs.run == 'true' && steps.pwcache.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps chromium
+        if: steps.changes.outputs.run == 'true' && steps.pwcache.outputs.cache-hit == 'true'
       - run: node artifact/dev/preview.mjs artifact/dev/out
+        if: steps.changes.outputs.run == 'true'
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.run == 'true'
         with:
           name: dashboard-screenshots
           path: artifact/dev/out/*.png
