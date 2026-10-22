@@ -11,3 +11,4 @@
 * Coach-Hinweise sind Trainingsempfehlungen, keine medizinischen Diagnosen; Annahmen und Schätzungen als solche kennzeichnen.
 * Kleine, fokussierte Commits mit Präfix (`feat:`, `fix:`, `test:`, `perf:`, `docs:`, `ci:`), nach den relevanten Checks; danach pushen und Ergebnis prüfen.
 * Entwicklungs-Dashboard (Nutzung, Sitzungen, Agents): `docs/DASHBOARD.md`.
+* Ein-Projekt-Modell (seit 22.10.2026): Der Planer-Thread im Manager-Projekt pflegt hier das Backlog; der Manager steuert nur, wann gearbeitet wird (Usage). Zustand steht in Dateien, nicht in Sessions. Branches `claude/fit-…`; nach dem Klonen einmal `chmod +x scripts/repo-guard.sh scripts/githooks/pre-push && git config core.hooksPath scripts/githooks`. Nur dieses Repo anfassen; Issue-/PR-Verweise immer als `owner/repo#nr`.
