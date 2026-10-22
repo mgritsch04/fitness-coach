@@ -395,7 +395,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     const sp2 = await p.$$eval("#stProg .st-detail .chart-cap", (l) => l.map((x) => x.textContent));
     if (!sp2.some((t) => /Zu wenig Daten/.test(t))) errors.push(`${name}: Übung ohne Prognose zeigt keinen Hinweis ${JSON.stringify(sp2)}`);
     window_tpl: {
-      await p.click("#stSessions button.linkish").catch(() => errors.push(`${name}: Einheitenliste ohne „Als Vorlage speichern“`));
+      await p.click("#stSessions button.linkish[aria-expanded]").catch(() => errors.push(`${name}: Einheitenliste ohne „Als Vorlage speichern“`));
       // #332: Das Feld muss das Neuzeichnen (ResizeObserver, Zeitraumwechsel) überleben, samt Text.
       await p.waitForTimeout(400);
       if (!(await p.$("#stSessions .st-tplrow"))) { errors.push(`${name}: Namensfeld der Vorlage verschwindet wieder`); break window_tpl; }
@@ -422,6 +422,36 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#stDesc .st-desc-pick").catch(() => errors.push(`${name}: „Übung beschreiben“ zeigt keine Vorschläge`)); await p.waitForTimeout(100);
     const dsc = await p.$$eval("#stRows .ex", (l) => l.map((x) => x.value));
     if (!dsc.includes("Latziehen")) errors.push(`${name}: Vorschlag nicht übernommen ${JSON.stringify(dsc)}`);
+    // Sätze einzeln nachtragen (#344): Schnelleingabe, je Satz ändern, Satz anfügen/entfernen, speichern.
+    window_sets: {
+      await p.evaluate(() => document.getElementById("stForm").scrollIntoView());
+      const box = await p.$("#stRows .st-ex:nth-child(1)");
+      await box.$eval(".ex", (i) => { i.value = "Kniebeuge"; });
+      await box.$eval(".quick", (i) => { i.value = "3 × 60 kg × 10"; });
+      await box.$eval("button[aria-label^='Sätze aus']", (b) => b.click());
+      const filled = await box.$$eval(".st-set", (l) => l.map((r) => `${r.querySelector(".kg").value}x${r.querySelector(".reps").value}`));
+      if (filled.join("|") !== "60x10|60x10|60x10") { errors.push(`${name}: Schnelleingabe falsch ${JSON.stringify(filled)}`); break window_sets; }
+      const rows = await box.$$(".st-set");
+      await rows[1].$eval(".kg", (i) => { i.value = "65"; }); await rows[1].$eval(".reps", (i) => { i.value = "8"; });
+      await rows[2].$eval(".kg", (i) => { i.value = "65"; }); await rows[2].$eval(".reps", (i) => { i.value = "6"; });
+      await box.$eval(".st-addset", (b) => b.click());
+      const added = await box.$$eval(".st-set", (l) => l.length + ":" + l.at(-1).querySelector(".kg").value + "x" + l.at(-1).querySelector(".reps").value);
+      if (added !== "4:65x6") errors.push(`${name}: Satz anfügen ohne Vorbelegung ${added}`);
+      await box.$eval(".st-set:last-child button", (b) => b.click());
+      await p.evaluate(() => { window.__gymSaved = null; document.querySelectorAll("#stRows .st-ex:not(:first-child) .ex").forEach((i) => { i.value = ""; }); });
+      await p.evaluate(() => document.getElementById("stSave").click()); await p.waitForTimeout(300);
+      const saved = await p.evaluate(() => window.__gymSaved);
+      const ex0 = saved?.exercises?.[0];
+      const smsg = await p.evaluate(() => document.getElementById("stMsg").textContent); if (!saved) errors.push(`${name}: stMsg ${smsg}`);
+      if (!(ex0?.exercise === "Kniebeuge" && JSON.stringify(ex0.sets) === JSON.stringify([{ reps: 10, weightKg: 60 }, { reps: 8, weightKg: 65 }, { reps: 6, weightKg: 65 }]))) errors.push(`${name}: Sätze einzeln falsch gespeichert ${JSON.stringify(saved)}`);
+      // Bearbeiten: vorhandene Einheit lädt ihre Sätze, Speichern ersetzt per id.
+      await p.evaluate(() => [...document.querySelectorAll("#stSessions button")].find((b) => b.textContent === "Bearbeiten")?.click());
+      const editRows = await p.evaluate(() => ({ bar: !document.getElementById("stEditBar").hidden, sets: document.querySelectorAll("#stRows .st-set").length }));
+      if (!editRows.bar || editRows.sets < 1) { errors.push(`${name}: Bearbeiten füllt das Formular nicht ${JSON.stringify(editRows)}`); break window_sets; }
+      await p.evaluate(() => { window.__gymSaved = null; document.getElementById("stSave").click(); }); await p.waitForTimeout(300);
+      const re = await p.evaluate(() => window.__gymSaved);
+      if (!re?.id) errors.push(`${name}: Bearbeiten speichert ohne id ${JSON.stringify(re)}`);
+    }
     // Express (#281): „Nur 30 min“ kürzt die Einheit über get_express_session.
     await p.selectOption("#gySrc", "s:s2"); await p.selectOption("#gyTime", "30"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     const ex = await p.evaluate(() => ({ min: window.__expressIn?.minutes, n: window.__expressIn?.exercises?.length, cards: [...document.querySelectorAll("#gyBody .gy-ex h3")].map((h) => h.textContent), sets: document.querySelectorAll("#gyBody .gy-ex")[0]?.querySelectorAll(".gy-set").length, ss: document.querySelectorAll("#gyBody .gy-ex")[1]?.querySelector(".gy-exh .muted")?.textContent ?? "", msg: document.getElementById("gyMsg")?.textContent ?? "" }));

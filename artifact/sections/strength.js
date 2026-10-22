@@ -6,10 +6,14 @@ const STRENGTH = {
   order: 45,
   css: `
     .st-rows { display: grid; gap: 8px; }
-    .st-row { display: grid; grid-template-columns: minmax(0, 2.4fr) repeat(3, minmax(0, 1fr)) auto; gap: 6px; align-items: end; }
-    .st-row label { display: grid; gap: 2px; font-size: 0.78rem; color: var(--ink-3); }
-    .st-row button { padding: 7px 10px; }
-    @media (max-width: 560px) { .st-row { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; padding-bottom: 8px; border-bottom: 1px solid var(--line); } .st-row > label:first-child { grid-column: 1 / -1; } }
+    .st-ex { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .st-exh { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.6fr) auto auto; gap: 6px; align-items: end; }
+    .st-ex label { display: grid; gap: 2px; font-size: 0.78rem; color: var(--ink-3); }
+    .st-ex button { padding: 7px 10px; }
+    .st-sets { display: grid; gap: 4px; }
+    .st-set { display: grid; grid-template-columns: 3.2em repeat(3, minmax(0, 1fr)) auto; gap: 6px; align-items: end; }
+    .st-set .st-n { align-self: center; font-size: 0.85rem; color: var(--ink-2); }
+    @media (max-width: 560px) { .st-exh { grid-template-columns: repeat(2, minmax(0, 1fr)) auto auto; } .st-exh > label:first-child { grid-column: 1 / -1; } }
     .st-vol { display: grid; gap: 6px; }
     .st-vol .r { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 3.5em; gap: 8px; align-items: center; font-size: 0.88rem; }
     .st-vol .b { height: 10px; border-radius: 5px; background: var(--accent); min-width: 2px; }
@@ -36,11 +40,12 @@ const STRENGTH = {
       <div class="grid2">
         <form class="panel" id="stForm" style="display:grid; gap:12px;" autocomplete="off">
           <h3>Einheit eintragen</h3>
+          <div id="stEditBar" hidden><div class="row" style="gap:8px"><span id="stEditText" class="muted" role="status"></span><button type="button" class="linkish" id="stEditCancel">Abbrechen</button></div></div>
           <div class="form">
             <label for="stDay">Datum<input id="stDay" type="date"></label>
             <label for="stTpl">Vorlage<select id="stTpl"><option value="">– keine –</option></select></label>
             <label for="stRpe">Anstrengung 1–10<input id="stRpe" type="number" min="1" max="10" step="0.5" inputmode="decimal" placeholder="z. B. 8"><span class="hint">für die Trainingslast</span></label>
-            <label for="stDur">Dauer (min)<input id="stDur" type="number" min="1" max="600" step="1" inputmode="numeric" placeholder="aus WHOOP"><span class="hint">leer = vom WHOOP-Training</span></label>
+            <label for="stDurMin">Dauer (min)<input id="stDurMin" type="number" min="1" max="600" step="1" inputmode="numeric" placeholder="aus WHOOP"><span class="hint">leer = vom WHOOP-Training</span></label>
           </div>
           <div class="st-rows" id="stRows"></div>
           <datalist id="stEx"></datalist>
@@ -64,21 +69,55 @@ const STRENGTH = {
     const NAMES = ["Kniebeuge", "Frontkniebeuge", "Beinpresse", "Ausfallschritt", "Beinstrecker", "Beinbeuger", "Kreuzheben", "Rumänisches Kreuzheben", "Hip Thrust", "Wadenheben", "Bankdrücken", "Schrägbankdrücken", "Kurzhantel-Bankdrücken", "Fliegende", "Dips", "Liegestütz", "Schulterdrücken", "Seitheben", "Face Pull", "Klimmzug", "Latziehen", "Langhantelrudern", "Kurzhantelrudern", "Rudern am Kabel", "Bizepscurl", "Trizepsdrücken", "Unterarmstütz", "Crunch", "Beinheben hängend", "Kettlebell Swing"];
     for (const n of NAMES) $("stEx").append(el("option", { value: n }));
 
-    const addRow = (v = {}) => {
-      const num = (cls, label, attrs) => el("label", {}, el("span", { text: label }), el("input", { class: cls, type: "number", inputmode: "decimal", ...attrs }));
-      const row = el("div", { class: "st-row" },
-        el("label", {}, el("span", { text: "Übung" }), el("input", { class: "ex", type: "text", list: "stEx", maxlength: 80, placeholder: "Übung", "aria-label": "Übung" })),
-        num("sets", "Sätze", { min: 1, max: 20, step: 1, placeholder: "Sätze", "aria-label": "Sätze" }),
-        num("reps", "Wdh", { min: 1, max: 100, step: 1, placeholder: "Wdh", "aria-label": "Wiederholungen" }),
-        num("kg", "kg", { min: 0, max: 500, step: 0.5, placeholder: "kg", "aria-label": "Gewicht in kg" }));
-      const del = el("button", { type: "button", text: "×", "aria-label": "Übung entfernen" });
-      del.onclick = () => { row.remove(); if (!$("stRows").children.length) addRow(); };
+    // Je Übung beliebig viele Sätze mit eigenem Gewicht, Wiederholungen und optionaler Anstrengung (#344).
+    const numIn = (cls, label, attrs) => el("label", {}, el("span", { text: label }), el("input", { class: cls, type: "number", inputmode: "decimal", ...attrs }));
+    const renumber = (box) => box.querySelectorAll(".st-set").forEach((r, i) => { r.querySelector(".st-n").textContent = `Satz ${i + 1}`; });
+    const addSet = (box, v = {}) => {
+      const list = box.querySelector(".st-sets"), prev = list.lastElementChild;
+      const row = el("div", { class: "st-set" }, el("span", { class: "st-n" }),
+        numIn("kg", "kg", { min: 0, max: 500, step: 0.5, placeholder: "kg", "aria-label": "Gewicht in kg" }),
+        numIn("reps", "Wdh", { min: 1, max: 100, step: 1, placeholder: "Wdh", "aria-label": "Wiederholungen" }),
+        numIn("rpe", "Anstr.", { min: 1, max: 10, step: 0.5, placeholder: "optional", "aria-label": "Anstrengung 1 bis 10 (optional)" }));
+      const del = el("button", { type: "button", text: "×", "aria-label": "Satz entfernen" });
+      del.onclick = () => { if (list.children.length > 1) { row.remove(); renumber(box); } else { row.querySelectorAll("input").forEach((i) => { i.value = ""; }); } };
       row.append(del);
-      row.querySelector(".ex").value = v.name ?? "";
-      if (v.sets) row.querySelector(".sets").value = v.sets;
-      if (v.reps) row.querySelector(".reps").value = v.reps;
-      if (v.weightKg != null) row.querySelector(".kg").value = v.weightKg;
-      $("stRows").append(row);
+      // Vorbelegung: Werte aus v, sonst vom vorherigen Satz.
+      const src = v.reps != null || v.weightKg != null ? v : prev ? { weightKg: prev.querySelector(".kg").value, reps: prev.querySelector(".reps").value } : {};
+      if (src.weightKg != null && src.weightKg !== "") row.querySelector(".kg").value = src.weightKg;
+      if (src.reps != null && src.reps !== "") row.querySelector(".reps").value = src.reps;
+      if (v.rpe != null) row.querySelector(".rpe").value = v.rpe;
+      list.append(row); renumber(box);
+      return row;
+    };
+    // Schnelleingabe „3 × 60 kg × 10“ (Sätze × kg × Wdh) füllt gleiche Sätze vor; danach je Satz änderbar.
+    const quickFill = (box, text) => {
+      const nums = (text.match(/\d+(?:[.,]\d+)?/g) ?? []).map((x) => Number(x.replace(",", ".")));
+      if (nums.length < 2) return "Bitte so eingeben: 3 × 60 kg × 10 (Sätze × Gewicht × Wiederholungen).";
+      const [count, kg, reps] = nums.length === 2 ? [nums[0], 0, nums[1]] : nums;
+      if (!Number.isInteger(count) || count < 1 || count > 20 || !Number.isInteger(reps) || reps < 1 || reps > 100) return "Sätze (1–20) und Wiederholungen (1–100) müssen ganze Zahlen sein.";
+      const list = box.querySelector(".st-sets"); list.replaceChildren();
+      for (let i = 0; i < count; i++) addSet(box, { weightKg: kg, reps });
+      return "";
+    };
+    const addRow = (v = {}) => {
+      const sets = Array.isArray(v.sets) ? v.sets : v.sets ? Array.from({ length: v.sets }, () => ({ reps: v.reps, weightKg: v.weightKg })) : [{ reps: v.reps, weightKg: v.weightKg }];
+      const quick = el("input", { class: "quick", type: "text", maxlength: 30, placeholder: "z. B. 3 × 60 kg × 10", "aria-label": "Schnelleingabe Sätze mal Gewicht mal Wiederholungen" });
+      const fill = el("button", { type: "button", text: "Füllen", "aria-label": "Sätze aus Schnelleingabe vorbelegen" });
+      const del = el("button", { type: "button", text: "×", "aria-label": "Übung entfernen" });
+      const box = el("div", { class: "st-ex" },
+        el("div", { class: "st-exh" },
+          el("label", {}, el("span", { text: "Übung" }), el("input", { class: "ex", type: "text", list: "stEx", maxlength: 80, placeholder: "Übung", "aria-label": "Übung" })),
+          el("label", {}, el("span", { text: "Schnelleingabe" }), quick), fill, del),
+        el("div", { class: "st-sets" }),
+        el("div", { class: "row" }, el("button", { type: "button", class: "st-addset", text: "+ Satz" })));
+      del.onclick = () => { box.remove(); if (!$("stRows").children.length) addRow(); };
+      fill.onclick = () => { const err = quickFill(box, quick.value); $("stMsg").textContent = err; if (!err) quick.value = ""; };
+      quick.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); fill.click(); } };
+      box.querySelector(".st-addset").onclick = () => addSet(box).querySelector(".kg").focus();
+      box.querySelector(".ex").value = v.name ?? "";
+      if (v.muscles) box.dataset.muscles = JSON.stringify(v.muscles);
+      for (const x of sets) addSet(box, x);
+      $("stRows").append(box);
     };
     const resetRows = (list) => { $("stRows").replaceChildren(); (list?.length ? list : [{}, {}, {}]).forEach(addRow); };
     resetRows();
@@ -110,6 +149,20 @@ const STRENGTH = {
       } catch (err) { msg.textContent = FC.errText(err); }
     };
 
+    // Bestehende Einheit bearbeiten (#344): Formular mit den Sätzen füllen, Speichern ersetzt die Einheit (id).
+    let editing = null;
+    const stopEdit = () => { editing = null; $("stEditBar").hidden = true; };
+    const startEdit = (s) => {
+      editing = s;
+      const by = new Map();
+      for (const x of s.sets) { if (!by.has(x.exercise)) by.set(x.exercise, { name: x.exerciseName, muscles: x.muscles, sets: [] }); by.get(x.exercise).sets.push({ reps: x.reps, weightKg: x.weightKg, rpe: x.rpe }); }
+      resetRows([...by.values()]);
+      $("stDay").value = s.day; $("stRpe").value = s.rpe ?? ""; $("stDurMin").value = s.durationMin ?? ""; $("stTpl").value = "";
+      $("stEditText").textContent = `Du bearbeitest die Einheit vom ${FC.fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}. Speichern ersetzt sie.`;
+      $("stEditBar").hidden = false; $("stMsg").textContent = "";
+      $("stForm").scrollIntoView({ block: "start" }); $("stRows").querySelector(".ex")?.focus();
+    };
+    $("stEditCancel").onclick = () => { stopEdit(); resetRows(); $("stRpe").value = ""; $("stDurMin").value = ""; $("stDay").value = data?.today ?? ""; $("stMsg").textContent = "Bearbeiten abgebrochen."; };
     $("stForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const msg = $("stMsg");
@@ -118,30 +171,39 @@ const STRENGTH = {
       for (const r of $("stRows").children) {
         const name = r.querySelector(".ex").value.trim();
         if (!name) continue;
-        const sets = n(r.querySelector(".sets").value), reps = n(r.querySelector(".reps").value), kg = n(r.querySelector(".kg").value);
-        if (!sets || !reps) { msg.textContent = `Bei „${name}“ fehlen Sätze oder Wiederholungen.`; return; }
-        exercises.push({ exercise: name, setCount: Math.round(sets), reps: Math.round(reps), weightKg: kg ?? 0 });
+        const sets = [];
+        for (const sr of r.querySelectorAll(".st-set")) {
+          const reps = n(sr.querySelector(".reps").value), kg = n(sr.querySelector(".kg").value), rpe = n(sr.querySelector(".rpe").value);
+          if (reps == null && kg == null && rpe == null) continue;
+          if (!reps || reps < 1) { msg.textContent = `Bei „${name}“ fehlen Wiederholungen in einem Satz.`; return; }
+          sets.push({ reps: Math.round(reps), weightKg: kg ?? 0, ...(rpe != null ? { rpe } : {}) });
+        }
+        if (!sets.length) { msg.textContent = `Bei „${name}“ fehlt mindestens ein Satz.`; return; }
+        const ex = { exercise: name, sets };
+        if (r.dataset.muscles) ex.muscles = JSON.parse(r.dataset.muscles);
+        exercises.push(ex);
       }
       if (!exercises.length) { msg.textContent = "Bitte mindestens eine Übung eintragen."; return; }
       const input = { exercises };
+      if (editing) { input.id = editing.id; if (editing.startTime) input.startTime = editing.startTime; if (editing.notes) input.notes = editing.notes; if (editing.name) input.name = editing.name; }
       if ($("stDay").value) input.day = $("stDay").value;
-      const rpe = n($("stRpe").value), dur = n($("stDur").value);
+      const rpe = n($("stRpe").value), dur = n($("stDurMin").value);
       if (rpe != null) input.rpe = rpe;
       if (dur != null) input.durationMin = Math.round(dur);
-      if ($("stTpl").value) input.name = $("stTpl").value;
+      if ($("stTpl").value && !editing) input.name = $("stTpl").value;
       const tplName = $("stSaveTpl").checked ? $("stTplName").value.trim() : "";
       if ($("stSaveTpl").checked && !tplName) { msg.textContent = "Bitte einen Namen für die Vorlage eingeben."; return; }
       $("stSave").disabled = true; msg.textContent = "Speichere …";
       try {
         const r = await FC.call("log_strength_session", input);
-        if (tplName) await FC.call("save_strength_template", { name: tplName, exercises: exercises.map((x) => ({ exercise: x.exercise, sets: x.setCount, reps: x.reps, weightKg: x.weightKg })) });
+        if (tplName) await FC.call("save_strength_template", { name: tplName, exercises: exercises.map((x) => { const top = x.sets.reduce((a, b) => (b.weightKg > a.weightKg ? b : a)); return { exercise: x.exercise, sets: Math.min(20, x.sets.length), reps: top.reps, weightKg: top.weightKg }; }) });
         const best = r.exercises.filter((x) => x.newBest).map((x) => x.name);
         const parts = ["Gespeichert."];
         if (r.linkedWorkout) parts.push(`Zugeordnet zum WHOOP-Training (${r.linkedWorkout.durationMin} min).`);
         if (r.load?.value != null) parts.push(`Belastung ≈ ${FC.de(r.load.value)} (Schätzung).`); else parts.push(r.load?.note ?? "");
         if (best.length) parts.push(`Neue Bestwerte: ${best.join(", ")}.`);
         msg.textContent = parts.filter(Boolean).join(" ");
-        resetRows(); $("stRpe").value = ""; $("stDur").value = ""; $("stTpl").value = ""; $("stSaveTpl").checked = false; $("stTplName").hidden = true; $("stTplName").value = "";
+        stopEdit(); resetRows(); $("stRpe").value = ""; $("stDurMin").value = ""; $("stTpl").value = ""; $("stSaveTpl").checked = false; $("stTplName").hidden = true; $("stTplName").value = "";
         await Promise.all([load(true), FC.reload()]);
       } catch (err) { msg.textContent = err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err); }
       finally { $("stSave").disabled = false; }
@@ -230,9 +292,11 @@ const STRENGTH = {
         });
         const meta = [s.durationMin ? `${de(s.durationMin)} min` : null, s.rpe ? `Anstrengung ${de(s.rpe, s.rpe % 1 ? 1 : 0)}` : null, s.load != null ? `Belastung ${de(s.load)}` : null].filter(Boolean).join(" · ");
         const tplBtn = el("button", { type: "button", class: "linkish", text: "Als Vorlage speichern", "aria-expanded": "false" });
+        const editBtn = el("button", { type: "button", class: "linkish", text: "Bearbeiten" });
+        editBtn.onclick = () => startEdit(s);
         const row = el("div", { class: "row", style: "justify-content:space-between; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line)" },
           el("div", {}, el("b", { text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }), el("div", { class: "muted", text: ex.join(", ") })),
-          el("span", { class: "muted" }, meta, meta ? " · " : "", tplBtn));
+          el("span", { class: "muted" }, meta, meta ? " · " : "", editBtn, " · ", tplBtn));
         const openForm = (box) => { row.after(box); tplBtn.setAttribute("aria-expanded", "true"); };
         tplBtn.onclick = () => {
           if (openTpl.has(s.id)) { openTpl.get(s.id).remove(); openTpl.delete(s.id); tplBtn.setAttribute("aria-expanded", "false"); return; }

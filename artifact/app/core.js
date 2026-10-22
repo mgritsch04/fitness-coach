@@ -379,11 +379,12 @@
   // eingeklappte zeigen nur ihre Überschrift als Leiste und laden ihre Daten erst beim Aufklappen.
   // Je Tab: wie viele Abschnitte oben standardmäßig offen sind (Heute: bis „Heute dran“, #191).
   const FOLD_TABS = { heute: 5, training: 2, verlauf: 2 }, FOLD_MIN = 6, FOLD_KEY = "fc-fold";
+  const HEUTE_OPEN_TO = 10.5; // „Heute dran“ (agenda): davor ist alles offen, egal wie viele Abschnitte die Daten gerade zeigen
   let folds = {};
   try { folds = JSON.parse(localStorage.getItem(FOLD_KEY) ?? "{}") ?? {}; } catch {}
   const shown = (t) => live().filter((x) => (x.tab ?? "mehr") === t && !$(`sec-${x.id}`)?.hidden);
   const foldable = (s) => !!phone?.matches && (s.tab ?? "mehr") in FOLD_TABS && shown(s.tab ?? "mehr").length >= FOLD_MIN;
-  const isOpen = (s) => (typeof folds[s.id] === "boolean" ? folds[s.id] : shown(s.tab ?? "mehr").indexOf(s) < FOLD_TABS[s.tab ?? "mehr"]);
+  const isOpen = (s) => (typeof folds[s.id] === "boolean" ? folds[s.id] : (s.tab === "heute" ? s.order <= HEUTE_OPEN_TO : shown(s.tab ?? "mehr").indexOf(s) < FOLD_TABS[s.tab ?? "mehr"]));
   const folded = (s) => foldable(s) && !isOpen(s);
   function applyFolds() {
     for (const s of sections) {
