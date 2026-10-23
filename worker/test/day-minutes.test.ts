@@ -112,6 +112,17 @@ describe("Prefs speichern", () => {
   });
 });
 
+describe("Kraft-Vorlage je Wochentag (#370)", () => {
+  it("speichert sieben Felder, null setzt zurück", async () => {
+    const db = fakeD1();
+    expect((await readPrefs(db)).templateByDay ?? null).toBeNull();
+    await writePrefs(db, { templateByDay: ["Beine", null, null, "Oberkörper", null, null, null] });
+    expect((await readPrefs(db)).templateByDay).toEqual(["Beine", null, null, "Oberkörper", null, null, null]);
+    await writePrefs(db, { templateByDay: null });
+    expect((await readPrefs(db)).templateByDay ?? null).toBeNull();
+  });
+});
+
 describe("FTP-Test bei von Hand gesetzter FTP", () => {
   const coach = { day: "2026-03-24", readiness: "moderate", score: 80, headline: "", suggestion: "", targetLoad: null, reasons: [], warnings: [], disclaimer: "" } as CoachAdvice;
   const inp = (origin: "user" | "data"): TrainingInputs => ({

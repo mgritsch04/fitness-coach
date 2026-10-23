@@ -18,6 +18,8 @@ window.__MOCK__ = ${mock};
 // #331: genau ein Krafttraining ist mit der Einheit „s1“ (mit Sätzen) verknüpft.
 { const ws = window.__MOCK__.get_dashboard.workouts; for (const w of ws) delete w.strengthSessionId;
   if (ws[0]) ws[0].strengthSessionId = "s1"; }
+// #370: Vorlage je Wochentag; heute (2026-03-31) ist Dienstag, Donnerstag verweist auf eine gelöschte Vorlage.
+{ const t = window.__MOCK__.get_dashboard.training; if (t) t.prefs = { ...(t.prefs ?? {}), templateByDay: [null, "Beine & Brust", null, "Gelöscht", null, null, null] }; }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const payloads = {
   get_dashboard: (i) => { const d = window.__MOCK__.get_dashboard; if (!i?.compact) return d;
@@ -245,6 +247,15 @@ for (const [name, vp, scheme, tab, file] of shots) {
       return { n: wo.length, txt: document.getElementById("planDetail").textContent, btn: !!document.querySelector("#planDetail button"), name: wo[0].name };
     });
     if (!rb.n || !rb.btn || !rb.txt.includes("Workout für MyWhoosh") || !rb.txt.includes(rb.name)) errors.push(`${name}: Workout in der Plan-Karte fehlt ${JSON.stringify(rb)}`);
+    // Kraft-Vorlage je Wochentag (#370): Dienstag vorbelegt, gelöschte Vorlage (Donnerstag) zeigt „keine“; Montag wählen und speichern.
+    await p.evaluate(() => { document.getElementById("tplBox").open = true; });
+    await p.waitForSelector("#tplDays select[data-day='0']");
+    const tpl0 = await p.evaluate(() => ({ di: document.querySelector("#tplDays select[data-day='1']").value, dl: document.querySelector("#tplDays select[data-day='3']").value }));
+    if (tpl0.di !== "Beine & Brust" || tpl0.dl !== "") errors.push(`${name}: Vorlage je Wochentag falsch angezeigt ${JSON.stringify(tpl0)}`);
+    await p.selectOption("#tplDays select[data-day='0']", "Beine & Brust");
+    await p.click("#tplSave"); await p.waitForTimeout(200);
+    const tp = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("tplMsg").textContent }));
+    if (JSON.stringify(tp.saved?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || !/2 Tage/.test(tp.msg)) errors.push(`${name}: Vorlage je Wochentag speichern falsch ${JSON.stringify(tp)}`);
     // Radzeit je Wochentag (#336): Montag 0 min, Freitag 120 min, Dienstag locker; dazu „Heute nur 45 min“.
     await p.evaluate(() => { document.getElementById("timeBox").open = true; });
     await p.fill("#dayTimes input[data-day='0']", "0"); await p.fill("#dayTimes input[data-day='4']", "120"); await p.check("#dayTimes input[data-easy='1']");
@@ -271,6 +282,11 @@ for (const [name, vp, scheme, tab, file] of shots) {
     // Gym-Seite (#321): nur Gym-Modus und Krafttraining, keine Reiter, beide Abschnitte geladen.
     const g = await p.evaluate(() => ({ ids: [...document.querySelectorAll("#sections > section")].map((s) => s.id), vis: [...document.querySelectorAll("#sections > section")].filter((s) => s.offsetParent).length, bar: !!document.getElementById("tabbar"), title: document.title, calls: window.__calls ?? [] }));
     if ([...g.ids].sort().join() !== GYM_SECTIONS.map((s) => `sec-${s}`).sort().join()) errors.push(`${name}: falsche Abschnitte ${JSON.stringify(g.ids)}`);
+    // Vorlage je Wochentag (#370): heute (Dienstag) ist „Beine & Brust“ vorausgewählt und lässt sich ändern.
+    await p.waitForSelector("#gySrc");
+    const gs = await p.evaluate(() => ({ v: document.getElementById("gySrc").value, hint: document.getElementById("gyTplHint")?.textContent ?? "" }));
+    if (gs.v !== "t:Beine & Brust" || !/Beine & Brust/.test(gs.hint)) errors.push(`${name}: Gym schlägt die Wochentags-Vorlage nicht vor ${JSON.stringify(gs)}`);
+    await p.selectOption("#gySrc", ""); if ((await p.evaluate(() => document.getElementById("gySrc").value)) !== "") errors.push(`${name}: Gym-Vorschlag lässt sich nicht ändern`);
     if (g.vis !== GYM_SECTIONS.length || g.bar || g.title !== "Gym Tracker" || !g.calls.includes("get_strength")) errors.push(`${name}: Gym-Seite falsch ${JSON.stringify({ ...g, calls: undefined, strength: g.calls.includes("get_strength") })}`);
   }
   if (tab === "verlauf") {
@@ -383,8 +399,9 @@ for (const [name, vp, scheme, tab, file] of shots) {
       await p.evaluate(() => window.scrollTo(0, 0));
     }
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
+    // Heute ist die Vorlage je Wochentag (#370) vorausgewählt; die Planeinheit bleibt wählbar.
     const plan = await p.$eval("#gySrc", (s) => s.value);
-    if (!plan.startsWith("p:")) errors.push(`${name}: Gym-Modus bietet die Krafteinheit aus dem Wochenplan nicht an (${plan})`);
+    if (plan !== "t:Beine & Brust" || !(await p.$("#gySrc option[value^='p:']"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
     // Verlauf und Prognose im Gym-Modus (#328)
