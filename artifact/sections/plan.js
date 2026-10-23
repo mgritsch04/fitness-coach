@@ -25,6 +25,12 @@ FC.section({
     .goalform input[type=text] { flex: 1 1 160px; }
     .fixdays { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; margin-bottom: 8px; }
     .fixdays label { display: grid; gap: 2px; font-size: 13px; }
+    .daytimes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 10px; margin-bottom: 8px; }
+    .daytimes .dt { display: grid; grid-template-columns: 1fr auto; gap: 2px 6px; align-items: center; font-size: 13px; }
+    .daytimes .dt input[type=number] { width: 5em; min-width: 0; }
+    .daytimes .dt label.easy { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; font-size: 12px; opacity: .85; }
+    .quicktime { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .quicktime input { width: 5em; min-width: 0; }
     .verdict { padding: 8px 10px; border-radius: 10px; background: var(--band, rgba(127,127,127,.12)); }
     @media (max-width: 640px) { .wplan { grid-template-columns: 1fr; } .wplan .pd { grid-template-columns: 3.4em 1fr; column-gap: 8px; } .wplan .pd .wd { grid-row: 1 / span 3; flex-direction: column; justify-content: flex-start; } }
   `,
@@ -43,6 +49,20 @@ FC.section({
         </div>
         <p class="muted" id="planMsg" hidden></p>
         <ul class="fine" id="planNotes"></ul>
+        <div class="quicktime" id="quickBox">
+          <label for="quickMin"><strong>Heute nur</strong></label>
+          <input type="number" id="quickMin" min="0" max="600" step="5" inputmode="numeric" placeholder="45" aria-label="Minuten fürs Rad heute">
+          <span>min Rad</span>
+          <button type="button" id="quickSet" disabled>Umplanen</button>
+          <button type="button" id="quickClear" hidden>Zurück zum Plan</button>
+          <span class="muted" id="quickMsg" role="status"></span>
+        </div>
+        <details id="timeBox">
+          <summary>Zeit fürs Rad je Wochentag</summary>
+          <p class="fine muted" style="margin:6px 0">Trag ein, wie viele Minuten du an welchem Tag fürs Rad hast. Leer = egal, 0 = keine Zeit (Ruhetag). „Locker statt frei“ gibt dem Tag eine kurze Erholungsfahrt statt Ruhetag. Der Plan richtet harte und lange Einheiten nach diesen Zeiten und kürzt oder lässt aus, was nicht passt (Schätzung). Sind alle sieben Tage gesetzt, ist die Summe dein Wochenbudget.</p>
+          <div class="daytimes" id="dayTimes"></div>
+          <div class="coach-actions"><button type="button" id="timeSave">Zeiten speichern</button><span class="muted" id="timeMsg" role="status"></span></div>
+        </details>
         <details id="fixBox">
           <summary>Feste Krafttage (eigener Wochenplan)</summary>
           <p class="fine muted" style="margin:6px 0">Trag ein, an welchen Tagen du fix Kraft machst. Der Plan übernimmt sie unverändert, der Coach plant nur Rad und Ruhe drumherum und legt keine harten Radeinheiten direkt neben Beintage.</p>
@@ -71,6 +91,9 @@ FC.section({
     $("planReset").onclick = () => this.save({ reset: true }, "Gespeicherten Plan verworfen, es gilt wieder der Vorschlag.");
     $("planAdapt").onclick = () => this.adapt();
     $("fixSave").onclick = () => this.saveFixed();
+    $("timeSave").onclick = () => this.saveTimes();
+    $("quickSet").onclick = () => this.quickTime(Number($("quickMin").value));
+    $("quickClear").onclick = () => this.quickTime(null);
     $("goalForm").addEventListener("submit", (e) => { e.preventDefault(); this.addGoal(); });
     // Coach-Bereich bekommt Plan, Ziele und Tagebuch als zusätzliche Daten für Claude.
     const prevExtras = FC.state.coachExtras;
@@ -95,6 +118,7 @@ FC.section({
     if (!t) return;
     const w = t.thisWeek, cmp = w.comparison;
     this.renderFixed(t.prefs);
+    this.renderTimes(t.prefs);
     $("planPhase").textContent = `${w.phaseLabel}${w.stored ? (w.plan.source === "coach" ? " · von Claude angepasst" : " · gespeichert") : " · Vorschlag"}`;
     const fToday = (t.fueling?.days ?? []).find((f) => f.day === d.today);
     $("planToday").textContent = t.today.text + (fToday && fToday.short !== "nur Wasser" ? ` Verpflegung: ${fToday.short}.` : "");
@@ -203,6 +227,49 @@ FC.section({
       await FC.reload();
     } catch (e) { msg.textContent = FC.errText(e); }
     finally { $("fixSave").disabled = false; }
+  },
+  // Zeit fürs Rad je Wochentag (#336): Minuten, 0 = keine Zeit, „locker statt frei“; dazu „Heute nur … min“.
+  renderTimes(prefs) {
+    const { $, el } = FC, box = $("dayTimes");
+    const today = FC.state.data?.today, over = today ? prefs?.dayOverrides?.[today] : undefined;
+    $("quickClear").hidden = over == null;
+    $("quickSet").disabled = !FC.state.mcp;
+    $("quickMsg").textContent = over == null ? "" : `Für heute stehen ${over} min.`;
+    if (box.contains(document.activeElement)) return;
+    const names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+    const easy = new Set(prefs?.easyDays ?? []);
+    box.replaceChildren(...names.map((n, i) => {
+      const v = prefs?.dayMinutes?.[i];
+      const inp = el("input", { type: "number", min: "0", max: "600", step: "5", inputmode: "numeric", placeholder: "egal", "data-day": String(i), "aria-label": `${n}: verfügbare Minuten fürs Rad` });
+      inp.value = v == null ? "" : String(v);
+      const cb = el("input", { type: "checkbox", "data-easy": String(i) });
+      cb.checked = easy.has(i);
+      return el("div", { class: "dt" }, el("span", { text: n }), inp, el("label", { class: "easy" }, cb, el("span", { text: "locker statt frei" })));
+    }));
+  },
+  async saveTimes() {
+    const { $ } = FC, msg = $("timeMsg");
+    const vals = [...$("dayTimes").querySelectorAll("input[type=number]")].map((i) => (i.value === "" ? null : Math.max(0, Math.min(600, Math.round(Number(i.value))))));
+    const easy = [...$("dayTimes").querySelectorAll("input[type=checkbox]")].flatMap((c, i) => (c.checked ? [i] : []));
+    $("timeSave").disabled = true; msg.textContent = "Speichere …";
+    try {
+      await FC.call("set_training_prefs", { dayMinutes: vals.some((v) => v != null) ? vals : null, easyDays: easy.length ? easy : null });
+      const stored = FC.state.data?.training?.thisWeek?.stored;
+      msg.textContent = `Gespeichert.${stored ? " Diese Woche gilt noch dein gespeicherter Plan; „Zurück zum Vorschlag“ übernimmt die Zeiten." : ""}`;
+      await FC.reload();
+    } catch (e) { msg.textContent = FC.errText(e); }
+    finally { $("timeSave").disabled = false; }
+  },
+  async quickTime(minutes) {
+    const { $ } = FC, msg = $("quickMsg");
+    if (minutes != null && !Number.isFinite(minutes)) { msg.textContent = "Bitte Minuten eintragen (0 = keine Zeit)."; return; }
+    $("quickSet").disabled = true; msg.textContent = "Plane um …";
+    try {
+      await FC.call("set_day_time", { minutes: minutes == null ? null : Math.max(0, Math.min(600, Math.round(minutes))) });
+      await FC.reload();
+      msg.textContent = minutes == null ? "Ausnahme zurückgenommen." : `Heute ${minutes} min: Plan angepasst, siehe Hinweise unter dem Wochenplan.`;
+    } catch (e) { msg.textContent = FC.errText(e); }
+    finally { $("quickSet").disabled = !FC.state.mcp; }
   },
   rerender(d) { if (d?.training) this.renderProjection(d.training.projection); },
   renderProjection(p) {

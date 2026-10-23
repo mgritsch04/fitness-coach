@@ -24,8 +24,22 @@ function tools() {
 describe("Coach-Werkzeuge", () => {
   it("registriert alle Werkzeuge", () => {
     expect([...tools().handlers.keys()].sort()).toEqual(
-      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_consistency", "get_event_projection", "get_sweat_rate", "log_sweat_test", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_recommendation_feedback", "save_plan", "set_goals", "set_training_prefs"].sort(),
+      ["delete_coach_note", "get_coach_context", "get_coach_notes", "get_consistency", "get_event_projection", "get_sweat_rate", "log_sweat_test", "get_goals", "get_mobility_routine", "get_week_review", "get_plan", "get_sleep_target", "get_training_block", "get_training_prefs", "save_training_block", "save_coach_note", "save_recommendation_feedback", "save_plan", "set_goals", "set_training_prefs", "set_day_time"].sort(),
     );
+  });
+
+  it("set_day_time: Ausnahme für heute, Plan wird gekürzt, Ausnahmen verfallen", async () => {
+    const { call } = tools();
+    const plan = await call("get_plan");
+    const today = plan.value.today.planned?.day ?? plan.value.plan.days[0].day;
+    const r = await call("set_day_time", { day: today, minutes: 20 });
+    expect(r.error).toBe(false);
+    const day = r.value.plan.days.find((d: { day: string }) => d.day === today);
+    expect(day.durationMin).toBeLessThanOrEqual(20);
+    expect((await call("get_training_prefs")).value.dayOverrides[today]).toBe(20);
+    await call("set_day_time", { day: today, minutes: null });
+    expect((await call("get_training_prefs")).value.dayOverrides).toBeNull();
+    expect((await call("set_day_time", { day: "2000-01-01", minutes: 10 })).error).toBe(true);
   });
 
   it("Ziele, Plan übernehmen, anpassen, Kontext", async () => {

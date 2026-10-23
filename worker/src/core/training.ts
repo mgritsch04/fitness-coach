@@ -250,7 +250,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     projection,
     notes,
     intensity: intensityCheck(inp),
-    ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null, next),
+    ftpTest: ftpTestPlan(inp, thisWeek.plan, tests.at(-1)?.day ?? null, next, prefs),
     makeUp: makeUpPlan(thisWeek.comparison, inp.today, inp.coach?.readiness ?? null, next.days[0] ?? null),
     strengthDeload: strengthDeload(sessions, inp.today),
     block: { ...blockView(savedBlock ?? proposeBlock(inp), inp.weeks, inp.today, blockWarning(inp)), saved: Boolean(savedBlock) },
@@ -356,7 +356,9 @@ export interface FtpTestPlan {
  * Tempo-/Schwellen-/VO2max- oder Grundlageneinheit ab heute, die nicht direkt nach der langen Fahrt,
  * einer harten Einheit oder Beinkraft liegt. Die Form wird am Tag selbst geprüft (Tagesempfehlung).
  */
-export function ftpTestPlan(inp: TrainingInputs, plan: WeekPlan, lastTestDay: string | null, nextPlan?: WeekPlan): FtpTestPlan | null {
+export function ftpTestPlan(inp: TrainingInputs, plan: WeekPlan, lastTestDay: string | null, nextPlan?: WeekPlan, prefs?: Pick<TrainingPrefs, "noFtpTest"> | null): FtpTestPlan | null {
+  // Von Hand eingetragene FTP ohne gespeicherten Test zählt wie ein Test (#336); wer es nicht will, schaltet den Vorschlag aus.
+  if (prefs?.noFtpTest || (lastTestDay == null && inp.settings.origin?.ftpW === "user" && inp.settings.ftpW != null)) return null;
   const t = inp.days.find((d) => d.day === inp.today) ?? inp.days.at(-1);
   const s = ftpTestSuggestion(t?.tsb ?? null, lastTestDay, inp.today);
   const due = s.daysSinceLastTest == null || s.daysSinceLastTest >= 42;

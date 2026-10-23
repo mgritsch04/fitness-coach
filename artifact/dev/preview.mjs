@@ -58,6 +58,12 @@ const payloads = {
   get_body_history: () => window.__MOCK__.get_body_history,
   get_bike_workout: () => window.__MOCK__.get_bike_workout,
   list_bike_workouts: (i) => { const m = window.__MOCK__.list_bike_workouts; return { ...m, items: m.items.filter((x) => (!i?.category || x.category === i.category) && (!i?.maxMin || x.durationMin <= i.maxMin)) }; },
+  get_workout_detail: (i) => { if (i?.sourceId === "nofit") return { found: false, message: "Für dieses Workout gibt es keine Sekundenwerte.", available: [] };
+    const points = Array.from({ length: 120 }, (_, k) => ({ t: k * 30, power: k % 20 < 6 ? 260 : 150 + (k % 7) * 4, hr: 120 + Math.round(k / 3), cadence: 88 }));
+    const z = (names, secs) => names.map((name, k) => ({ zone: k + 1, name, min: k * 50, max: k < names.length - 1 ? k * 50 + 49 : null, seconds: secs[k], sharePct: Math.round((secs[k] / secs.reduce((a, b) => a + b)) * 1000) / 10 }));
+    return { found: true, workout: {}, ftpOrigin: "user", reference: { ftpW: 250, thresholdHr: 170 }, stats: { durationS: 3600, avgPowerW: 180, normalizedPowerW: 195, maxPowerW: 410, variabilityIndex: 1.08, intensityFactor: 0.78, tssEstimate: 61, workKj: 648, avgHr: 142, maxHr: 171, avgCadence: 88 },
+      series: { stepS: 30, points }, zones: { power: z(["Aktive Erholung", "Ausdauer", "Tempo", "Schwelle", "VO2max"], [300, 1800, 900, 480, 120]), hr: z(["Z1", "Z2", "Z3"], [600, 2400, 600]) },
+      intervals: { thresholdW: 220, basis: "ftp", intervals: [{ startS: 300, durationS: 180, avgPowerW: 262, pctFtp: 105, avgHr: 160, maxHr: 168, avgCadence: 90 }] }, decoupling: { pct: 3.2, firstHalf: 1.3, secondHalf: 1.26 }, powerCurve: {}, available: [], notes: [] }; },
   get_ride_weather: () => window.__MOCK__.get_ride_weather,
   set_weather_location: (i) => ({ location: { name: i.name, lat: 47.1, lon: 15.4 } }),
   log_weight: (i) => ((window.__weightIn = i), { saved: i.entries ? { count: i.entries.length, from: i.entries[0].day, to: i.entries.at(-1).day } : { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
@@ -81,6 +87,7 @@ const payloads = {
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   save_strength_template: (i) => { window.__tplSaved = i; return i; },
   set_training_prefs: (i) => { window.__prefsSaved = i; return i; },
+  set_day_time: (i) => { window.__dayTime = i; return window.__MOCK__.get_dashboard.training.thisWeek; },
   describe_exercise: (i) => (/reifen/i.test(i.text) ? { query: i.text, suggestions: [], custom: { name: "Reifen umwerfen" }, note: "Keine passende Übung im Katalog gefunden. Du kannst sie als eigene Übung anlegen." } : { query: i.text, suggestions: [{ exercise: "lat_pulldown", name: "Latziehen", muscles: ["Rücken", "Bizeps"], match: 100, why: ["kabel"] }, { exercise: "cable_row", name: "Rudern am Kabel", muscles: ["Rücken", "Bizeps"], match: 60, why: ["kabel"] }], custom: { name: "Am Kabel ziehen" }, note: "Vorschläge aus dem Übungskatalog." }),
   get_express_session: (i) => { window.__expressIn = i; return { minutes: i.minutes, fullMin: 52, estimatedMin: 28, fits: true, dropped: ["Bankdrücken"], changes: ["Grundübungen 2 Sätze"], note: "", text: "Gekürzt von etwa 52 auf 28 min: Grundübungen 2 Sätze. Weggelassen: Bankdrücken.",
     exercises: [{ exercise: "back_squat", name: "Kniebeuge", sets: 2, reps: 5, weightKg: 100, unit: "Wdh", restS: 120, superset: null, priority: 1 }, { exercise: "dumbbell_row", name: "Kurzhantelrudern", sets: 2, reps: 10, weightKg: 26, unit: "Wdh", restS: 60, superset: "A", priority: 2 }] }; },
@@ -175,6 +182,29 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.screenshot({ path: join(out, "phone-workout-filter.png") });
     await p.click("#btnResetWorkouts"); await p.waitForTimeout(150);
     if ((await wo()).rows.length !== 25) errors.push(`${name}: Zurücksetzen zeigt nicht wieder alle`);
+    // Workout-Detail (#334): Rad mit FIT (Verlauf, Zonen, Intervalle), Kraft mit Übungen, ohne Übungen, Rad ohne FIT.
+    const wdText = () => p.evaluate(() => ({ open: document.getElementById("woDetail").open, text: document.getElementById("wdBody").innerText, svg: document.querySelectorAll("#wdBody .wd-chart svg").length, zones: document.querySelectorAll("#wdBody .wd-zone").length, rows: document.querySelectorAll("#wdBody .wd-tbl tbody tr").length, over: document.documentElement.scrollWidth > innerWidth || document.getElementById("woDetail").scrollWidth > document.getElementById("woDetail").clientWidth + 1 }));
+    await p.click("#woKind [data-k=bike]"); await p.waitForTimeout(150);
+    await p.locator("#tWorkouts tbody tr:not(.rpe-row) td:nth-child(2) button.link").first().click(); await p.waitForSelector("#wdBody .wd-chart", { timeout: 3000 }).catch(() => {});
+    const d1 = await wdText();
+    if (!d1.open || d1.svg !== 1 || d1.zones < 8 || d1.rows !== 1 || !/Entkopplung/.test(d1.text) || d1.over) errors.push(`${name}: Rad-Detail falsch ${JSON.stringify({ ...d1, text: d1.text.slice(0, 120) })}`);
+    await p.screenshot({ path: join(out, "phone-workout-detail-bike.png") });
+    await p.keyboard.press("Escape"); await p.waitForTimeout(100);
+    if (await p.evaluate(() => document.getElementById("woDetail").open)) errors.push(`${name}: Workout-Detail schließt nicht mit Escape`);
+    const open = (w) => p.evaluate((w) => FC.state.openWorkout(w), w);
+    const base = await p.evaluate(() => ({ ...FC.state.data.workouts[0] }));
+    await open({ ...base, sport: "weightlifting", strengthSessionId: "s1" }); await p.waitForTimeout(300);
+    const d2 = await wdText();
+    if (!/Bankdrücken/.test(d2.text) || !/8 × 72,5 kg/.test(d2.text) || d2.over) errors.push(`${name}: Kraft-Detail falsch ${JSON.stringify(d2.text.slice(0, 200))}`);
+    await p.screenshot({ path: join(out, "phone-workout-detail-strength.png") });
+    await open({ ...base, sport: "weightlifting", strengthSessionId: null }); await p.waitForTimeout(200);
+    if (!/keine Übungen eingetragen/.test((await wdText()).text)) errors.push(`${name}: Kraft ohne Übungen ohne Hinweis`);
+    await open({ ...base, sport: "cycling", strengthSessionId: null, sourceId: "nofit" }); await p.waitForTimeout(200);
+    const d4 = await wdText();
+    if (!/keine Sekundenwerte/.test(d4.text) || d4.svg) errors.push(`${name}: Rad ohne FIT ohne Hinweis ${JSON.stringify(d4.text.slice(0, 200))}`);
+    await open({ ...base, sport: "running", strengthSessionId: null }); await p.waitForTimeout(100);
+    if (!/Dauer/.test((await wdText()).text)) errors.push(`${name}: Basisdaten fehlen`);
+    await p.keyboard.press("Escape"); await p.click("#btnResetWorkouts").catch(() => {}); await p.waitForTimeout(100);
   }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "mehr") {
@@ -215,6 +245,15 @@ for (const [name, vp, scheme, tab, file] of shots) {
       return { n: wo.length, txt: document.getElementById("planDetail").textContent, btn: !!document.querySelector("#planDetail button"), name: wo[0].name };
     });
     if (!rb.n || !rb.btn || !rb.txt.includes("Workout für MyWhoosh") || !rb.txt.includes(rb.name)) errors.push(`${name}: Workout in der Plan-Karte fehlt ${JSON.stringify(rb)}`);
+    // Radzeit je Wochentag (#336): Montag 0 min, Freitag 120 min, Dienstag locker; dazu „Heute nur 45 min“.
+    await p.evaluate(() => { document.getElementById("timeBox").open = true; });
+    await p.fill("#dayTimes input[data-day='0']", "0"); await p.fill("#dayTimes input[data-day='4']", "120"); await p.check("#dayTimes input[data-easy='1']");
+    await p.click("#timeSave"); await p.waitForTimeout(200);
+    const tm = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("timeMsg").textContent }));
+    if (JSON.stringify(tm.saved?.dayMinutes) !== JSON.stringify([0, null, null, null, 120, null, null]) || JSON.stringify(tm.saved?.easyDays) !== "[1]" || !/Gespeichert/.test(tm.msg)) errors.push(`${name}: Zeiten je Wochentag falsch ${JSON.stringify(tm)}`);
+    await p.fill("#quickMin", "45"); await p.click("#quickSet"); await p.waitForTimeout(200);
+    const qt = await p.evaluate(() => ({ called: window.__dayTime, msg: document.getElementById("quickMsg").textContent }));
+    if (qt.called?.minutes !== 45 || !/45 min/.test(qt.msg)) errors.push(`${name}: Heute nur X min falsch ${JSON.stringify(qt)}`);
     // Konstanz (#209): 12 Wochenkacheln, 3 erreicht, laufende Woche markiert.
     const cs = await p.evaluate(() => ({ vis: !document.getElementById("sec-consistency")?.hidden, n: document.querySelectorAll("#csWeeks .cs-w").length, met: document.querySelectorAll("#csWeeks .cs-w.met").length, cur: document.querySelectorAll("#csWeeks .cs-w.current").length, text: document.getElementById("csText")?.textContent ?? "" }));
     if (!cs.vis || cs.n !== 12 || cs.met !== 3 || cs.cur !== 1 || !cs.text.includes("in Folge")) errors.push(`${name}: Konstanz-Karte falsch ${JSON.stringify(cs)}`);
