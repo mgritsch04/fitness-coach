@@ -81,6 +81,7 @@ const payloads = {
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   save_strength_template: (i) => { window.__tplSaved = i; return i; },
   set_training_prefs: (i) => { window.__prefsSaved = i; return i; },
+  set_day_time: (i) => { window.__dayTime = i; return window.__MOCK__.get_dashboard.training.thisWeek; },
   describe_exercise: (i) => (/reifen/i.test(i.text) ? { query: i.text, suggestions: [], custom: { name: "Reifen umwerfen" }, note: "Keine passende Übung im Katalog gefunden. Du kannst sie als eigene Übung anlegen." } : { query: i.text, suggestions: [{ exercise: "lat_pulldown", name: "Latziehen", muscles: ["Rücken", "Bizeps"], match: 100, why: ["kabel"] }, { exercise: "cable_row", name: "Rudern am Kabel", muscles: ["Rücken", "Bizeps"], match: 60, why: ["kabel"] }], custom: { name: "Am Kabel ziehen" }, note: "Vorschläge aus dem Übungskatalog." }),
   get_express_session: (i) => { window.__expressIn = i; return { minutes: i.minutes, fullMin: 52, estimatedMin: 28, fits: true, dropped: ["Bankdrücken"], changes: ["Grundübungen 2 Sätze"], note: "", text: "Gekürzt von etwa 52 auf 28 min: Grundübungen 2 Sätze. Weggelassen: Bankdrücken.",
     exercises: [{ exercise: "back_squat", name: "Kniebeuge", sets: 2, reps: 5, weightKg: 100, unit: "Wdh", restS: 120, superset: null, priority: 1 }, { exercise: "dumbbell_row", name: "Kurzhantelrudern", sets: 2, reps: 10, weightKg: 26, unit: "Wdh", restS: 60, superset: "A", priority: 2 }] }; },
@@ -205,6 +206,15 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#fixSave"); await p.waitForTimeout(200);
     const fx = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("fixMsg").textContent }));
     if (JSON.stringify(fx.saved?.fixedStrength) !== JSON.stringify([{ day: 0, focus: "Beine" }, { day: 3, focus: "Oberkörper" }]) || !/2 feste Krafttage/.test(fx.msg)) errors.push(`${name}: Feste Krafttage falsch ${JSON.stringify(fx)}`);
+    // Radzeit je Wochentag (#336): Montag 0 min, Freitag 120 min, Dienstag locker; dazu „Heute nur 45 min“.
+    await p.evaluate(() => { document.getElementById("timeBox").open = true; });
+    await p.fill("#dayTimes input[data-day='0']", "0"); await p.fill("#dayTimes input[data-day='4']", "120"); await p.check("#dayTimes input[data-easy='1']");
+    await p.click("#timeSave"); await p.waitForTimeout(200);
+    const tm = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("timeMsg").textContent }));
+    if (JSON.stringify(tm.saved?.dayMinutes) !== JSON.stringify([0, null, null, null, 120, null, null]) || JSON.stringify(tm.saved?.easyDays) !== "[1]" || !/Gespeichert/.test(tm.msg)) errors.push(`${name}: Zeiten je Wochentag falsch ${JSON.stringify(tm)}`);
+    await p.fill("#quickMin", "45"); await p.click("#quickSet"); await p.waitForTimeout(200);
+    const qt = await p.evaluate(() => ({ called: window.__dayTime, msg: document.getElementById("quickMsg").textContent }));
+    if (qt.called?.minutes !== 45 || !/45 min/.test(qt.msg)) errors.push(`${name}: Heute nur X min falsch ${JSON.stringify(qt)}`);
     // Konstanz (#209): 12 Wochenkacheln, 3 erreicht, laufende Woche markiert.
     const cs = await p.evaluate(() => ({ vis: !document.getElementById("sec-consistency")?.hidden, n: document.querySelectorAll("#csWeeks .cs-w").length, met: document.querySelectorAll("#csWeeks .cs-w.met").length, cur: document.querySelectorAll("#csWeeks .cs-w.current").length, text: document.getElementById("csText")?.textContent ?? "" }));
     if (!cs.vis || cs.n !== 12 || cs.met !== 3 || cs.cur !== 1 || !cs.text.includes("in Folge")) errors.push(`${name}: Konstanz-Karte falsch ${JSON.stringify(cs)}`);

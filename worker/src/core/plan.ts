@@ -47,6 +47,14 @@ export interface TrainingPrefs {
   ridesPerWeek?: number | null;
   /** Fester Wochenplan fürs Krafttraining (#323): diese Tage übernimmt der Plan unverändert, der Coach plant keine weitere Kraft. */
   fixedStrength?: FixedStrength[] | null;
+  /** Verfügbare Minuten fürs Rad je Wochentag (#336, 0 = Montag … 6 = Sonntag); null im Feld = nicht angegeben, 0 = keine Zeit. */
+  dayMinutes?: (number | null)[] | null;
+  /** Wochentage, die nie ganz frei sind, sondern eine lockere kurze Einheit bekommen (#336). */
+  easyDays?: number[] | null;
+  /** Spontane Ausnahmen je Datum (YYYY-MM-DD → Minuten fürs Rad); gelten nur an diesem Tag und verfallen danach (#336). */
+  dayOverrides?: Record<string, number> | null;
+  /** Keinen FTP-Test automatisch vorschlagen (#336). */
+  noFtpTest?: boolean | null;
 }
 
 /** Feste Krafteinheit an einem Wochentag (0 = Montag … 6 = Sonntag). */
@@ -61,7 +69,7 @@ export const isLegFocus = (focus: string) => /bein|unterk|ganzk|leg|squat|kniebe
 
 // Standard für G: Rennrad (derzeit indoor mit MyWhoosh) plus Kraft im Gym; Häufigkeit und Dauer
 // der Krafteinheiten werden aus den letzten Wochen übernommen, solange nichts eingetragen ist.
-export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null, strengthPhase: null, ridesPerWeek: null, fixedStrength: null };
+export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null, strengthPhase: null, ridesPerWeek: null, fixedStrength: null, dayMinutes: null, easyDays: null, dayOverrides: null, noFtpTest: null };
 
 export type Phase = "base" | "build" | "peak" | "taper" | "race" | "recovery" | "maintain";
 export type SessionType = "rest" | "recovery" | "endurance" | "long" | "tempo" | "threshold" | "vo2max" | "strength" | "opener" | "race";
@@ -270,6 +278,16 @@ export function strengthHabit(prefs: TrainingPrefs, weeks: WeekSummary[], week: 
   return { perWeek: Math.max(0, Math.min(6, perWeek)), minutes, estimated: prefs.strengthPerWeek == null };
 }
 
+/** Verfügbare Radminuten je Wochentag der Woche: Ausnahme für das Datum vor Wochenmuster; null = nicht angegeben (#336). */
+export function dayCaps(prefs: TrainingPrefs, week: string): (number | null)[] {
+  return [0, 1, 2, 3, 4, 5, 6].map((d) => {
+    const over = prefs.dayOverrides?.[addDays(week, d)];
+    if (typeof over === "number" && over >= 0) return over;
+    const v = prefs.dayMinutes?.[d];
+    return typeof v === "number" && v >= 0 ? v : null;
+  });
+}
+
 export function buildWeekPlan(inp: PlanInput): WeekPlan {
   const week = weekStart(inp.weekStart);
   const picked = choosePhase(week, inp.goals, inp.weeks, inp.tsb);
@@ -298,6 +316,14 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   } else {
     notes.push("Noch wenig Belastungsdaten: Plan richtet sich nach der Zeit, Belastung ist grob geschätzt.");
   }
+  const caps = dayCaps(inp.prefs, week);
+  const capOf = (d: number) => caps[d] ?? Infinity;
+  // Sind alle Tage angegeben, ist die Summe der Tageswerte das Wochenbudget (#336).
+  if (caps.every((c) => c != null)) {
+    const sum = (caps as number[]).reduce((a, b) => a + b, 0);
+    hours = Math.min(hours, sum / 60);
+    if (!inp.prefs.weeklyHours) notes.push(`Zeitbudget aus deinen Tageswerten: ${Math.round((sum / 60) * 10) / 10} h pro Woche.`);
+  }
   hours = Math.round(hours * 4) / 4;
 
   // Feste Krafttage (#323) gehen vor festen Ruhetagen; je Wochentag zählt der erste Eintrag.
@@ -306,18 +332,23 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   const nearLegs = (d: number) => fixedLegs.has(d - 1) || fixedLegs.has(d + 1);
 
   // Trainingstage auswählen.
-  const rest = new Set(inp.prefs.restDays.filter((d) => d >= 0 && d <= 6 && !fixed.some((f) => f.day === d)));
+  // Tage ohne Zeit (0 min) sind frei; „locker statt frei“ (#336) gewinnt gegen feste Ruhetage, aber nicht gegen 0 min.
+  const easy = new Set((inp.prefs.easyDays ?? []).filter((d) => d >= 0 && d <= 6 && caps[d] !== 0));
+  const rest = new Set([...inp.prefs.restDays.filter((d) => !easy.has(d)), ...[0, 1, 2, 3, 4, 5, 6].filter((d) => caps[d] === 0)].filter((d) => d >= 0 && d <= 6 && !fixed.some((f) => f.day === d)));
+  const noTime = new Set([0, 1, 2, 3, 4, 5, 6].filter((d) => caps[d] === 0));
   const available = [0, 1, 2, 3, 4, 5, 6].filter((d) => !rest.has(d));
   const wanted = hours <= 3 ? 3 : hours <= 5 ? 4 : hours <= 8 ? 5 : 6;
-  const nTrain = Math.min(available.length, Math.max(phase === "race" ? 3 : 2, wanted));
-  const longPick = [5, 6, 4, 3].filter((d) => available.includes(d));
-  let longDay = inp.prefs.longDay != null && available.includes(inp.prefs.longDay) ? inp.prefs.longDay : longPick.find((d) => !nearLegs(d)) ?? longPick[0] ?? available.at(-1)!;
+  const nTrain = Math.min(available.length, Math.max(phase === "race" ? 3 : 2, wanted, easy.size + 1));
+  // Langtag: mindestens 90 min Zeit, sonst der Tag mit der meisten Zeit.
+  const longPick = [5, 6, 4, 3].filter((d) => available.includes(d) && capOf(d) >= 90);
+  const mostTime = [...available].sort((a, b) => capOf(b) - capOf(a) || b - a)[0];
+  let longDay = inp.prefs.longDay != null && available.includes(inp.prefs.longDay) ? inp.prefs.longDay : longPick.find((d) => !nearLegs(d)) ?? longPick[0] ?? mostTime ?? available.at(-1)!;
 
   const raceDay = phase === "race" && goal?.targetDate ? (new Date(goal.targetDate + "T00:00:00Z").getUTCDay() + 6) % 7 : null;
   if (raceDay != null) longDay = raceDay;
 
   // Tage gleichmäßig verteilen, Langtag immer dabei; in der Wettkampfwoche auch der Vortag (Aktivierung).
-  const chosen = new Set<number>([longDay]);
+  const chosen = new Set<number>([longDay, ...[...easy].filter((d) => available.includes(d))]);
   if (raceDay != null && raceDay > 0 && available.includes(raceDay - 1)) chosen.add(raceDay - 1);
   const others = available.filter((d) => !chosen.has(d));
   while (chosen.size < nTrain && others.length) {
@@ -332,7 +363,7 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   }
 
   const types = new Map<number, SessionType>();
-  for (const d of chosen) types.set(d, "endurance");
+  for (const d of chosen) types.set(d, easy.has(d) ? "recovery" : "endurance");
   if (raceDay != null) types.set(raceDay, "race");
   else types.set(longDay, phase === "taper" ? "endurance" : "long");
 
@@ -341,15 +372,18 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   const keyCount = phase === "base" || phase === "maintain" ? (nTrain >= 4 ? 1 : 0) : Math.min(keys.length, nTrain >= 4 ? keys.length : 1);
   const isBlocked = (d: number) => nearLegs(d) || [d - 1, d + 1].some((n) => n >= 0 && n <= 6 && types.has(n) && (isHard(types.get(n)!) || types.get(n) === "long"));
   for (const k of keys.slice(0, keyCount)) {
-    let candidates = [...chosen].filter((d) => types.get(d) === "endurance" && !isBlocked(d));
+    let candidates = [...chosen].filter((d) => types.get(d) === "endurance" && !isBlocked(d) && capOf(d) >= (k === "opener" ? 30 : 45));
     if (k === "opener" && raceDay != null) {
       // Aktivierung 1–2 Tage vor dem Wettkampf.
       const pre = [raceDay - 1, raceDay - 2].filter((d) => d >= 0 && chosen.has(d));
       candidates = pre.length ? pre : candidates;
     }
-    if (!candidates.length) candidates = [...chosen].filter((d) => types.get(d) === "endurance" && !nearLegs(d));
-    if (!candidates.length) candidates = [...chosen].filter((d) => types.get(d) === "endurance");
-    if (!candidates.length) break;
+    if (!candidates.length) candidates = [...chosen].filter((d) => types.get(d) === "endurance" && !nearLegs(d) && capOf(d) >= 45);
+    if (!candidates.length) candidates = [...chosen].filter((d) => types.get(d) === "endurance" && capOf(d) >= 45);
+    if (!candidates.length) {
+      if (chosen.size) notes.push(`${k === "opener" ? "Aktivierung" : "Schlüsseleinheit"} passt nicht in die Zeit, die du angegeben hast (mindestens 45 min an einem Tag nötig). Der Plan lässt sie aus; trag mehr Zeit ein, wenn sie dazugehören soll.`);
+      break;
+    }
     // Möglichst weit weg vom Langtag; im Tapering die kurze Intensität zur Wochenmitte.
     if (phase === "taper") candidates.sort((a, b) => Math.abs(a - 2) - Math.abs(b - 2));
     else candidates.sort((a, b) => Math.abs(b - longDay) - Math.abs(a - longDay));
@@ -370,13 +404,36 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
   const wSum = weights.reduce((a, b) => a + b, 0);
   const maxWeekday = inp.prefs.maxWeekdayMin ?? null;
   const minutes = new Map<number, number>();
-  trainDays.forEach((d, i) => {
-    let m = Math.round(((totalMin * weights[i]) / wSum) / 5) * 5;
+  // Tageszeiten (#336): Tage mit Zeitgrenze bekommen höchstens diese Minuten, der Rest geht an Tage mit mehr Platz.
+  const share0 = new Map<number, number>();
+  {
+    let open = trainDays.map((d, i) => ({ d, w: weights[i] }));
+    let remaining = totalMin;
+    while (open.length) {
+      const wS = open.reduce((a, x) => a + x.w, 0);
+      const over = open.find((x) => types.get(x.d) !== "race" && (remaining * x.w) / wS > capOf(x.d));
+      if (!over) {
+        for (const x of open) share0.set(x.d, (remaining * x.w) / wS);
+        remaining = 0;
+        break;
+      }
+      share0.set(over.d, capOf(over.d));
+      remaining -= capOf(over.d);
+      open = open.filter((x) => x !== over);
+    }
+    if (remaining > 15) notes.push(`Mit den Zeiten, die du pro Tag angegeben hast, passen nur etwa ${Math.round(((totalMin - remaining) / 60) * 10) / 10} h in die Woche statt ${hours} h. Mehr Zeit an einem Tag würde die Woche voller machen.`);
+  }
+  trainDays.forEach((d) => {
+    let m = Math.round((share0.get(d) ?? 0) / 5) * 5;
     const t = types.get(d)!;
     if (t === "recovery") m = Math.min(m, 60);
     if (t === "opener") m = Math.min(m, 60);
-    if (maxWeekday && d < 5 && t !== "race") m = Math.min(m, maxWeekday);
-    minutes.set(d, Math.max(t === "recovery" || t === "opener" ? 30 : 40, m));
+    if (maxWeekday && d < 5 && t !== "race" && caps[d] == null) m = Math.min(m, maxWeekday);
+    m = Math.max(t === "recovery" || t === "opener" ? 30 : 40, m);
+    // „Locker statt frei“: kurze Erholungsfahrt (30–45 min); die eingetragene Zeit hat Vorrang.
+    if (easy.has(d) && t === "recovery") m = Math.min(m, 45);
+    if (t !== "race") m = Math.min(m, capOf(d));
+    minutes.set(d, m);
   });
 
   // Kraft: nicht in der Wettkampfwoche, im Tapering und in Erholungswochen höchstens eine leichte.
@@ -398,7 +455,7 @@ export function buildWeekPlan(inp: PlanInput): WeekPlan {
       durationMin: t === "race" ? 0 : min,
       targetLoad: Math.round((min / 60) * TSS_PER_H[t]),
       intensity: intensityText(t, inp, sport.power),
-      description: rest.has(d) && t === "rest" ? `${description} (dein fester Ruhetag)` : description,
+      description: rest.has(d) && t === "rest" ? `${description} (${noTime.has(d) ? "an dem Tag hast du keine Zeit eingetragen" : "dein fester Ruhetag"})` : easy.has(d) && t === "recovery" ? `${description} Dein lockerer Tag statt Ruhetag.` : description,
       key: isHard(t) && t !== "opener" ? true : t === "long" || t === "race",
       strength: null,
     });
@@ -644,4 +701,64 @@ export function normalizePlan(week: string, input: { days: SessionInput[]; notes
     notes: (input.notes ?? base?.notes ?? []).map((n) => String(n).slice(0, 300)).slice(0, 10),
     source: "coach",
   };
+}
+
+// --- Spontan umplanen (#336) ----------------------------------------------------------------
+
+/**
+ * „Heute nur X min“: passt einen vorhandenen Wochenplan an eine Zeitgrenze an einem Tag an. Eine zu lange
+ * Einheit wird gekürzt (die Lange wird zur Grundlagenfahrt, harte Einheiten bleiben mit kürzeren Intervallen);
+ * bei 0 min wandert eine Schlüsseleinheit auf den nächsten freien Tag danach, sonst entfällt die Radeinheit.
+ * Krafteinheiten bleiben unverändert. Reine Funktion, vergangene Tage bleiben unberührt.
+ */
+export function applyDayLimit(plan: WeekPlan, day: string, minutes: number, today: string, noun = "Fahrt"): WeekPlan {
+  const idx = plan.days.findIndex((d) => d.day === day);
+  if (idx < 0 || day < today) return plan;
+  const days = plan.days.map((d) => ({ ...d, strength: d.strength ? { ...d.strength } : null }));
+  const notes = [...plan.notes];
+  const s = days[idx];
+  const bike = s.type !== "rest" && s.type !== "strength" && s.type !== "race";
+  const label = `${WEEKDAY[idx]}: nur ${minutes} min`;
+  if (!bike || s.durationMin <= minutes) return plan;
+  const base = (x: PlannedSession) => Math.round((x.durationMin / 60) * TSS_PER_H[x.type]);
+  const makeRest = (x: PlannedSession) => {
+    x.targetLoad -= base(x);
+    if (x.strength) {
+      x.type = "strength";
+      x.title = "Krafttraining";
+      x.durationMin = x.strength.durationMin;
+      x.intensity = "Kraft, Ganzkörper";
+      x.description = `${x.strength.durationMin} min ${x.strength.focus}.`;
+    } else {
+      x.type = "rest";
+      x.title = "Ruhetag";
+      x.durationMin = 0;
+      x.targetLoad = 0;
+      x.intensity = "frei";
+      x.description = "Frei, Spaziergang oder Mobility. Erholung ist Teil des Trainings.";
+    }
+    x.key = false;
+  };
+  if (minutes === 0) {
+    const moved = { ...s };
+    const target = s.key ? days.findIndex((d, i) => i > idx && d.type === "rest" && !d.strength) : -1;
+    makeRest(days[idx]);
+    if (target >= 0) {
+      Object.assign(days[target], { type: moved.type, title: moved.title, durationMin: moved.durationMin, targetLoad: moved.targetLoad - (moved.strength ? (moved.strength.focus.startsWith("Ganzkörper leicht") ? 15 : STRENGTH_LOAD) : 0), intensity: moved.intensity, description: moved.description, key: moved.key });
+      notes.push(`${label}: „${moved.title}“ rückt auf ${WEEKDAY[target]} (Schätzung, Erholung vor und nach der Einheit prüfen).`);
+    } else notes.push(`${label}: Radeinheit entfällt${s.key ? ", später in der Woche war kein freier Tag" : ""}. Sie muss nicht nachgeholt werden.`);
+  } else {
+    const wasLong = s.type === "long";
+    const before = base(s);
+    s.durationMin = minutes;
+    if (wasLong) {
+      s.type = "endurance";
+      s.key = false;
+      s.title = `Grundlagen-${noun}`;
+    }
+    s.description = describe(s.type, minutes, noun).description + (s.strength ? ` Danach Kraft: ${s.strength.durationMin} min ${s.strength.focus}.` : "");
+    s.targetLoad = Math.max(0, s.targetLoad - before) + base(s);
+    notes.push(`${label}: ${wasLong ? "statt der langen Fahrt eine kürzere Grundlageneinheit" : isHard(s.type) ? "kürzere Intervalle, Qualität vor Umfang" : "Einheit gekürzt"} (Schätzung).`);
+  }
+  return { ...plan, days, notes, source: "coach" };
 }

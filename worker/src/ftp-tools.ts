@@ -5,6 +5,7 @@ import { analysisContext } from "./core/analytics";
 import { readBodyHistory, weightByDay } from "./core/body";
 import { analyzeFtpTest, deleteFtpTest, ftpHistory, ftpTestSuggestion, readFtpTests, saveFtpTest } from "./core/ftp-test";
 import { readWorkoutStream } from "./core/repository";
+import { readPrefs } from "./core/goals";
 import { writeSettings } from "./core/settings";
 import { listDetailWorkouts } from "./core/workout-detail";
 import type { Env } from "./env";
@@ -35,12 +36,16 @@ export function registerFtpTools(server: McpServer, env: Env) {
   async function overview() {
     const [ctx, rows] = await Promise.all([analysisContext(db, { days: 7 }), readFtpTests(db)]);
     const tests = ftpHistory(rows);
+    const prefs = await readPrefs(db);
+    const manual = ctx.settings.origin.ftpW === "user" && ctx.settings.ftpW != null && tests.length === 0;
     const tsb = ctx.series.find((p) => p.day === ctx.today)?.tsb ?? ctx.series.at(-1)?.tsb ?? null;
     return {
       today: ctx.today,
       current: { ftpW: ctx.settings.ftpW, origin: ctx.settings.origin.ftpW, estimate: ctx.ftpEstimate },
       tests,
-      suggestion: ftpTestSuggestion(tsb, tests.at(-1)?.day ?? null, ctx.today),
+      suggestion: manual || prefs.noFtpTest
+        ? { suggest: false, reason: prefs.noFtpTest ? "Automatische FTP-Test-Vorschläge sind ausgeschaltet." : "Deine FTP ist von Hand eingetragen und zählt wie ein Test; ein neuer Test wird nicht vorgeschlagen.", daysSinceLastTest: null, tsb, howTo: [] }
+        : ftpTestSuggestion(tsb, tests.at(-1)?.day ?? null, ctx.today),
       notes: ["FTP aus Tests ist eine Schätzung nach dem jeweiligen Protokoll (Ramp 75 % der besten Minute, 20 min 95 %). Trainingsempfehlung, keine Diagnose."],
     };
   }
