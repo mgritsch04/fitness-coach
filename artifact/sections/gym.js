@@ -106,10 +106,16 @@ FC.section({
       el("option", { value: "", text: "Leer starten" }));
     // Express (#281): wenig Zeit → Einheit kürzen lassen statt ausfallen.
     const time = el("select", { id: "gyTime" }, ...[["", "Volle Einheit"], ["45", "Nur 45 min"], ["30", "Nur 30 min"], ["20", "Nur 20 min"]].map(([v, t]) => el("option", { value: v, text: t })));
+    // Vorlage je Wochentag (#370): für heute vorausgewählt; gelöschte Vorlagen bleiben ohne Vorschlag.
+    const wd = today ? (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7 : null;
+    const sugg = wd == null ? null : FC.state.data?.training?.prefs?.templateByDay?.[wd] ?? null;
+    const hasSugg = !!sugg && d.templates.some((t) => t.name === sugg);
+    if (hasSugg) sel.value = `t:${sugg}`;
     const go = el("button", { type: "button", class: "primary", text: "Einheit starten" });
     go.onclick = () => this.start(sel.value, go, Number(time.value) || null);
     body.replaceChildren(this.savedPanel() ?? "", el("div", { class: "panel" },
       el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Was trainierst du?", sel), el("label", { for: "gyTime" }, "Zeit", time), go),
+      hasSugg ? el("p", { class: "chart-cap", id: "gyTplHint", text: `Für heute vorgeschlagen: Vorlage „${sugg}“. Oben änderst du sie mit einem Tipp.` }) : null,
       el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })));
   },
   /** Nach dem Speichern (#319): die Einheit mit Namen als Vorlage übernehmen. */

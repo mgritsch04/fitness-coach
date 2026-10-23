@@ -110,6 +110,12 @@ export function registerCoachTools(server: McpServer, env: Env) {
       .describe("Verfügbare Minuten fürs Rad je Wochentag [Mo … So]; 0 = keine Zeit (Ruhetag), null im Feld = nicht angegeben (Coach entscheidet). Sind alle 7 gesetzt, ist die Summe das Wochenbudget. null = zurücksetzen."),
     easyDays: z.array(z.number().int().min(0).max(6)).max(7).nullable().optional().describe("Wochentage mit lockerer kurzer Einheit statt Ruhetag (0 = Montag). Zeit 0 min in dayMinutes hat Vorrang."),
     noFtpTest: z.boolean().nullable().optional().describe("true = nie einen FTP-Test vorschlagen (ohnehin nicht, wenn die FTP von Hand eingetragen ist)"),
+    templateByDay: z
+      .array(z.string().min(1).max(80).nullable())
+      .length(7)
+      .nullable()
+      .optional()
+      .describe("Gespeicherte Kraft-Vorlage je Wochentag [Mo … So] (Name der Vorlage), die das Gym an dem Tag vorschlägt; null im Feld = keine. Fällt eine Vorlage weg, gibt es an dem Tag keinen Vorschlag. null = zurücksetzen."),
   };
 
   server.registerTool(

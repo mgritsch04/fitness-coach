@@ -63,6 +63,12 @@ FC.section({
           <div class="daytimes" id="dayTimes"></div>
           <div class="coach-actions"><button type="button" id="timeSave">Zeiten speichern</button><span class="muted" id="timeMsg" role="status"></span></div>
         </details>
+        <details id="tplBox">
+          <summary>Kraft-Vorlage je Wochentag</summary>
+          <p class="fine muted" style="margin:6px 0">Wähle, welche gespeicherte Vorlage das Gym an welchem Tag vorschlägt. Beim Start ist sie vorausgewählt, du kannst sie dort mit einem Tipp ändern. „keine“ = kein Vorschlag. Der Wochenplan bleibt davon unberührt.</p>
+          <div class="fixdays" id="tplDays"></div>
+          <div class="coach-actions"><button type="button" id="tplSave">Vorlagen speichern</button><span class="muted" id="tplMsg" role="status"></span></div>
+        </details>
         <details id="fixBox">
           <summary>Feste Krafttage (eigener Wochenplan)</summary>
           <p class="fine muted" style="margin:6px 0">Trag ein, an welchen Tagen du fix Kraft machst. Der Plan übernimmt sie unverändert, der Coach plant nur Rad und Ruhe drumherum und legt keine harten Radeinheiten direkt neben Beintage.</p>
@@ -91,6 +97,7 @@ FC.section({
     $("planReset").onclick = () => this.save({ reset: true }, "Gespeicherten Plan verworfen, es gilt wieder der Vorschlag.");
     $("planAdapt").onclick = () => this.adapt();
     $("fixSave").onclick = () => this.saveFixed();
+    $("tplSave").onclick = () => this.saveTemplates();
     $("timeSave").onclick = () => this.saveTimes();
     $("quickSet").onclick = () => this.quickTime(Number($("quickMin").value));
     $("quickClear").onclick = () => this.quickTime(null);
@@ -118,6 +125,7 @@ FC.section({
     if (!t) return;
     const w = t.thisWeek, cmp = w.comparison;
     this.renderFixed(t.prefs);
+    this.renderTemplates(t.prefs);
     this.renderTimes(t.prefs);
     $("planPhase").textContent = `${w.phaseLabel}${w.stored ? (w.plan.source === "coach" ? " · von Claude angepasst" : " · gespeichert") : " · Vorschlag"}`;
     const fToday = (t.fueling?.days ?? []).find((f) => f.day === d.today);
@@ -227,6 +235,37 @@ FC.section({
       await FC.reload();
     } catch (e) { msg.textContent = FC.errText(e); }
     finally { $("fixSave").disabled = false; }
+  },
+  // Kraft-Vorlage je Wochentag (#370): Auswahl aus den gespeicherten Vorlagen; unbekannte (gelöschte) Namen zählen als „keine“.
+  tplNames: null,
+  async renderTemplates(prefs) {
+    const { $, el } = FC, box = $("tplDays");
+    if (box.contains(document.activeElement)) return;
+    try {
+      const d = await FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } });
+      this.tplNames = (d.templates ?? []).map((t) => t.name);
+    } catch { this.tplNames ??= []; }
+    if (box.contains(document.activeElement)) return;
+    const names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+    box.replaceChildren(...names.map((n, i) => {
+      const sel = el("select", { "data-day": String(i), "aria-label": `${n}: Kraft-Vorlage` },
+        el("option", { value: "", text: "keine" }), ...this.tplNames.map((t) => el("option", { value: t, text: t })));
+      const v = prefs?.templateByDay?.[i];
+      sel.value = v && this.tplNames.includes(v) ? v : "";
+      return el("label", {}, el("span", { text: n }), sel);
+    }));
+    if (!this.tplNames.length) box.append(el("p", { class: "fine muted", text: "Noch keine Vorlage gespeichert: Im Gym nach einer Einheit „Als Vorlage speichern“." }));
+  },
+  async saveTemplates() {
+    const { $ } = FC, msg = $("tplMsg");
+    const vals = [...$("tplDays").querySelectorAll("select")].map((s) => s.value || null);
+    $("tplSave").disabled = true; msg.textContent = "Speichere …";
+    try {
+      await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null });
+      msg.textContent = vals.some((v) => v) ? `Gespeichert: ${vals.filter((v) => v).length} Tage mit Vorlage.` : "Gespeichert: keine Vorlage je Wochentag.";
+      await FC.reload();
+    } catch (e) { msg.textContent = FC.errText(e); }
+    finally { $("tplSave").disabled = false; }
   },
   // Zeit fürs Rad je Wochentag (#336): Minuten, 0 = keine Zeit, „locker statt frei“; dazu „Heute nur … min“.
   renderTimes(prefs) {
