@@ -87,6 +87,7 @@ Messwerte von heute (oder gestern, falls heute noch keine da sind; fehlt heute n
 - `log_weight {weightKg, day?}` speichert einen eigenen Eintrag (kein Datum in der Zukunft) und liefert den Bericht über 90 Tage zurück. `delete_weight {day}` löscht nur eigene Einträge.
 - `readLatestBody` (Dashboard, Einstellungen) nimmt Größe und Maximalpuls weiter vom Anbieter, das Gewicht vom neuesten Eintrag.
 - `export_csv {dataset: daily|sleeps|workouts|body, days?=365, excel?}` → `{fileName, mimeType, rows, columns, csv}`. `excel: true` = Semikolon und Dezimalkomma. Texte, die mit `= + - @` beginnen, bekommen ein `'` vorangestellt (keine Formeln in Excel).
+- `export_backup {}` → `{fileName, mimeType, createdAt, counts, tables}` (#378): alle eigenen Tabellen (Tageswerte, Schlaf, Workouts, Körperwerte, Einstellungen, Kraft, Ziele, Pläne, Notizen, Tagebuch, RPE, FTP-Tests, Blöcke, Feedback, Schweißtests) als JSON; ohne Tokens und ohne `workout_streams`. Knopf „Alle Daten sichern“ im Abschnitt Export. Rein additiv, nur lesend.
 - Abschnitte: `artifact/sections/body.js` (Tab verlauf, order 38, Werkzeuge get_body_history und log_weight) und `artifact/sections/export.js` (Tab mehr, order 85, Werkzeug export_csv, Capability `downloads: true`).
 
 ## get_records (#65, `core/records.ts`)
