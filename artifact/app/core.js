@@ -398,6 +398,7 @@
       bar.textContent = head?.textContent || s.id;
       bar.setAttribute("aria-expanded", String(open));
     }
+    document.dispatchEvent(new Event("fc-folds"));
   }
   function setFold(id, open) {
     const s = sections.find((x) => x.id === id); if (!s) return;
