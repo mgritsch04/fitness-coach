@@ -69,6 +69,7 @@ const payloads = {
   get_ride_weather: () => window.__MOCK__.get_ride_weather,
   set_weather_location: (i) => ({ location: { name: i.name, lat: 47.1, lon: 15.4 } }),
   log_weight: (i) => ((window.__weightIn = i), { saved: i.entries ? { count: i.entries.length, from: i.entries[0].day, to: i.entries.at(-1).day } : { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
+  export_backup: () => ({ fileName: "fitness-sicherung-test.json", createdAt: "2026-03-31T10:00:00Z", counts: { daily: 2, journal: 1 }, tables: { daily: [{ day: "2026-03-30" }, { day: "2026-03-31" }], journal: [{ day: "2026-03-31" }] } }),
   export_csv: (i) => ({ fileName: "fitness-" + i.dataset + ".csv", rows: 2, csv: "day;value\\n2026-03-30;1\\n2026-03-31;2\\n" }),
   sync_now: () => ({ whoop: { ok: true, result: { days: 3, sleeps: 3, workouts: 4 } }, wahoo: { ok: false, error: "wahoo_not_configured", message: "übersprungen" } }),
   wahoo_status: () => ({ configured: false, connected: false }),

@@ -19,12 +19,28 @@ FC.section({
             <option value="1">Excel (Semikolon, Dezimalkomma)</option><option value="0">Standard-CSV</option></select></label>
         </div>
         <div class="row"><button type="submit" class="primary" id="exGo">Herunterladen</button><span class="muted" id="exMsg" role="status"></span></div>
-      </form>`;
+      </form>
+      <div class="panel" style="display:grid; gap:8px; margin-top:12px;">
+        <strong>Datensicherung</strong>
+        <span class="muted">Alle eigenen Daten (Workouts, Kraft, Tagebuch, Pläne, Notizen, Einstellungen) als eine JSON-Datei, z. B. monatlich. Enthält Gesundheitsdaten: nur privat aufbewahren.</span>
+        <div class="row"><button type="button" class="primary" id="bkGo">Alle Daten sichern</button><span class="muted" id="bkMsg" role="status"></span></div>
+      </div>`;
   },
   async ready() {
     const { $ } = FC;
     const dl = await window.claude?.use?.("downloads").catch(() => null);
-    if (!dl) { $("exGo").disabled = true; $("exMsg").textContent = "Herunterladen ist in dieser Ansicht nicht verfügbar."; return; }
+    if (!dl) { $("exGo").disabled = true; $("bkGo").disabled = true; $("exMsg").textContent = "Herunterladen ist in dieser Ansicht nicht verfügbar."; return; }
+    $("bkGo").addEventListener("click", async () => {
+      const msg = $("bkMsg"); $("bkGo").disabled = true; msg.textContent = "Lade Daten …";
+      try {
+        const r = await FC.call("export_backup", {});
+        const rows = Object.values(r.counts).reduce((a, b) => a + b, 0);
+        await dl.save({ filename: r.fileName, data: new Blob([JSON.stringify({ createdAt: r.createdAt, counts: r.counts, tables: r.tables }, null, 1)], { type: "application/json" }) });
+        msg.textContent = `${rows} Einträge gesichert.`;
+      } catch (err) {
+        msg.textContent = err?.code === "declined" ? "Abgebrochen." : err?.code === "rate_limited" ? "Bitte kurz warten und noch einmal." : err?.code === "tool_error" ? String(err.message).slice(0, 160) : FC.errText(err);
+      } finally { $("bkGo").disabled = false; }
+    });
     $("exForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const msg = $("exMsg"); $("exGo").disabled = true; msg.textContent = "Lade Daten …";
