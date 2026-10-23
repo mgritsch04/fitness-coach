@@ -69,10 +69,20 @@ FC.section({
         any = true;
       } catch (e) {
         item.className = "item bad";
-        item.textContent = `${f.name}: ${e?.code ? FC.errText(e) : e?.message ?? "Import fehlgeschlagen."}`;
+        item.textContent = `${f.name}: ${this.errMsg(e)}`;
       }
     }
     if (any) { await FC.invalidate(); await Promise.all([FC.reload(), this.loadProfile(true)]); }
+  },
+  /** Klartext aus der Server-Antwort ({"error":…,"message":…}); ohne JSON-Reste (#359). */
+  errMsg(e) {
+    if (e?.code === "tool_error") {
+      const raw = String(e.message ?? "");
+      try { const j = JSON.parse(raw); if (j?.message) return String(j.message); } catch { /* gekürzt oder kein JSON */ }
+      const m = raw.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if (m) { try { return JSON.parse(`"${m[1]}"`); } catch { return m[1]; } }
+    }
+    return e?.code ? FC.errText(e) : e?.message ?? "Import fehlgeschlagen.";
   },
   fmtDur(s) { return s < 60 ? `${s} s` : s < 3600 ? `${s / 60} min` : `${FC.de(s / 3600, s % 3600 ? 1 : 0)} h`; },
   async ready() { await this.loadProfile(); },

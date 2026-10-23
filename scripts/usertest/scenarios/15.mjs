@@ -52,10 +52,16 @@ export default {
         await t.page.click("[data-coach=plan]");
         const n = await t.poll(async () => t.page.locator("#coachOut table.plan tbody tr").count());
         const p = await lastPrompt(t), v = await todayVals(t);
-        const ok = n > 0 && hasData(p, v) && /7 Tage/.test(p) && /Rad\/Spinning, Krafttraining/.test(p);
+        // #358: Der Plan darf die Seite nicht breiter als den Bildschirm machen; Fragen-Feld und Knopf müssen im Bild liegen.
+        const fit = await t.page.evaluate(() => {
+          const w = document.documentElement.clientWidth, r = (s) => document.querySelector(s).getBoundingClientRect();
+          return { page: document.documentElement.scrollWidth <= w + 1, btn: r("#askBtn").right <= w + 1, input: r("#askInput").right <= w + 1 };
+        });
+        const fits = fit.page && fit.btn && fit.input;
+        const ok = n > 0 && fits && hasData(p, v) && /7 Tage/.test(p) && /Rad\/Spinning, Krafttraining/.test(p);
         return {
           status: ok ? "device" : "fail",
-          observed: `Plan-Tabelle mit ${n ?? 0} Zeile(n) (Beispielantwort). Auftrag an Claude: 7 Tage ab ${v.today}, Rad und Kraft, eigene Werte dabei: ${hasData(p, v) ? "ja" : "nein"}. Ob der echte Plan zur Woche passt, nur mit echtem Claude prüfbar.`,
+          observed: `Plan-Tabelle mit ${n ?? 0} Zeile(n) (Beispielantwort), Seite ${fit.page ? "passt in den Bildschirm" : "BREITER als der Bildschirm"}, Fragen-Feld und Knopf ${fit.btn && fit.input ? "im Bild" : "ragen über den Rand"}. Auftrag an Claude: 7 Tage ab ${v.today}, Rad und Kraft, eigene Werte dabei: ${hasData(p, v) ? "ja" : "nein"}. Ob der echte Plan zur Woche passt, nur mit echtem Claude prüfbar.`,
           locator: t.page.locator("#sec-coach"),
         };
       },
