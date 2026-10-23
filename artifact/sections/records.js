@@ -12,7 +12,7 @@ FC.section({
     .rc-feed .rc-tag { grid-row: span 2; justify-self: start; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; background: var(--line); color: var(--ink-2); }`,
   mount(root) {
     root.innerHTML = `
-      <div class="sec-head"><h2 id="h-records">Diese Woche und Bestleistungen</h2><span class="muted" id="rcRange"></span></div>
+      <div class="sec-head"><h2 id="h-records">Diese Woche und Bestleistungen</h2><span class="muted" id="recRange"></span></div>
       <div class="grid2">
         <div class="panel"><h3>Diese Woche gegen letzte Woche</h3><div class="rc-week" id="rcWeek"><span class="muted">Lädt …</span></div><p class="chart-cap" id="rcWeekCap"></p></div>
         <div class="panel"><h3>Neue Bestleistungen (30 Tage)</h3><ul class="rc-feed" id="rcFeed"></ul></div>
@@ -49,6 +49,6 @@ FC.section({
       ? r.records.slice(0, 8).map((e) => el("li", {}, el("span", { class: "rc-tag", text: TAG[e.kind] ?? "Rekord" }), el("span", { text: e.text }),
           el("span", { class: "muted", text: `${fmtDayLong(e.day)} · vorher ${de(e.previous, e.unit === "kg" ? 1 : 0)} ${e.unit} am ${fmtDay(e.previousDay)}` })))
       : [el("li", { class: "muted", text: "In den letzten 30 Tagen keine neue Bestleistung. Rekorde zählen ab dem zweiten Wert einer Dauer oder Übung." })]));
-    $("rcRange").textContent = r.totalRecords ? `${r.totalRecords} Rekorde insgesamt` : "";
+    $("recRange").textContent = r.totalRecords ? `${r.totalRecords} Rekorde insgesamt` : "";
   },
 });
