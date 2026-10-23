@@ -29,6 +29,14 @@ describe("Ruhetag: locker ausfahren (#324)", () => {
     expect(r.minutes).toEqual({ min: 30, max: 45 });
     expect(r.text).toContain("Zone 1");
   });
+  it("spin: passendes lockeres Workout mit Name und Aufbau (#337)", () => {
+    const r = restRideAdvice(input())!;
+    expect(r.workout?.name).toBeTruthy();
+    expect(r.workout!.type).toBe("recovery");
+    expect(r.workout!.durationMin).toBeLessThanOrEqual(r.minutes!.max + 5);
+    expect(r.workout!.profile.length).toBeGreaterThan(0);
+    expect(r.workout!.fileName).toMatch(/\.zwo$/);
+  });
   it("rote Erholung und wenig Schlaf: kürzer, mit Begründung", () => {
     const r = restRideAdvice(input({ series: series({ recovery: 28, sleepH: 6 }) }))!;
     expect(r.verdict).toBe("spin");
