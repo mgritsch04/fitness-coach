@@ -57,6 +57,10 @@ export interface RideOptions {
   seconds?: number;
   /** Leistung je Sekunde. */
   power?: (s: number) => number;
+  /** Puls je Sekunde (Standard: 120 + s/20, läuft bei langen Fahrten über 255 über). */
+  hr?: (s: number) => number;
+  /** Trittfrequenz je Sekunde (Standard 90). */
+  cadence?: (s: number) => number;
   withSession?: boolean;
   /** Versatz der Ortszeit in Sekunden (activity.local_timestamp). */
   utcOffsetS?: number | null;
@@ -72,7 +76,7 @@ export function syntheticRide(o: RideOptions = {}): Uint8Array {
   let dist = 0;
   for (let s = 0; s < seconds; s++) {
     dist += 8; // 8 m/s
-    f.message(1, 20, [[253, 0x86, start + s], [7, 0x84, power(s)], [3, 0x02, 120 + Math.floor(s / 20)], [4, 0x02, 90], [5, 0x86, dist * 100]]);
+    f.message(1, 20, [[253, 0x86, start + s], [7, 0x84, power(s)], [3, 0x02, o.hr ? o.hr(s) : 120 + Math.floor(s / 20)], [4, 0x02, o.cadence ? o.cadence(s) : 90], [5, 0x86, dist * 100]]);
   }
   if (o.withSession !== false) {
     f.message(2, 18, [

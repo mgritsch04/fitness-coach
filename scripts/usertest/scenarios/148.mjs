@@ -1,0 +1,12 @@
+import { scenario, startGym, deviceStep, D } from "./_auto.mjs";
+export default scenario(148, "Gym-Modus: Aufwärmsätze für Langhantel-Übungen", "Gym-Modus: Aufwärmen", [
+  { action: "Gym-Modus mit Langhantel-Übung (≥ 40 kg) starten.", expected: "Übung läuft; Aufwärmhinweis unter „Je Seite“.",
+    async run(t) { await startGym(t, [{ exercise: "Kniebeuge", sets: 3, reps: 5, weightKg: 100 }]); return { status: (await t.page.locator("#gyWarm").count()) === 1 ? "ok" : "fail", observed: "Aufwärm-Box (#gyWarm) unter der Scheibenzeile vorhanden", locator: t.page.locator(".gy-ex").first() }; } },
+  { action: "Unter „Je Seite“ nachsehen.", expected: "„Aufwärmen (Faustregel, nicht gespeichert)“: leere Stange × 10, 40 kg × 5, 60 kg × 3, 80 kg × 2, mit Scheiben je Seite.",
+    async run(t) { const txt = (await t.page.locator("#gyWarm").innerText()).replace(/\s+/g, " "); return { status: /Aufwärmen \(Faustregel, nicht gespeichert\)/.test(txt) && /Leere Stange × 10/.test(txt) && /40 kg × 5/.test(txt) && /60 kg × 3/.test(txt) && /80 kg × 2/.test(txt) && /je Seite/.test(txt) ? "ok" : "fail", observed: `„${txt}“`, locator: t.page.locator("#gyWarm") }; } },
+  { action: "Gewicht ändern.", expected: "Treppe passt sich an.",
+    async run(t) { const kg = t.page.locator(".gy-ex").first().locator(".gy-set").first().locator("input").nth(1); await kg.fill("140"); await kg.dispatchEvent("input"); await t.page.waitForTimeout(300); const txt = (await t.page.locator("#gyWarm").innerText()).replace(/\s+/g, " "); return { status: /55 kg|60 kg/.test(txt) && /110 kg|115 kg|100 kg/.test(txt) ? "ok" : "fail", observed: `Bei 140 kg: „${txt.slice(0, 200)}“`, locator: t.page.locator("#gyWarm") }; } },
+  { action: "Ersten Arbeitssatz abhaken.", expected: "Aufwärm-Box verschwindet.",
+    async run(t) { const row = t.page.locator(".gy-ex").first().locator(".gy-set").first(); await row.locator("input").nth(0).fill("5"); await row.locator("button.ok").click(); await t.page.waitForTimeout(500); const n = await t.page.locator("#gyWarm").count(); const vis = n ? await t.page.locator("#gyWarm").isVisible() : false; return { status: !vis ? "ok" : "fail", observed: `Aufwärm-Box nach dem ersten Arbeitssatz sichtbar: ${vis}`, locator: t.page.locator(".gy-list") }; } },
+  deviceStep(5, "Passt die Treppe zu deinem Aufwärmen?", "Passt, sonst als Kommentar schreiben.", "Persönliche Gewohnheit: nur der Nutzer."),
+], { device: "phone" });

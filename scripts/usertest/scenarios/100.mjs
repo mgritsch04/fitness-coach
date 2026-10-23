@@ -1,0 +1,7 @@
+import { scenario, deviceStep, toolOk, D } from "./_auto.mjs";
+export default scenario(100, "Coach-Fragen mit Werkzeugen", "Coach-Chat mit Werkzeugen", [
+  { action: "Im Coach-Chat Fragen stellen (z. B. zu Bankdrücken, Schlaf, letzter Radeinheit).", expected: "Unter der Frage steht, was der Chat geholt hat („Hole …“ / „… geholt“).",
+    async run(t) { return { status: "device", observed: "Das Holen der Daten durch Claude (Tool-Aufrufe aus dem Chat) läuft nur mit echtem Claude in claude.ai; die Vorschau antwortet mit Beispieltext ohne Werkzeugaufrufe. Die Werkzeuge dahinter antworten (siehe Schritt 2).", noFinalShot: true }; } },
+  { action: "Antwort lesen.", expected: "Konkrete Zahlen aus den eigenen Daten; Trainingsempfehlung, keine medizinische Einschätzung.",
+    async run(t) { const names = ["get_sleep_report", "get_strength", "get_recovery_factors", "get_records", "get_plan", "get_week_review", "get_period_summaries", "get_endurance_profile", "get_fitness_profile", "get_body", "get_workouts"]; const bad = []; for (const n of names) { try { await t.tool(n, n === "get_workouts" ? { days: 7 } : {}); } catch (e) { bad.push(n); } } return { status: bad.length ? "fail" : "device", observed: `Die ${names.length} Datenwerkzeuge, aus denen der Chat schöpft, antworten alle${bad.length ? ", AUSSER " + bad.join(", ") : ""}. Ob Claude daraus gute Antworten macht, nur mit echtem Chat.`, noFinalShot: true }; } },
+]);

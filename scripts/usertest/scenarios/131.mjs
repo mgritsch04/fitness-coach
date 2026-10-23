@@ -1,0 +1,10 @@
+import { scenario, sectionStep, deviceStep, D } from "./_auto.mjs";
+export default scenario(131, "Beste Trainingszeit", "Beste Trainingszeit", [
+  sectionStep({ nr: 1, action: "Reiter „Training“ › „Beste Trainingszeit“.", expected: "Abschnitt zu sehen.", tab: "training", id: "timing", has: [/Beste Trainingszeit/] }),
+  { action: "Tabelle: je Tageszeit, wie viele Einheiten.", expected: "Verteilung passt (z. B. viele Abend-Einheiten).",
+    async run(t) { const txt = (await t.page.locator("#sec-timing").innerText()).replace(/\s+/g, " "); const tm = await t.tool("get_training_timing"); const row = (s) => tm.slots.find((x) => x.slot === s).sessions; const ok = [["morgens", "morning"], ["abends", "evening"]].every(([w, k]) => new RegExp(`${w}[^\\d]*\\d+–?\\d* ?Uhr ${row(k)}\\b`).test(txt)); return { status: ok ? "ok" : "fail", observed: `Tabelle zeigt morgens ${row("morning")}, abends ${row("evening")} Einheiten – gleich wie get_training_timing (${tm.sessions} Einheiten)`, locator: t.page.locator("#sec-timing") }; } },
+  { action: "„Schlaf danach“ und „Erholung“ ansehen.", expected: "Zeigt, ob nach spätem Training kürzer geschlafen wird; passt zum Gefühl.",
+    async run(t) { const txt = (await t.page.locator("#sec-timing").innerText()).replace(/\s+/g, " "); return { status: /SCHLAF DANACH/i.test(txt) && /ERHOLUNG/i.test(txt) ? "device" : "fail", observed: `Spalten „Schlaf danach“ und „Erholung“ vorhanden. Ob die Werte zum eigenen Gefühl passen: ${D.feel}`, locator: t.page.locator("#sec-timing") }; } },
+  { action: "Hinweise oben lesen.", expected: "Verständlich; Beobachtungen, keine Ursache-Wirkung, keine Diagnose.",
+    async run(t) { const txt = (await t.page.locator("#sec-timing").innerText()).replace(/\s+/g, " "); const note = JSON.stringify(await t.tool("get_training_timing")); return { status: /(Beobachtung|keine Ursache|Ursache-Wirkung)/i.test(note) ? "look" : "fail", observed: `Hinweis oben: „${txt.slice(txt.indexOf("Einheiten,") + 10, txt.indexOf("Einheiten,") + 170)}“; Haftungshinweis in Daten: ${/(Beobachtung|Ursache)/i.test(note)}. Verständlichkeit: bitte selbst lesen.`, locator: t.page.locator("#sec-timing") }; } },
+]);
