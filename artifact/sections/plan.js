@@ -6,6 +6,9 @@ FC.section({
   tab: "coach",
   order: 15,
   css: `
+    .fz-t { border-collapse: collapse; width: 100%; max-width: 420px; margin: 4px 0; }
+    .fz-t th, .fz-t td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid var(--line, rgba(127,127,127,.25)); font-weight: 400; }
+    .fz-t thead th, .fz-t tbody th { font-weight: 600; }
     .wplan { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
     .wplan .pd { border: 1px solid var(--line, rgba(127,127,127,.25)); border-radius: 10px; padding: 8px 6px; min-width: 0; display: grid; gap: 3px; align-content: start; }
     .wplan .pd.today { outline: 2px solid var(--accent, #4fb3cf); outline-offset: -1px; }
@@ -118,6 +121,16 @@ FC.section({
       };
     };
   },
+  ready() { this.unwatchWx?.(); this.unwatchWx = FC.watch("get_ride_weather", {}, (p) => { this.wx = p && !p.error ? p : null; }, { cache: { staleTime: 300_000, gcTime: 86_400_000 } }); },
+  /** Verpflegung im Tagesdetail: ab 75 min der Zettel (#374), sonst die kurze Fassung aus #87. */
+  fuelBlock(x, f, t, d) {
+    const { el } = FC, FS = FuelSheet;
+    if (!f) return [];
+    const z = FS.compute({ session: x, fuel: f, sweat: t.sweat, weatherDay: this.wx?.days?.find((w) => w.day === x.day) ?? null, weightKg: d.body?.weightKg ?? null });
+    if (z) return [FS.render(z)];
+    const short = FS.shortNote(x);
+    return [el("p", {}, el("strong", { text: "Verpflegung: " }), [f.before, f.during, f.after].filter(Boolean).join(" ")), short ? el("p", { class: "fine", text: short }) : null, el("p", { class: "fine", text: t.fueling.note })].filter(Boolean);
+  },
   render(d) {
     const { $, el, de, fmtWeekday, fmtDayLong } = FC;
     const t = d.training;
@@ -167,7 +180,7 @@ FC.section({
             el("ul", {}, ...kraft.get(x.day).exercises.map((e) => el("li", { text: `${e.name}: ${e.sets} × ${e.reps}${e.unit === "s" ? " s" : ""}${e.weightKg != null ? ` mit ${de(e.weightKg, e.weightKg % 1 ? 1 : 0)} kg${e.basis === "increase" ? " (etwas mehr als zuletzt)" : e.basis === "light" ? " (leicht)" : ""}` : e.unit === "s" ? "" : ", Gewicht mit 2 Wdh. Reserve"}` }))),
             el("p", { class: "fine", text: t.strengthWorkouts.note }),
           ] : []),
-          ...(fuel.get(x.day) ? [el("p", {}, el("strong", { text: "Verpflegung: " }), [fuel.get(x.day).before, fuel.get(x.day).during, fuel.get(x.day).after].filter(Boolean).join(" ")), el("p", { class: "fine", text: t.fueling.note })] : []),
+          ...this.fuelBlock(x, fuel.get(x.day), t, d),
           x.actualMin || x.actualLoad ? el("p", { class: "muted", text: `Tatsächlich: ${x.actualMin} min, Belastung ~${de(x.actualLoad)}${x.actualSports.length ? ` (${x.actualSports.map(FC.sport).join(", ")})` : ""}.` }) : null,
         ].filter(Boolean));
       };
