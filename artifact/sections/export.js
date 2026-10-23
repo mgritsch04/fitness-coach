@@ -23,15 +23,15 @@ FC.section({
       <div class="panel" style="display:grid; gap:8px; margin-top:12px;">
         <strong>Datensicherung</strong>
         <span class="muted">Alle eigenen Daten (Workouts, Kraft, Tagebuch, Pläne, Notizen, Einstellungen) als eine JSON-Datei, z. B. monatlich. Enthält Gesundheitsdaten: nur privat aufbewahren.</span>
-        <div class="row"><button type="button" class="primary" id="bkGo">Alle Daten sichern</button><span class="muted" id="bkMsg" role="status"></span></div>
+        <div class="row"><button type="button" class="primary" id="backupGo">Alle Daten sichern</button><span class="muted" id="backupMsg" role="status"></span></div>
       </div>`;
   },
   async ready() {
     const { $ } = FC;
     const dl = await window.claude?.use?.("downloads").catch(() => null);
-    if (!dl) { $("exGo").disabled = true; $("bkGo").disabled = true; $("exMsg").textContent = "Herunterladen ist in dieser Ansicht nicht verfügbar."; return; }
-    $("bkGo").addEventListener("click", async () => {
-      const msg = $("bkMsg"); $("bkGo").disabled = true; msg.textContent = "Lade Daten …";
+    if (!dl) { $("exGo").disabled = true; $("backupGo").disabled = true; $("exMsg").textContent = "Herunterladen ist in dieser Ansicht nicht verfügbar."; return; }
+    $("backupGo").addEventListener("click", async () => {
+      const msg = $("backupMsg"); $("backupGo").disabled = true; msg.textContent = "Lade Daten …";
       try {
         const r = await FC.call("export_backup", {});
         const rows = Object.values(r.counts).reduce((a, b) => a + b, 0);
@@ -39,7 +39,7 @@ FC.section({
         msg.textContent = `${rows} Einträge gesichert.`;
       } catch (err) {
         msg.textContent = err?.code === "declined" ? "Abgebrochen." : err?.code === "rate_limited" ? "Bitte kurz warten und noch einmal." : err?.code === "tool_error" ? String(err.message).slice(0, 160) : FC.errText(err);
-      } finally { $("bkGo").disabled = false; }
+      } finally { $("backupGo").disabled = false; }
     });
     $("exForm").addEventListener("submit", async (e) => {
       e.preventDefault();
