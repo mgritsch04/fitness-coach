@@ -226,6 +226,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); fon
 .tabbar { display: none; }
 /* PC (#322): Reiter oben statt einer langen Seite, abschaltbar in „Dashboard anpassen“ */
 body.tabs.desk-tabs #sections > section:not(.on) { display: none; }
+#sections > section.lean-off { display: none !important; }
 @media (min-width: 641px) {
   body.desk-tabs .tabbar { display: flex; gap: 4px; position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 6px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
   body.desk-tabs .tabbar button { border: 0; background: none; padding: 8px 14px; border-radius: 10px; font-size: 0.95rem; font-weight: 600; color: var(--ink-2); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -301,6 +302,7 @@ body.tabs.desk-tabs #sections > section:not(.on) { display: none; }
 
 <script src="app/core.js"></script>
 <!-- Abschnitte: je Thema eine Datei; Reihenfolge auf der Seite steht in der Datei (order). -->
+<script src="sections/focus.js"></script>
 <script src="sections/favorites.js"></script>
 <script src="sections/whatsnew.js"></script>
 <script src="sections/warning.js"></script>

@@ -4,6 +4,7 @@ FC.section({
   id: "favorites",
   tab: "heute",
   order: 3,
+  keepLean: true,
   KEY: "fc-fav",
   TABS: { heute: "Heute", coach: "Coach", verlauf: "Verlauf", training: "Training", mehr: "Mehr" },
   css: `
