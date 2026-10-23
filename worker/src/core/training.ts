@@ -16,6 +16,8 @@ import { blockView, buildBlock, readBlock, type BlockView, type TrainingBlock } 
 import { readStrengthSessions } from "./strength";
 import { strengthDeload, type StrengthDeload } from "./strength-deload";
 import { strengthSeason, type StrengthSeason } from "./strength-season";
+import { activeComplaints, COMPLAINT_NOTE } from "./complaints";
+import { readJournal } from "./journal";
 import { STRENGTH_PLAN_NOTE, strengthWorkout, type StrengthWorkout } from "./strength-plan";
 import { projectEvent, type EventProjection } from "./projection";
 import {
@@ -240,6 +242,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
   const projection = eventProjection(inp, goals, prefs, thisWeek.plan);
   const season = strengthSeason(thisWeek.plan.phase, thisWeek.week, prefs.strengthPhase ?? null);
   const [tests, sessions] = await Promise.all([readFtpTests(db).catch(() => []), readStrengthSessions(db, addDays(inp.today, -120)).catch(() => [])]);
+  const complaints = activeComplaints(await readJournal(db, addDays(inp.today, -21), inp.today).catch(() => []), inp.today);
   const sweat = sweatSummary(await readSweatTests(db).catch(() => []), inp.today);
   return {
     goals: goalProgress(goals, inp),
@@ -256,8 +259,8 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
     block: { ...blockView(savedBlock ?? proposeBlock(inp), inp.weeks, inp.today, blockWarning(inp)), saved: Boolean(savedBlock) },
     strengthSeason: season,
     strengthWorkouts: {
-      days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions, season.phase)),
-      note: STRENGTH_PLAN_NOTE,
+      days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions, season.phase, complaints)),
+      note: complaints.length ? `${STRENGTH_PLAN_NOTE} ${COMPLAINT_NOTE}` : STRENGTH_PLAN_NOTE,
     },
     rideWorkouts: { days: weekRideWorkouts(thisWeek.plan.days, inp.today, inp.days.find((d) => d.day === inp.today)?.recovery ?? null), note: RIDE_WORKOUT_NOTE },
     fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null).map((f) => personalizeFueling(f, sweat)), note: FUELING_NOTE },

@@ -2,6 +2,7 @@
 // („Beine + Rumpf“, „Oberkörper (Zug)“ …). Gewichte aus den gespeicherten Einheiten (gleiche Regel wie
 // Vorlagen: alle Sätze geschafft → etwas mehr), sonst „Gewicht mit 2 Wdh. Reserve wählen“. Schätzung.
 import { suggestFromTemplate, type StrengthSession, type TemplateExercise } from "./strength";
+import { adaptForComplaints, type Area, type ComplaintAdjustment } from "./complaints";
 import { seasonItems, seasonWeightFactor, type StrengthSeasonPhase } from "./strength-season";
 
 export interface StrengthExercise {
@@ -25,6 +26,8 @@ export interface StrengthWorkout {
   text: string;
   /** Saisonphase, nach der Sätze und Wiederholungen angepasst sind (#213). */
   season?: StrengthSeasonPhase | null;
+  /** Wegen markierter Beschwerden getauschte oder ausgelassene Übungen (#376); leer ohne Markierung. */
+  adjustments?: ComplaintAdjustment[];
 }
 
 type Item = TemplateExercise & { unit?: "s" };
@@ -46,10 +49,11 @@ const FALLBACK = BY_FOCUS[2].items;
 const countFor = (min: number) => (min <= 30 ? 3 : min <= 45 ? 4 : 5);
 const round25 = (kg: number) => Math.round(kg / 2.5) * 2.5;
 
-export function strengthWorkout(day: string, s: { durationMin: number; focus: string }, sessions: StrengthSession[], season?: StrengthSeasonPhase | null): StrengthWorkout {
+export function strengthWorkout(day: string, s: { durationMin: number; focus: string }, sessions: StrengthSession[], season?: StrengthSeasonPhase | null, complaints: Area[] = []): StrengthWorkout {
   const light = /leicht/.test(s.focus);
   const base = (BY_FOCUS.find((f) => f.match.test(s.focus))?.items ?? FALLBACK).slice(0, countFor(s.durationMin));
-  const items = season ? seasonItems(base, season) : base;
+  const seasoned = season ? seasonItems(base, season) : base;
+  const { items, adjustments } = adaptForComplaints(seasoned, complaints, sessions);
   const factor = season ? seasonWeightFactor(season) : 1;
   const sugg = suggestFromTemplate(items, sessions);
   const exercises: StrengthExercise[] = items.map((it, i) => {
@@ -69,8 +73,8 @@ export function strengthWorkout(day: string, s: { durationMin: number; focus: st
   });
   const lines = exercises.map((e) => `${e.name} ${e.sets} × ${e.reps}${e.unit === "s" ? " s" : ""}${e.weightKg != null ? ` mit ${String(e.weightKg).replace(".", ",")} kg${e.basis === "increase" ? " (+)" : ""}` : ""}`);
   const open = exercises.some((e) => e.weightKg == null && e.unit === "Wdh");
-  const text = `${lines.join(" · ")}.${open ? " Ohne Vorwert: Gewicht so wählen, dass noch 2 Wiederholungen gehen würden." : ""}${light ? " Leicht: etwa 60 % der üblichen Gewichte, Fokus Technik." : ""}`;
-  return { day, focus: s.focus, durationMin: s.durationMin, exercises, text, season: season ?? null };
+  const text = `${lines.join(" · ")}.${open ? " Ohne Vorwert: Gewicht so wählen, dass noch 2 Wiederholungen gehen würden." : ""}${light ? " Leicht: etwa 60 % der üblichen Gewichte, Fokus Technik." : ""}${adjustments.length ? ` Angepasst wegen deiner Markierung: ${adjustments.map((a) => a.text).join("; ")}.` : ""}`;
+  return { day, focus: s.focus, durationMin: s.durationMin, exercises, text, season: season ?? null, adjustments };
 }
 
 export const STRENGTH_PLAN_NOTE = "Übungsvorschlag nach Faustregeln; Gewichte aus deinen gespeicherten Einheiten (alle Sätze geschafft → etwas mehr). Übungen gleichwertig tauschen ist in Ordnung. Bei Schmerzen abbrechen.";

@@ -23,6 +23,7 @@ import { readLayout } from "./ui-layout";
 import { trainingOverview } from "./training";
 import { zoneTargets } from "./zone-targets";
 import { applyFeedback, feedbackAdjust, readFeedback } from "./feedback";
+import { activeComplaints, areaTag, AREA_LABEL, COMPLAINT_NOTE } from "./complaints";
 import { applyJournal, readJournal, readRpe, sessionRpe, tagEffects } from "./journal";
 import { applyWarning } from "./warning-cap";
 import { applyHrvTrend } from "./hrv-cap";
@@ -183,6 +184,8 @@ export async function buildDashboard(db: D1Database, opts: { days?: number; now?
   };
   const journalOut = {
     today: journalToday,
+    /** Aktive Beschwerde-Stellen (#376) aus dem jüngsten Check-in. */
+    complaints: { areas: activeComplaints(journal, today), tags: activeComplaints(journal, today).map(areaTag), labels: AREA_LABEL, note: COMPLAINT_NOTE },
     recent: journal.filter((j) => j.day >= addDays(today, -13)),
     /** Erholung am Folgetag mit/ohne Tag (Beobachtung, keine Ursache). */
     tagEffects: tagEffects(journal, series),
