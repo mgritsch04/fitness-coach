@@ -13,6 +13,10 @@ FC.section({
     .ci-tags { display: flex; gap: 6px; flex-wrap: wrap; }
     .ci-tags button { border-radius: 999px; padding: 3px 10px; font-size: 13px; }
     .ci textarea { width: 100%; min-height: 2.6em; font: inherit; box-sizing: border-box; }
+    .ci-map { display: grid; gap: 6px; }
+    .ci-areas { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ci-areas button { border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+    .ci-areas button[aria-pressed="true"] { background: var(--warn, #f0a45a); color: #1b1b1b; border-color: transparent; }
     .ci-fx { font-size: 13px; }
     @media (max-width: 480px) { .ci-row { grid-template-columns: 1fr; gap: 4px; } }
   `,
@@ -23,6 +27,8 @@ FC.section({
     ["stress", "Stress", "keiner", "hoch"],
     ["motivation", "Motivation", "keine", "hoch"],
   ],
+  // Beschwerde-Karte (#376): Stellen als Tag „beschwerde: …“ im Check-in (Worker: core/complaints.ts).
+  areas: [["schulter", "Schulter"], ["ellbogen", "Ellbogen"], ["handgelenk", "Handgelenk"], ["rücken", "Rücken"], ["hüfte", "Hüfte"], ["knie", "Knie"], ["sprunggelenk", "Sprunggelenk"]],
   tags: ["krank", "verletzt", "reise", "alkohol", "spät gegessen", "koffein spät", "stress arbeit", "gut geschlafen"],
   mount(root) {
     root.innerHTML = `
@@ -30,6 +36,9 @@ FC.section({
       <div class="panel ci">
         <div id="ciScales"></div>
         <div class="ci-tags" id="ciTags" aria-label="Tags"></div>
+        <div class="ci-map"><span>Zwickt oder schmerzt etwas? <span class="muted" style="font-size:12px">Stelle antippen (mehrere möglich)</span></span>
+          <div class="ci-areas" id="ciAreas" role="group" aria-label="Beschwerde-Karte"></div>
+          <p class="muted ci-fx" id="ciAreaFx" role="status" hidden></p></div>
         <textarea id="ciNotes" placeholder="Notiz (optional), z. B. schwere Beine vom Beintag" maxlength="2000" aria-label="Notiz"></textarea>
         <div class="coach-actions"><button type="button" class="primary" id="ciSave" disabled>Check-in speichern</button><span class="muted" id="ciMsg"></span></div>
         <p class="muted ci-fx" id="ciFx" hidden></p>
@@ -54,6 +63,12 @@ FC.section({
       b.onclick = () => { this.dirty = true; this.tagSet.has(t) ? this.tagSet.delete(t) : this.tagSet.add(t); this.paint(); };
       tags.append(b);
     }
+    const areas = $("ciAreas");
+    for (const [k, label] of this.areas) {
+      const b = el("button", { type: "button", text: label, "aria-pressed": "false", "data-area": k });
+      b.onclick = () => { this.dirty = true; const t = `beschwerde: ${k}`; this.tagSet.has(t) ? this.tagSet.delete(t) : this.tagSet.add(t); this.paint(); };
+      areas.append(b);
+    }
     $("ciSave").onclick = () => this.save();
     $("ciNotes").addEventListener("input", () => (this.dirty = true));
   },
@@ -61,6 +76,11 @@ FC.section({
     const rows = FC.$("ciScales").children;
     this.scales.forEach(([key], i) => [...rows[i].querySelectorAll("button")].forEach((b, j) => b.setAttribute("aria-pressed", String(this.val[key] === j + 1))));
     for (const b of FC.$("ciTags").children) b.setAttribute("aria-pressed", String(this.tagSet.has(b.textContent)));
+    const on = [];
+    for (const b of FC.$("ciAreas").children) { const p = this.tagSet.has(`beschwerde: ${b.dataset.area}`); b.setAttribute("aria-pressed", String(p)); if (p) on.push(b.textContent); }
+    const fx = FC.$("ciAreaFx");
+    fx.hidden = !on.length;
+    fx.textContent = on.length ? `Markiert: ${on.join(", ")}. Der Coach passt das Krafttraining an (belastende Übungen werden getauscht oder ausgelassen). Das ist eine Trainingsanpassung, keine Diagnose. Antippen hebt die Markierung wieder auf; speichern nicht vergessen.` : "";
   },
   render(d) {
     const j = d.journal;
@@ -70,7 +90,9 @@ FC.section({
       const e = j.today ?? {};
       for (const [key] of this.scales) this.val[key] = e[key] ?? null;
       this.tagSet = new Set(e.tags ?? []);
-      for (const t of this.tagSet) if (!this.tags.includes(t)) this.tags.push(t);
+      // Noch kein Check-in heute: aktive Markierungen aus dem letzten übernehmen, sonst gingen sie beim Speichern verloren.
+      if (!j.today) for (const t of j.complaints?.tags ?? []) this.tagSet.add(t);
+      for (const t of this.tagSet) if (!this.tags.includes(t) && !t.startsWith("beschwerde: ")) this.tags.push(t);
       FC.$("ciNotes").value = e.notes ?? "";
       FC.$("ciState").textContent = j.today ? `Heute eingetragen${j.today.updatedAt ? ` (${FC.ago(j.today.updatedAt.replace(" ", "T") + "Z") ?? ""})` : ""}. Ändern geht jederzeit.` : "Dein Gefühl zählt mit: es fließt in die Empfehlung ein.";
       // Neue eigene Tags als Knöpfe ergänzen.

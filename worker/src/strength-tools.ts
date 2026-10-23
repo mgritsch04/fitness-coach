@@ -9,6 +9,8 @@ import { z } from "zod";
 import { addDays, todayIn, type WorkoutRow } from "./core/analysis";
 import { readLatestBody, readWorkouts } from "./core/repository";
 import { strengthStandards } from "./core/strength-standards";
+import { activeComplaints, adaptForComplaints, COMPLAINT_DAYS, COMPLAINT_NOTE } from "./core/complaints";
+import { readJournal } from "./core/journal";
 import { exerciseAlternatives } from "./core/exercises";
 import { readSettings } from "./core/settings";
 import { strengthDeload } from "./core/strength-deload";
@@ -246,7 +248,14 @@ export function registerStrengthTools(server: McpServer, env: Env) {
       if (!tpl) return fail("template_not_found", `Keine Vorlage „${template}“.`);
       const t = await today();
       const history = await readStrengthSessions(env.DB, addDays(t, -365));
-      return json({ template: tpl.name, exercises: suggestFromTemplate(tpl.exercises, history), coachNotes: strengthCoachNotes(history, t) });
+      const areas = activeComplaints(await readJournal(env.DB, addDays(t, -COMPLAINT_DAYS), t), t);
+      const adapted = adaptForComplaints(tpl.exercises, areas, history);
+      return json({
+        template: tpl.name,
+        exercises: suggestFromTemplate(adapted.items, history),
+        coachNotes: strengthCoachNotes(history, t),
+        ...(adapted.adjustments.length ? { complaintAdjustments: adapted.adjustments, complaintNote: COMPLAINT_NOTE } : {}),
+      });
     },
   );
 
