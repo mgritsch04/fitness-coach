@@ -285,3 +285,85 @@ export function pickWorkouts(opts: { maxMin?: number | null; category?: LibraryC
     : `Erholung ${r} % (grün): alles möglich, gute Gelegenheit für eine harte Einheit.`;
   return { recovery: r, items, hint };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Passendes Workout zur Radempfehlung (#337): Art + Dauer (+ Erholung) → Bibliotheksvorlage oder selbst gebaute Einheit.
+
+export interface WorkoutSuggestion {
+  /** library = Vorlage aus der eigenen Bibliothek, generated = aus Art und Dauer gebaut. */
+  source: "library" | "generated";
+  templateId: string | null;
+  type: SessionType;
+  name: string;
+  durationMin: number;
+  /** Geschätzte Belastung (TSS-Maßstab) und Intensitätsfaktor. */
+  load: number;
+  intensityFactor: number;
+  /** Hauptteil in einem Satz. */
+  summary: string;
+  /** Aufbau Schritt für Schritt in % FTP. */
+  profile: string[];
+  /** Dateiname für den Download (get_bike_workout liefert die Datei). */
+  fileName: string;
+  /** Suchbegriff für ein ähnliches MyWhoosh-Workout; ohne Gewähr, die MyWhoosh-Bibliothek ist nicht abrufbar. */
+  searchTerm: string | null;
+  hint: string;
+}
+
+const CATEGORY_OF: Partial<Record<SessionType, LibraryCategory>> = {
+  recovery: "recovery", endurance: "endurance", long: "endurance", tempo: "sweetspot", threshold: "threshold", vo2max: "vo2max",
+};
+const SEARCH_TERM: Record<LibraryCategory, string> = { recovery: "Recovery", endurance: "Endurance", sweetspot: "Sweet Spot", threshold: "Threshold", vo2max: "VO2max" };
+
+const stepText = (s: Step) => {
+  const pc = (x: number | undefined) => Math.round((x ?? 0) * 100);
+  const dur = s.durationS % 60 ? `${s.durationS} s` : `${s.durationS / 60} min`;
+  if (s.kind === "intervals") return s.label;
+  if (s.power != null) return `${dur} ${s.label} (${pc(s.power)} % FTP)`;
+  return `${dur} ${s.label} (${pc(s.powerLow)}→${pc(s.powerHigh)} % FTP)`;
+};
+
+const HINT = "Die Datei in den MyWhoosh Workout Builder (workout.mywhoosh.com) hochladen und nach „MyWorkouts“ exportieren. Belastung und Zonen sind Schätzungen; die Einheit ist eine Trainingsempfehlung.";
+
+/**
+ * Passendes Workout zu einer Radeinheit. Aus der Bibliothek kommt die Vorlage der Art, die höchstens 5 min länger ist als geplant
+ * und der Dauer am nächsten kommt (bei gleicher Dauer die höhere Stufe, die zur Erholung passt); passt keine, wird die Einheit gebaut.
+ * Liefert null für Ruhetage und Kraft.
+ */
+export function workoutForSession(type: SessionType, durationMin: number, day: string | null = null, recovery: number | null = null): WorkoutSuggestion | null {
+  if (!RIDE_TYPES.includes(type) || durationMin <= 0) return null;
+  const cat = CATEGORY_OF[type] ?? null;
+  const fits = LIBRARY.filter((t) => t.category === cat && suitsReadiness(t, recovery))
+    .map((t) => ({ t, w: templateWorkout(t) }))
+    .filter(({ w }) => w.durationMin <= durationMin + 5)
+    // „Lange Fahrt“ bevorzugt Vorlagen dieser Art, sonst Grundlage.
+    .sort((a, b) => Math.abs(a.w.durationMin - durationMin) - Math.abs(b.w.durationMin - durationMin) || Number(b.t.type === type) - Number(a.t.type === type) || b.t.level - a.t.level);
+  const pick = fits[0];
+  const w = pick ? pick.w : buildBikeWorkout(type, durationMin);
+  if (!w) return null;
+  const main = pick ? pick.t.main : w.steps.find((s) => s.kind === "intervals")?.label ?? w.steps[1]?.label ?? "";
+  return {
+    source: pick ? "library" : "generated",
+    templateId: pick?.t.id ?? null,
+    type,
+    name: w.name,
+    durationMin: w.durationMin,
+    load: w.load,
+    intensityFactor: w.intensityFactor,
+    summary: main,
+    profile: w.steps.map(stepText),
+    fileName: zwoFileName(w, day),
+    searchTerm: cat ? SEARCH_TERM[cat] : null,
+    hint: HINT,
+  };
+}
+
+/** Workouts für die Radeinheiten eines Wochenplans ab `from`; `recovery` gilt nur für den Tag `from`. */
+export function weekRideWorkouts(days: readonly { day: string; type: SessionType; durationMin: number }[], from: string, recovery: number | null) {
+  return days
+    .filter((d) => d.day >= from)
+    .flatMap((d) => {
+      const w = workoutForSession(d.type, d.durationMin, d.day, d.day === from ? recovery : null);
+      return w ? [{ day: d.day, ...w }] : [];
+    });
+}

@@ -205,6 +205,16 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#fixSave"); await p.waitForTimeout(200);
     const fx = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("fixMsg").textContent }));
     if (JSON.stringify(fx.saved?.fixedStrength) !== JSON.stringify([{ day: 0, focus: "Beine" }, { day: 3, focus: "Oberkörper" }]) || !/2 feste Krafttage/.test(fx.msg)) errors.push(`${name}: Feste Krafttage falsch ${JSON.stringify(fx)}`);
+    // Workout zur Radeinheit (#337): Tag antippen zeigt Profil und Sprung zum MyWhoosh-Abschnitt.
+    const rb = await p.evaluate(async () => {
+      const wo = window.__MOCK__.get_dashboard.training.rideWorkouts?.days ?? [];
+      if (!wo.length) return { n: 0 };
+      const day = wo[0].day, labels = [...document.querySelectorAll("#wplan .pd")];
+      const idx = window.__MOCK__.get_dashboard.training.thisWeek.plan.days.findIndex((x) => x.day === day);
+      labels[idx].click();
+      return { n: wo.length, txt: document.getElementById("planDetail").textContent, btn: !!document.querySelector("#planDetail button"), name: wo[0].name };
+    });
+    if (!rb.n || !rb.btn || !rb.txt.includes("Workout für MyWhoosh") || !rb.txt.includes(rb.name)) errors.push(`${name}: Workout in der Plan-Karte fehlt ${JSON.stringify(rb)}`);
     // Konstanz (#209): 12 Wochenkacheln, 3 erreicht, laufende Woche markiert.
     const cs = await p.evaluate(() => ({ vis: !document.getElementById("sec-consistency")?.hidden, n: document.querySelectorAll("#csWeeks .cs-w").length, met: document.querySelectorAll("#csWeeks .cs-w.met").length, cur: document.querySelectorAll("#csWeeks .cs-w.current").length, text: document.getElementById("csText")?.textContent ?? "" }));
     if (!cs.vis || cs.n !== 12 || cs.met !== 3 || cs.cur !== 1 || !cs.text.includes("in Folge")) errors.push(`${name}: Konstanz-Karte falsch ${JSON.stringify(cs)}`);

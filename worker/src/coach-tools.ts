@@ -6,6 +6,7 @@ import { addDays, weekStart } from "./core/analysis";
 import { analysisContext, analysisHighlightsView, recoveryForecastView } from "./core/analytics";
 import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
+import { weekRideWorkouts } from "./core/bike-workout";
 import { comparePlan, normalizePlan } from "./core/plan";
 import { CONSISTENCY_WEEKS, consistency } from "./core/consistency";
 import { deleteSweatTest, readSweatTests, saveSweatTest, sweatRate, sweatSummary } from "./core/sweat";
@@ -135,7 +136,9 @@ export function registerCoachTools(server: McpServer, env: Env) {
       const isCurrent = ws === weekStart(dash.today);
       const planned = view.plan.days.find((d) => d.day === dash.today) ?? null;
       const zoneWeek = dash.hrZones.weeks.find((w) => w.week === ws) ?? null;
+      const todayRecovery = dash.days.find((d) => d.day === dash.today)?.recovery ?? null;
       return json({ ...view, today: isCurrent ? todayCheck(planned, dash.coach, view.plan) : null, readiness: isCurrent ? dash.coach : null,
+        rideWorkouts: weekRideWorkouts(view.plan.days, isCurrent ? dash.today : ws, isCurrent ? todayRecovery : null),
         zoneTargets: zoneTargets(view.plan, zoneWeek, dash.today) });
     },
   );
@@ -477,6 +480,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
         sleepTarget: dash.sleepTarget,
         trainingBlock: { saved: t.block.saved, text: t.block.text, current: t.block.current },
         planToday: t.today,
+        workoutToday: t.rideWorkouts.days.find((w) => w.day === dash.today) ?? dash.coach.restRide?.workout ?? null,
         trends: trendBrief,
         recentDays: dash.days.slice(-n).map((d) => ({
           day: d.day, recovery: d.recovery, hrv: d.hrv, rhr: d.rhr, sleepH: d.sleepH, strain: d.strain, load: d.load, ctl: d.ctl, atl: d.atl, tsb: d.tsb, trainingMin: d.trainingMin,
@@ -521,6 +525,7 @@ export function registerCoachTools(server: McpServer, env: Env) {
           "recommendationFeedback: Wie gut passten die Empfehlungen zuletzt (Rückmeldungen passt/zu hart/zu leicht); nach einer Einheit nach der Rückmeldung fragen und mit save_recommendation_feedback speichern.",
           "nutritionToday: Eiweiß- und Kohlenhydrat-Richtwert für heute (Faustregel nach Gewicht und Belastung, heute nach Tagesform); als Richtwert nennen, keine Ernährungsberatung.",
           "analysisHighlights sind die wichtigsten Befunde der Analysen (tone warn zuerst); bei Bedarf mit dem genannten tool Details holen. Nicht jeden Punkt aufzählen, nur was zur Frage passt.",
+          "workoutToday: Empfiehlst du eine Radeinheit, nenne das passende MyWhoosh-Workout dazu (name, summary, durationMin) und weise auf die Datei hin: get_bike_workout mit templateId bzw. day liefert die .zwo zum Import (workout.mywhoosh.com); nur bei Fahrten auf der Rolle. Eigene MyWhoosh-Einheiten kennst du nicht: höchstens searchTerm als Suchbegriff ohne Gewähr nennen.",
           "Planänderungen mit save_plan speichern, dauerhafte Erkenntnisse mit save_coach_note, Ziele mit set_goals.",
         ],
       });

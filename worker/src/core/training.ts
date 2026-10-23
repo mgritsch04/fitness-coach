@@ -5,6 +5,7 @@ import { addDays, daysBetween, weekStart, type DayPoint, type EffectiveSettings,
 import type { CoachAdvice, Readiness } from "./coach";
 import { readGoals, readNotes, readPlan, readPrefs, type CoachNote } from "./goals";
 import { readFtpTests, ftpTestSuggestion } from "./ftp-test";
+import { weekRideWorkouts, type WorkoutSuggestion } from "./bike-workout";
 import { FUELING_NOTE, fuelingFor, type Fueling } from "./fueling";
 import { sameDayAdvice, type SameDayAdvice } from "./same-day";
 import { personalizeFueling, readSweatTests, sweatSummary, type SweatSummary } from "./sweat";
@@ -212,6 +213,8 @@ export interface TrainingOverview {
   strengthWorkouts: { days: StrengthWorkout[]; note: string };
   /** Saisonphase fürs Krafttraining (#213). */
   strengthSeason: StrengthSeason;
+  /** Passende MyWhoosh-Workouts zu den Radeinheiten ab heute (#337): Vorlage oder gebaut, Datei über get_bike_workout. */
+  rideWorkouts: { days: ({ day: string } & WorkoutSuggestion)[]; note: string };
   /** Verpflegung je Tag der laufenden Woche (Faustregeln), dazu ein Hinweis. */
   fueling: { days: Fueling[]; note: string };
   /** Doppeltage der laufenden Woche (#298): Reihenfolge und Abstand von Rad und Kraft. */
@@ -224,6 +227,8 @@ export interface TrainingOverview {
   nutrition: { days: DailyNutrition[]; note: string };
   disclaimer: string;
 }
+
+const RIDE_WORKOUT_NOTE = "Workout aus der eigenen Bibliothek oder aus Art und Dauer gebaut (Schätzung). Die Datei zum Import in MyWhoosh liefert get_bike_workout bzw. der Abschnitt „Workout für MyWhoosh“; nur sinnvoll bei Fahrten auf der Rolle.";
 
 export async function trainingOverview(db: D1Database, inp: TrainingInputs & { body?: { weightKg: number | null } | null }): Promise<TrainingOverview> {
   const [goals, prefs, notes, savedBlock] = await Promise.all([readGoals(db), readPrefs(db), readNotes(db, { fromDay: addDays(inp.today, -14), limit: 10 }), readBlock(db, inp.today).catch(() => null)]);
@@ -254,6 +259,7 @@ export async function trainingOverview(db: D1Database, inp: TrainingInputs & { b
       days: thisWeek.plan.days.filter((d) => d.day >= inp.today && d.strength).map((d) => strengthWorkout(d.day, d.strength!, sessions, season.phase)),
       note: STRENGTH_PLAN_NOTE,
     },
+    rideWorkouts: { days: weekRideWorkouts(thisWeek.plan.days, inp.today, inp.days.find((d) => d.day === inp.today)?.recovery ?? null), note: RIDE_WORKOUT_NOTE },
     fueling: { days: thisWeek.plan.days.map((d) => fuelingFor(d, inp.body?.weightKg ?? null)).filter((f): f is Fueling => f !== null).map((f) => personalizeFueling(f, sweat)), note: FUELING_NOTE },
     sweat,
     sameDay: { days: thisWeek.plan.days.map(sameDayAdvice).filter((x): x is SameDayAdvice => x !== null), note: "Faustregeln für Rad und Kraft am selben Tag; nach Gefühl anpassen." },

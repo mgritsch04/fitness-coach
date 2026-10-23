@@ -44,7 +44,7 @@ FC.section({
     $("readySug").textContent = c.suggestion;
     // Ruhetag (#324): locker ausfahren ja oder nein.
     const rr = $("readyRide"); rr.hidden = !c.restRide;
-    if (c.restRide) rr.replaceChildren(el("b", { text: c.restRide.verdict === "spin" ? "Locker ausfahren: ja. " : "Locker ausfahren: heute nicht. " }), document.createTextNode(c.restRide.text), el("span", { class: "muted", text: ` ${c.restRide.disclaimer}` }));
+    if (c.restRide) rr.replaceChildren(el("b", { text: c.restRide.verdict === "spin" ? "Locker ausfahren: ja. " : "Locker ausfahren: heute nicht. " }), document.createTextNode(c.restRide.text), c.restRide.workout ? el("span", {}, ` Passendes Workout für MyWhoosh: ${c.restRide.workout.name}, ~${de(c.restRide.workout.load)} Belastung (Datei im Abschnitt „Workout für MyWhoosh“).`) : null, el("span", { class: "muted", text: ` ${c.restRide.disclaimer}` }));
     const tp = d.days.at(-1);
     const t = $("readyTarget"); t.replaceChildren();
     if (c.targetLoad) t.append(el("span", {}, "Ziel heute ", el("b", { text: c.targetLoad.max ? `${c.targetLoad.min}–${c.targetLoad.max}` : "0" }), " Belastungspunkte (Schätzung)"));
