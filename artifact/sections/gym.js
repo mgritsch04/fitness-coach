@@ -228,7 +228,8 @@ FC.section({
         // Verlauf und Prognose (#328) aus dem Krafttraining-Abschnitt.
         const hist = FC.state.exerciseDetail ? el("button", { type: "button", class: "linkish", text: this.histAt === i ? "Verlauf schließen" : "Verlauf", "aria-expanded": String(this.histAt === i) }) : null;
         if (hist) hist.onclick = () => { this.histAt = this.histAt === i ? null : i; this.draw(); };
-        return el("div", {}, el("div", { class: "muted gy-last" }, `Letztes Mal (${FC.fmtDayLong(last.day)}): ${last.sets} ${last.sets === 1 ? "Satz" : "Sätze"}, bester Satz ${last.topSet.reps}${x.unit === "s" ? " s" : ""}${kg} `, hist ?? ""),
+        const tg = x.unit === "s" ? null : this.target(last, this.isBar(x.name));
+        return el("div", {}, tg ? el("div", { class: "gy-target", style: "font-weight:600;font-size:.9rem" }, this.targetText(tg)) : "", el("div", { class: "muted gy-last" }, `Letztes Mal (${FC.fmtDayLong(last.day)}): ${last.sets} ${last.sets === 1 ? "Satz" : "Sätze"}, bester Satz ${last.topSet.reps}${x.unit === "s" ? " s" : ""}${kg} `, hist ?? ""),
           this.histAt === i && hist ? FC.state.exerciseDetail(this.prog(x.name)) : "");
       })(),
       i === st.cur && this.isBar(x.name) ? this.plateRow(x) : null,
@@ -346,6 +347,22 @@ FC.section({
     if (rir === "3+" && n <= kg) n = kg + step;
     if (rir === "0" && n >= kg) n = Math.max(0, kg - step);
     return Math.round(n * 10) / 10;
+  },
+  // Zielwert für heute (#375): Doppelprogression im Bereich 8–12 Wdh. nach dem besten Satz vom letzten Mal.
+  // Oben im Bereich → mehr Gewicht, zurück auf 8 Wdh.; sonst gleiches Gewicht und eine Wiederholung mehr.
+  TOP_REPS: 12, BASE_REPS: 8,
+  target(last, bar) {
+    const { reps, weightKg: kg } = last.topSet, sets = Math.max(1, last.sets);
+    if (!(reps > 0)) return null;
+    if (reps >= this.TOP_REPS) {
+      if (!(kg > 0)) return { sets, reps, kg, up: false, hold: true }; // Körpergewicht: Bereich ausgereizt, Wdh. halten
+      return { sets, reps: this.BASE_REPS, kg: this.nextKg(kg, "3+", bar), up: true };
+    }
+    return { sets, reps: reps + 1, kg, up: false };
+  },
+  targetText(t) {
+    const kg = t.kg ? ` mit ${FC.de(t.kg, t.kg % 1 ? 1 : 0)} kg` : "";
+    return `Ziel heute: ${t.sets}×${t.reps}${kg}${t.up ? " (Gewicht rauf, oberes Ende erreicht)" : t.hold ? " (oberes Ende, Wiederholungen halten)" : " (gleiches Gewicht, eine Wdh. mehr)"}`;
   },
   rirRow(x, s, j) {
     const { el } = FC;
