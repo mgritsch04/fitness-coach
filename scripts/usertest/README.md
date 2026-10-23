@@ -69,6 +69,7 @@ für `import_fit`), `calls()`, `text(sel)`, `poll(fn)`, `shot(caption, locator?)
 | bestanden | Kommentar „Automatisch BESTANDEN“ (Text), Label `done`, Issue schließen (`completed`) |
 | pruefen | Label `auto-user-test` → `user-test`, Kommentar beginnt mit „Automatische Vorprüfung – bitte selbst anschauen: …“ (Text); G antwortet im Issue |
 
+- **Was nicht blockiert** (Maßstab seit 23.10.): Gefühlsabgleich mit echten Daten („passt zu meinem Gefühl“, „plausibel gegen die WHOOP-App“) und der Wortlaut von Claude-Antworten sind keine Abnahmekriterien. Belegt sein müssen die Funktion (Anzeige, Werkzeug-Antwort, Regel per Unit-Test) und bei Chat-Schritten, dass der Coach-Kontext die nötigen Angaben enthält (`chatCtx` in `scenarios/_q.mjs`; gegen den echten Connector kann der prüfende Thread zusätzlich `get_coach_context` aufrufen, ohne Werte ins Issue zu schreiben). Optik-Schritte beurteilt der Test-Thread selbst am Bild. Nur echte Geräte/Konten (MyWhoosh-Portal, Wahoo/WHOOP-Webhooks, Handy in der Claude-App, echtes Internet für Ortssuche, echtes Training) bleiben bei G, jeweils mit einem Auftrag von 1–3 Minuten.
 - Nie einen `fail` als bestanden werten; `FEHLGESCHLAGEN` schreibt nur G.
 - Wünsche oder Fehler, die beim Testen auffallen, nicht selbst bauen: im Issue nennen, der Koordinator plant sie ein.
 - „automatisch bestätigt (Datum)“ in `docs/PROJECT_STATUS.md` trägt der Haupt-Thread („Dashboard und Auswertungen“) ein.
