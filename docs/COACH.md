@@ -31,7 +31,8 @@ _Stand 2026-10-16 · Code: `worker/src/core/plan.ts` (Planung, reine Funktionen)
 |---|---|---|
 | `get_goals` | `status` (active/done/dropped/all) | Ziele |
 | `set_goals` | `goals[]` (ohne `id` = neu, mit `id` = ändern), `delete[]` | speichert, gibt alle aktiven Ziele zurück |
-| `get_training_prefs` / `set_training_prefs` | `weeklyHours` (Rad/Ausdauer), `restDays` (0 = Mo … 6 = So), `longDay`, `maxWeekdayMin`, `mainSport`, `strengthPerWeek` (0–6), `strengthMin` (`null` = aus den letzten Wochen) | Vorlieben |
+| `get_training_prefs` / `set_training_prefs` | `weeklyHours` (Rad/Ausdauer), `restDays` (0 = Mo … 6 = So), `longDay`, `maxWeekdayMin`, `dayMinutes` (7 Werte Mo … So, Minuten fürs Rad, `0` = keine Zeit, `null` = egal), `easyDays` (locker statt frei), `noFtpTest`, `mainSport`, `strengthPerWeek` (0–6), `strengthMin` (`null` = aus den letzten Wochen) | Vorlieben |
+| `set_day_time` | `day` (Std. heute), `minutes` (0–600, `null` = zurücknehmen) | spontane Radzeit für ein Datum (#336): kürzt bzw. verschiebt die Einheit im gespeicherten Plan, Ausnahme verfällt nach dem Tag |
 | `get_event_projection` | `goalId` (Std. nächstes Terminziel) | Formprognose, siehe unten |
 | `get_plan` | `week` = current/next/previous/Datum | `{ week, stored, savedAt, plan, phaseLabel, comparison, today, readiness }` |
 | `save_plan` | `week`, `accept` (Vorschlag übernehmen) **oder** `days[]` (angepasster Plan, fehlende Tage = Ruhe) **oder** `reset` | gespeicherter Plan mit Soll/Ist |

@@ -6,7 +6,7 @@ import { addDays, weekStart } from "./core/analysis";
 import { analysisContext, analysisHighlightsView, recoveryForecastView } from "./core/analytics";
 import { buildDashboard } from "./core/dashboard";
 import { deleteGoal, deleteNote, deletePlan, readGoals, readNotes, readPlan, readPrefs, saveGoal, saveNote, writePlan, writePrefs } from "./core/goals";
-import { comparePlan, normalizePlan } from "./core/plan";
+import { applyDayLimit, comparePlan, normalizePlan } from "./core/plan";
 import { CONSISTENCY_WEEKS, consistency } from "./core/consistency";
 import { deleteSweatTest, readSweatTests, saveSweatTest, sweatRate, sweatSummary } from "./core/sweat";
 import { weekReview } from "./core/review";
@@ -101,6 +101,14 @@ export function registerCoachTools(server: McpServer, env: Env) {
       .nullable()
       .optional()
       .describe("Fester Wochenplan Kraft: je Eintrag Wochentag (0 = Montag) und Art, z. B. Beine oder Oberkörper. Der Plan übernimmt diese Tage unverändert und plant nur Rad und Ruhe drumherum; null oder [] = Coach verteilt die Kraft."),
+    dayMinutes: z
+      .array(z.number().int().min(0).max(600).nullable())
+      .length(7)
+      .nullable()
+      .optional()
+      .describe("Verfügbare Minuten fürs Rad je Wochentag [Mo … So]; 0 = keine Zeit (Ruhetag), null im Feld = nicht angegeben (Coach entscheidet). Sind alle 7 gesetzt, ist die Summe das Wochenbudget. null = zurücksetzen."),
+    easyDays: z.array(z.number().int().min(0).max(6)).max(7).nullable().optional().describe("Wochentage mit lockerer kurzer Einheit statt Ruhetag (0 = Montag). Zeit 0 min in dayMinutes hat Vorrang."),
+    noFtpTest: z.boolean().nullable().optional().describe("true = nie einen FTP-Test vorschlagen (ohnehin nicht, wenn die FTP von Hand eingetragen ist)"),
   };
 
   server.registerTool(
@@ -117,6 +125,31 @@ export function registerCoachTools(server: McpServer, env: Env) {
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
     async (patch) => json(await writePrefs(db, patch)),
+  );
+
+  server.registerTool(
+    "set_day_time",
+    {
+      description:
+        "Spontan umplanen (#336): verfügbare Radzeit für ein einzelnes Datum setzen („heute nur 45 min“; 0 = keine Zeit). Gilt nur an dem Tag. " +
+        "Ein vorhandener gespeicherter Wochenplan wird für den Tag angepasst (kürzen, Schlüsseleinheit auf den nächsten freien Tag schieben), sonst richtet sich der Vorschlag danach. minutes=null nimmt die Ausnahme zurück. Schätzungen, keine medizinische Beratung.",
+      inputSchema: { day: DAY.optional().describe("Standard heute"), minutes: z.number().int().min(0).max(600).nullable() },
+      annotations: { readOnlyHint: false, idempotentHint: true },
+    },
+    async ({ day, minutes }) => {
+      const dash = await dashboard();
+      const date = day ?? dash.today;
+      if (date < dash.today) return fail("past_day", "Vergangene Tage lassen sich nicht umplanen.");
+      const ws = weekStart(date);
+      const prefs = await readPrefs(db);
+      // Ausnahmen verfallen nach dem Tag.
+      const overrides: Record<string, number> = Object.fromEntries(Object.entries(prefs.dayOverrides ?? {}).filter(([d]) => d >= dash.today && d !== date));
+      if (minutes != null) overrides[date] = minutes;
+      const next = await writePrefs(db, { dayOverrides: Object.keys(overrides).length ? overrides : null });
+      const [goals, stored, block] = await Promise.all([readGoals(db), readPlan(db, ws), readBlock(db, dash.today).catch(() => null)]);
+      if (stored && minutes != null) await writePlan(db, applyDayLimit(stored, date, minutes, dash.today));
+      return json(await weekView(db, dash, ws, { goals, prefs: next, block }));
+    },
   );
 
   server.registerTool(
