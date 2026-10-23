@@ -169,6 +169,10 @@ const t = {
     if (r.error || r.isError) throw new Error(`${name}: ${r.error ?? JSON.stringify(r.payload)}`);
     return r.payload;
   },
+  /** Lücke im WHOOP-Verlauf: entfernt Tageswerte und Schlaf der Tage (YYYY-MM-DD), z. B. gap(["2026-10-21"]). */
+  async gap(days) {
+    return (await fetch(`${baseURL}/gap`, { method: "POST", body: JSON.stringify({ days }) })).json();
+  },
   /** Synthetische FIT-Fahrt als Base64 (für import_fit), z. B. { start: "2026-10-17T16:00:00Z", seconds: 3600, watts: 180 }. */
   async fit(o = {}) {
     return (await (await fetch(`${baseURL}/fit`, { method: "POST", body: JSON.stringify(o) })).json()).fileBase64;

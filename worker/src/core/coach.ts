@@ -25,6 +25,8 @@ export interface CoachAdvice {
   /** Warnungen, die über den Tag hinausgehen (z. B. zu schneller Anstieg der Trainingslast). */
   warnings: string[];
   disclaimer: string;
+  /** Fehlende WHOOP-Tage vor heute (#379): Anzahl lückenloser Tage ohne Daten bis gestern, null wenn keine Lücke. */
+  dataGap?: { days: number; since: string } | null;
   /** Nur bei „Ruhe“: locker ausfahren ja oder nein (rest-ride.ts, #324). */
   restRide?: import("./rest-ride").RestRide | null;
 }
@@ -131,10 +133,28 @@ export function coachAdvice(series: DayPoint[], today: string, trends: { hrv: Tr
     reasons.push({ factor: "monotony", effect: "down", text: `${streak} Trainingstage in Folge ohne Ruhetag.` });
   }
 
+  // Fehlende WHOOP-Tage (#379): lückenlos leere Tage bis gestern. Die Empfehlung stützt sich dann auf Vortage,
+  // Trainingslast und Tagebuch (Letzteres macht applyJournal danach) und sagt das offen.
+  let gapDays = 0;
+  for (let d = addDays(today, -1); byDay.get(d)?.noData; d = addDays(d, -1)) gapDays++;
+  const dataGap = gapDays ? { days: gapDays, since: addDays(today, -gapDays) } : null;
+  if (dataGap) {
+    const n = gapDays === 1 ? "1 Tag" : `${gapDays} Tage`;
+    reasons.push({
+      factor: "data",
+      effect: "neutral",
+      text: rec == null
+        ? `Schätzung wegen fehlender Daten: ${n} ohne WHOOP-Werte (seit ${dataGap.since}). Die Empfehlung stützt sich auf frühere Tage, Trainingslast und dein Tagebuch.`
+        : `Hinweis: ${n} ohne WHOOP-Werte (seit ${dataGap.since}); Trends und Basis sind dadurch weniger genau.`,
+    });
+  }
+
   score = Math.max(0, Math.min(100, Math.round(score)));
   let readiness: Readiness = score < 35 ? "rest" : score < 55 ? "easy" : score < 75 ? "moderate" : "hard";
   // Rote Erholung erlaubt höchstens lockeres Training.
   if (rec != null && rec < 34 && LEVELS.indexOf(readiness) > 1) readiness = "easy";
+  // Ohne heutige Erholung nach einer Lücke wird nur geschätzt: keine harte Einheit auf Verdacht.
+  if (rec == null && dataGap && readiness === "hard") readiness = "moderate";
 
   const factor: Record<Readiness, [number, number]> = { rest: [0, 0.3], easy: [0.4, 0.8], moderate: [0.8, 1.3], hard: [1.3, 2] };
   const base = Math.max(ctl, 30);
@@ -149,6 +169,7 @@ export function coachAdvice(series: DayPoint[], today: string, trends: { hrv: Tr
     targetLoad,
     reasons,
     warnings,
+    dataGap,
     disclaimer: "Trainingsempfehlung aus deinen Daten, keine medizinische Diagnose. Belastungswerte sind Schätzungen.",
   };
 }
