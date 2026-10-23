@@ -8,7 +8,7 @@ FC.section({
     FC.state.coach = this; // Regeln und Datenauszug auch für andere Abschnitte (Morgen-Briefing)
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-coach">Coach</h2><span class="muted">Antworten schreibt Claude aus deinen Daten. Das zählt zu deinem Claude-Kontingent.</span></div>
-      <div class="panel" style="display:grid; gap:14px;">
+      <div class="panel" style="display:grid; grid-template-columns:minmax(0,1fr); gap:14px;">
         <div class="coach-actions">
           <button type="button" class="primary" data-coach="explain" disabled>Empfehlung erklären</button>
           <button type="button" data-coach="plan" disabled>Wochenplan vorschlagen</button>
