@@ -66,7 +66,7 @@ FC.section({
     const e = this.routine.exercises[this.i];
     if (e.sides && this.side === 0) { this.side = 1; this.left = e.seconds; }
     else if (++this.i < this.routine.exercises.length) { this.side = 0; this.left = this.routine.exercises[this.i].seconds; }
-    else { this.stop(); FC.$("moRun").hidden = false; FC.$("moRun").textContent = "Fertig. Gut gemacht."; return; }
+    else { this.stop(); FC.$("moRun").hidden = false; FC.$("moRun").textContent = "Fertig. Gut gemacht."; try { navigator.vibrate?.([200, 100, 200]); } catch {} return; }
     try { navigator.vibrate?.(200); } catch {}
     this.draw();
   },

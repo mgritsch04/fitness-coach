@@ -254,7 +254,11 @@ body.tabs.desk-tabs #sections > section:not(.on) { display: none; }
     font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; letter-spacing: 0.01em; }
   #sections > section.foldable > .fold-bar::after { content: ""; flex: none; width: 9px; height: 9px; margin-right: 6px; border: solid var(--ink-3); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-3px); transition: transform .15s; }
   #sections > section.foldable:not(.folded) > .fold-bar::after { transform: rotate(-135deg) translate(-3px, 0); }
-  #sections > section.folded > :not(.fold-bar) { display: none !important; }
+  #sections > section.folded > :not(.fold-bar):not(.fav-bar) { display: none !important; }
+  #sections > section.foldable { position: relative; }
+  #sections > section.foldable > .fold-bar { padding-right: 84px; }
+  #sections > section.foldable > .fav-bar { position: absolute; top: 6px; right: 34px; margin: 0; padding: 8px; }
+  #sections > section.foldable > .fav-bar svg { width: 22px; height: 22px; }
   #sections > section.folded + section.folded { margin-top: -18px; }
   #sections > section.foldable .fold-title { display: none; }
   .display { padding: 16px; gap: 12px; }
