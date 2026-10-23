@@ -58,6 +58,12 @@ const payloads = {
   get_body_history: () => window.__MOCK__.get_body_history,
   get_bike_workout: () => window.__MOCK__.get_bike_workout,
   list_bike_workouts: (i) => { const m = window.__MOCK__.list_bike_workouts; return { ...m, items: m.items.filter((x) => (!i?.category || x.category === i.category) && (!i?.maxMin || x.durationMin <= i.maxMin)) }; },
+  get_workout_detail: (i) => { if (i?.sourceId === "nofit") return { found: false, message: "Für dieses Workout gibt es keine Sekundenwerte.", available: [] };
+    const points = Array.from({ length: 120 }, (_, k) => ({ t: k * 30, power: k % 20 < 6 ? 260 : 150 + (k % 7) * 4, hr: 120 + Math.round(k / 3), cadence: 88 }));
+    const z = (names, secs) => names.map((name, k) => ({ zone: k + 1, name, min: k * 50, max: k < names.length - 1 ? k * 50 + 49 : null, seconds: secs[k], sharePct: Math.round((secs[k] / secs.reduce((a, b) => a + b)) * 1000) / 10 }));
+    return { found: true, workout: {}, ftpOrigin: "user", reference: { ftpW: 250, thresholdHr: 170 }, stats: { durationS: 3600, avgPowerW: 180, normalizedPowerW: 195, maxPowerW: 410, variabilityIndex: 1.08, intensityFactor: 0.78, tssEstimate: 61, workKj: 648, avgHr: 142, maxHr: 171, avgCadence: 88 },
+      series: { stepS: 30, points }, zones: { power: z(["Aktive Erholung", "Ausdauer", "Tempo", "Schwelle", "VO2max"], [300, 1800, 900, 480, 120]), hr: z(["Z1", "Z2", "Z3"], [600, 2400, 600]) },
+      intervals: { thresholdW: 220, basis: "ftp", intervals: [{ startS: 300, durationS: 180, avgPowerW: 262, pctFtp: 105, avgHr: 160, maxHr: 168, avgCadence: 90 }] }, decoupling: { pct: 3.2, firstHalf: 1.3, secondHalf: 1.26 }, powerCurve: {}, available: [], notes: [] }; },
   get_ride_weather: () => window.__MOCK__.get_ride_weather,
   set_weather_location: (i) => ({ location: { name: i.name, lat: 47.1, lon: 15.4 } }),
   log_weight: (i) => ((window.__weightIn = i), { saved: i.entries ? { count: i.entries.length, from: i.entries[0].day, to: i.entries.at(-1).day } : { day: window.__MOCK__.get_dashboard.today, weightKg: i.weightKg }, ...window.__MOCK__.get_body_history }),
@@ -175,6 +181,29 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.screenshot({ path: join(out, "phone-workout-filter.png") });
     await p.click("#btnResetWorkouts"); await p.waitForTimeout(150);
     if ((await wo()).rows.length !== 25) errors.push(`${name}: Zurücksetzen zeigt nicht wieder alle`);
+    // Workout-Detail (#334): Rad mit FIT (Verlauf, Zonen, Intervalle), Kraft mit Übungen, ohne Übungen, Rad ohne FIT.
+    const wdText = () => p.evaluate(() => ({ open: document.getElementById("woDetail").open, text: document.getElementById("wdBody").innerText, svg: document.querySelectorAll("#wdBody .wd-chart svg").length, zones: document.querySelectorAll("#wdBody .wd-zone").length, rows: document.querySelectorAll("#wdBody .wd-tbl tbody tr").length, over: document.documentElement.scrollWidth > innerWidth || document.getElementById("woDetail").scrollWidth > document.getElementById("woDetail").clientWidth + 1 }));
+    await p.click("#woKind [data-k=bike]"); await p.waitForTimeout(150);
+    await p.locator("#tWorkouts tbody tr:not(.rpe-row) td:nth-child(2) button.link").first().click(); await p.waitForSelector("#wdBody .wd-chart", { timeout: 3000 }).catch(() => {});
+    const d1 = await wdText();
+    if (!d1.open || d1.svg !== 1 || d1.zones < 8 || d1.rows !== 1 || !/Entkopplung/.test(d1.text) || d1.over) errors.push(`${name}: Rad-Detail falsch ${JSON.stringify({ ...d1, text: d1.text.slice(0, 120) })}`);
+    await p.screenshot({ path: join(out, "phone-workout-detail-bike.png") });
+    await p.keyboard.press("Escape"); await p.waitForTimeout(100);
+    if (await p.evaluate(() => document.getElementById("woDetail").open)) errors.push(`${name}: Workout-Detail schließt nicht mit Escape`);
+    const open = (w) => p.evaluate((w) => FC.state.openWorkout(w), w);
+    const base = await p.evaluate(() => ({ ...FC.state.data.workouts[0] }));
+    await open({ ...base, sport: "weightlifting", strengthSessionId: "s1" }); await p.waitForTimeout(300);
+    const d2 = await wdText();
+    if (!/Bankdrücken/.test(d2.text) || !/8 × 72,5 kg/.test(d2.text) || d2.over) errors.push(`${name}: Kraft-Detail falsch ${JSON.stringify(d2.text.slice(0, 200))}`);
+    await p.screenshot({ path: join(out, "phone-workout-detail-strength.png") });
+    await open({ ...base, sport: "weightlifting", strengthSessionId: null }); await p.waitForTimeout(200);
+    if (!/keine Übungen eingetragen/.test((await wdText()).text)) errors.push(`${name}: Kraft ohne Übungen ohne Hinweis`);
+    await open({ ...base, sport: "cycling", strengthSessionId: null, sourceId: "nofit" }); await p.waitForTimeout(200);
+    const d4 = await wdText();
+    if (!/keine Sekundenwerte/.test(d4.text) || d4.svg) errors.push(`${name}: Rad ohne FIT ohne Hinweis ${JSON.stringify(d4.text.slice(0, 200))}`);
+    await open({ ...base, sport: "running", strengthSessionId: null }); await p.waitForTimeout(100);
+    if (!/Dauer/.test((await wdText()).text)) errors.push(`${name}: Basisdaten fehlen`);
+    await p.keyboard.press("Escape"); await p.click("#btnResetWorkouts").catch(() => {}); await p.waitForTimeout(100);
   }
   if (tab === "training") { await p.selectOption("#stTpl", "Beine & Brust"); await p.waitForTimeout(300); await p.setInputFiles("#fitFile", { name: "mywhoosh-ride.fit", mimeType: "application/octet-stream", buffer: Buffer.alloc(2048, 1) }); await p.waitForTimeout(500); }
   if (tab === "mehr") {
