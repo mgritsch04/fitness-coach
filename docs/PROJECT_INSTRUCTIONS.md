@@ -1,6 +1,6 @@
 # Projektanweisungen (Kopie)
 
-_Kopie der Projektanweisungen, Stand 2026-10-17; maßgeblich ist die Version in den Projekteinstellungen._
+_Kopie der Projektanweisungen, Stand 2026-10-17 (am 2026-10-23 nur die Deploy-Regel nachgezogen; Rollen: Haupt-Thread = Planer Fitness, Leiter/Koordinator = Manager, siehe `DEVELOPMENT_WORKFLOW.md` › Organisation seit 22.10.2026); maßgeblich ist die Version in den Projekteinstellungen._
 
 Antworte auf Deutsch, kurz und für Nicht-Entwickler verständlich.
 
@@ -68,7 +68,7 @@ Zusatzlabels: priority: high (vor allem anderen), info (erledigt mit wichtiger I
 - Meist ein Sammel-PR mit mehreren Features. PR-Text: Feature-Liste mit „Refs #…“ (nie „Closes #“, damit das Feature-Issue für den User-Test offen bleibt), ausgeführte Checks.
 - Erst mergen, wenn die CI auf dem aktuellen Stand grün ist (Merge-Commit). CI rot: Ursache beheben, nicht neu starten. Instabile Tests robuster machen, nie überspringen oder deaktivieren.
 - Nie force-pushen, keine Schutzregeln oder Pflicht-Checks umgehen, nichts Ungemergtes löschen.
-- Nach dem Merge: der umsetzende Feature- oder Haupt-Thread setzt seine Feature-Issues auf auto-user-test mit „## Testschritte“-Kommentar, deployt den Worker und spult den eigenen Branch auf main vor; der Haupt-Thread veröffentlicht das Fitness-Dashboard-Artefakt neu.
+- Nach dem Merge: der umsetzende Feature- oder Haupt-Thread setzt seine Feature-Issues auf auto-user-test mit „## Testschritte“-Kommentar und spult den eigenen Branch auf main vor. Worker-Deploy (Cloudflare) nur mit Gs Freigabe über den Manager, nie von selbst; ohne Freigabe im Issue „gemergt, nicht deployt“ vermerken; der Haupt-Thread veröffentlicht das Fitness-Dashboard-Artefakt neu.
 
 ### Parallele Agents
 - Agents (Hilfsagenten innerhalb eines Threads) arbeiten in eigenen Git-Worktrees mit eigenem Branch (und eigenem Port, falls lokale Server/E2E laufen).

@@ -8,6 +8,9 @@ Kuratierter Arbeitsplan. **Neue Ideen als Issue mit Label `idea-inbox`** ([`IDEA
 
 Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Größe** (für die Dashboard-Hochrechnung): S = 1, M = 2, L = 4 Punkte.
 
+## Nachtrag Stand 2026-10-23
+Die Tabelle unten ist Stand 17.10.; hier steht, was sich seitdem geändert hat. Die Zeilen 68, 69, 74 und 81 wurden unten korrigiert (waren veraltet). Nicht in der Tabelle geführt, aber seit 17.10. in main (jeweils Feature-Issue mit `Refs`): #299 Wiederholungsrekord · #308 Schweißrate-Formular · #309 Master-Dashboard ohne Updater-Session (**In Progress**) · #317 WHOOP-Zyklus-Tag · #319, #320, #107 Gym-Modus (Dauer, Anstrengung, Vorlage) · #321 Gym-Seite · #322 Reiter am PC · #323 Krafttraining-Wochenplan · #324 Ruhetag-Hinweis · #325 Wetter-Ort · #326 Winterbetrieb · #327 Übung beschreiben · #328 Verlauf je Übung · #332/#333 Vorlagen · #334 Workout-Details · #336 Radzeit je Wochentag · #337 MyWhoosh-Workout zur Empfehlung · #338 Coach-Fehlercode · #344 Sätze einzeln · #352/#363 Fehler Element-ID/Vorlage umbenennen · #355, #361 Handy-Fixes. Offen/geplant: #219 (Blocked), #267 (Blocked; Intervals.icu von G abgelehnt 22.10.), #27 In Progress. Der aktuelle Stand der Labels steht in `PROJECT_STATUS.md` › Nachtrag.
+
 ## Übersicht
 
 | # | Titel (Issue) | Beschreibung | Nutzen | Prio | Größe | Abhängigkeiten | Abnahme | Status |
@@ -80,20 +83,20 @@ Sortierung: In Progress → Ready (nach Priorität) → Blocked → Done. **Grö
 | 65 | eFTP-Verlauf (#200) | FTP-Schätzung aus normalen Fahrten je Woche, Testvorschlag bei Abweichung | Formtrend zwischen Tests | P1 | M | Zeile 8 | Unit-Tests, Vorschau | Done (User-Test in #200) |
 | 66 | Wiedereinstieg nach Krankheit/Pause (#201) | Pause erkennen, gestufter Wiedereinstieg, Tagebuch-Feld krank | sicher zurück ins Training | P1 | M | Zeile 16, 17 | Unit-Tests | Done (User-Test in #201) |
 | 67 | Kraft-Plateau und Entlastungswoche (#202) | Plateau je Übung, Deload-Vorschlag | Fortschritt statt Stillstand | P2 | S | Zeile 24 | Unit-Tests, Vorschau | Done (User-Test in #202) |
-| 68 | Kraftstandards relativ zum Körpergewicht (#203) | e1RM/kg je Grundübung mit groben Stufen | Kraft pro kg wie W/kg | P2 | S | Zeile 23, 24 | Unit-Tests | Planned |
-| 69 | Gym-Modus: Übung tauschen (#204) | Übungsbibliothek mit Alternativen | belegte Geräte | P2 | M | Zeile 38 | Unit-Tests, Vorschau | Planned |
+| 68 | Kraftstandards relativ zum Körpergewicht (#203) | e1RM/kg je Grundübung mit groben Stufen | Kraft pro kg wie W/kg | P2 | S | Zeile 23, 24 | Unit-Tests | Done (Dashboard v35 laut PROJECT_STATUS; User-Test in #203; Stand 23.10. korrigiert, vorher „Planned“) |
+| 69 | Gym-Modus: Übung tauschen (#204) | Übungsbibliothek mit Alternativen | belegte Geräte | P2 | M | Zeile 38 | Unit-Tests, Vorschau | Done (Dashboard v35 laut PROJECT_STATUS; User-Test in #204; Stand 23.10. korrigiert, vorher „Planned“) |
 | 70 | Schlafziel für heute Nacht (#205) | Schlafbedarf aus Belastung und Schlafschuld, Zubettgehzeit | bessere Erholung | P2 | S | Zeile 13 | Unit-Tests | Done (User-Test in #205) |
 | 71 | 4-Wochen-Blockplanung (#206) | 3 Aufbau- + 1 Entlastungswoche mit CTL-Rampe | planbarer Fortschritt | P2 | M | Zeile 15 | Unit-Tests, Vorschau | Done (User-Test in #206) |
 | 72 | Rolle gegen Straße (#207) | Leistung/Puls indoor vs. outdoor | Zonen indoor anpassen | P3 | S | Zeile 6 | Unit-Tests | Done (User-Test in #207) |
 | 73 | W′-Bilanz im Workout-Detail (#208) | W′bal-Verlauf (Skiba) | Intervalle richtig dosieren | P3 | S | Zeile 20, 34 | Unit-Tests | Done (User-Test in #208) |
-| 74 | Konstanz und Serien (#209) | Wochenziel-Serien, Plan-Treue | Motivation | P3 | S | Zeile 15 | Unit-Tests, Vorschau | Planned |
+| 74 | Konstanz und Serien (#209) | Wochenziel-Serien, Plan-Treue | Motivation | P3 | S | Zeile 15 | Unit-Tests, Vorschau | Done (Dashboard v35 laut PROJECT_STATUS; User-Test in #209; Stand 23.10. korrigiert, vorher „Planned“) |
 | 75 | Diagramme: Tippen zeigt Werte (#210) | Fadenkreuz und Wertbox in FC.chart | Werte am Handy ablesen | P2 | S | — | Vorschau, User-Test in #210 | Done |
 | 76 | Vorschau-CI prüft Barrierefreiheit (#211) | axe-core in preview.mjs, Verstöße beheben | Qualität | P2 | M | Zeile 31 | CI, User-Test in #211 | Done |
 | 77 | Datenstand je Quelle (#212) | freshness in get_dashboard, Hinweis in Kopfzeile/Briefing | alte Daten erkennen | P3 | S | — | Unit-Tests, Vorschau, User-Test in #212 | Done |
 | 78 | Krafttraining nach Saisonphase (#213) | Aufbau/Erhalt/Wettkampf im Wochenplan | Kraft passend zur Radsaison | P3 | S | Zeile 39 | Unit-Tests | Done (User-Test in #213) |
 | 79 | Zeit-in-Zone-Ziele je Woche (#214) | Soll aus Plan gegen Ist | Intensitätsverteilung steuern | P3 | S | Zeile 12, 15 | Unit-Tests, Vorschau | Done (User-Test in #214) |
 | 80 | Leistungskurve Zeitraum-Vergleich (#215) | zwei Zeiträume übereinander mit Differenz | Fortschritt sehen | P3 | S | Zeile 8 | Unit-Tests, Vorschau | Done (User-Test in #215) |
-| 81 | Rückmeldung zur Tagesempfehlung (#216) | passt/zu hart/zu leicht, Korrekturfaktor | Coach lernt | P3 | M | Zeile 9 | Unit-Tests, Vorschau | In Progress (Thread Trainingscoach) |
+| 81 | Rückmeldung zur Tagesempfehlung (#216) | passt/zu hart/zu leicht, Korrekturfaktor | Coach lernt | P3 | M | Zeile 9 | Unit-Tests, Vorschau | Done (Dashboard v35 laut PROJECT_STATUS; User-Test in #216; Stand 23.10. korrigiert, vorher „In Progress“) |
 | 82 | Wochenbilanz als Bild (#218) | Canvas-PNG über Downloads | aufheben/teilen | P3 | S | Zeile 33 | Vorschau, User-Test in #218 | Done |
 | 83 | Zwei Workouts vergleichen (#219) | Kennzahlen und Kurven nebeneinander | Fortschritt auf gleicher Runde | P3 | M | Zeile 20 | Unit-Tests, Vorschau | Blocked (wartet auf MyWhoosh-Upload-Deploy #27) |
 | 84 | Workout-Liste filtern und suchen (#220) | Sport, Zeitraum, Quelle, Suche | lange Historie nutzbar | P3 | S | — | Vorschau, User-Test in #220 | Done |

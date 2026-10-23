@@ -1,6 +1,15 @@
 # Entwicklungs-Workflow
 
-_Stand 2026-10-16 · übernommen und angepasst aus `mgritsch04/wohnungsplaner-3d`._
+_Stand 2026-10-16 · übernommen und angepasst aus `mgritsch04/wohnungsplaner-3d`. Nachgezogen am 2026-10-23: Ein-Projekt-Organisation, Deploy-Regel, Auto-Test-Maßstab (jeweils im Text markiert; die übrigen Regeln gelten unverändert)._
+
+## Organisation seit 22.10.2026 (Ein-Projekt-Modell)
+Die Rollennamen weiter unten (Haupt-Thread, Koordinator, Leiter) stammen aus der Zeit vor dem 22.10. und gelten so weiter, nur mit neuen Trägern:
+- **Manager** (Projekt „Manager“, früher „Leiter“) ist Gs einziger Ansprechpartner. Er entscheidet nach Usage, **wann und wie viel** gearbeitet wird, startet Arbeits-Threads und mergt bei grüner CI.
+- **Planer Fitness** (Thread im Manager-Projekt) übernimmt die Aufgaben des früheren Haupt-Threads: Backlog (`IDEAS.md`), `PROJECT_STATUS.md`, Priorisierung. Zustand steht in Dateien (`planer/fitness/STAND.md` im Projektordner), nicht in Sessions.
+- **Arbeits-Threads** arbeiten wie bisher die Feature-Aufgaben ab und melden das Ergebnis dem Manager.
+- Branches: empfohlen `claude/fit-…`; die Plattform vergibt teils `claude/project-thread-…`, das ist erlaubt. Einmal nach dem Klonen: `chmod +x scripts/repo-guard.sh scripts/githooks/pre-push && git config core.hooksPath scripts/githooks`.
+- **Merge-Methode:** Beides kommt vor (Merge-Commit hier bisher, Squash im Wohnungsplaner). Es gilt: die vom PR gewählte Methode nicht nachträglich umschreiben; bei Squash trägt der Commit-Titel `(#PR)`.
+- **Dashboard:** Maßgeblich ist die Anweisung des Managers (Projektordner `planer/DASHBOARD-KETTE.md`); die Beschreibung der Thread-Zeilen unten ist Stand 17.10.
 
 ## Repository
 - GitHub: `mgritsch04/fitness-coach` (**öffentlich** seit 2026-10-17; daher keine echten Gesundheitsdaten in Code, Issues oder PRs), Standard-Branch `main`.
@@ -19,10 +28,11 @@ _Stand 2026-10-16 · übernommen und angepasst aus `mgritsch04/wohnungsplaner-3d
 - **PR-Text:** Liste der Features mit `Refs #…` (nie `Closes #…`: das Feature-Issue bleibt bis zum bestandenen Test offen), die ausgeführten Checks. Meist ein Sammel-PR mit mehreren Features; Feature-Threads mergen ihren eigenen PR nach grüner CI.
 - **Checks vor dem Commit** (Worker): `cd worker && npm run check` (Typprüfung + Tests); CI zusätzlich `wrangler deploy --dry-run`. Artefakt: Vorschau `artifact/dev/preview.mjs` (siehe `artifact/README.md`).
 - **CI rot:** Ursache suchen und beheben, nicht einfach neu starten; instabile Tests robuster machen, nie überspringen.
-- **Nach dem Merge:** Feature-Issue offen lassen; der Thread, der das Feature gebaut hat, setzt selbst das Label `auto-user-test` und schreibt den Testschritte-Kommentar in sein Issue (siehe User-Test unten); Worker deployen (Migrationen zuerst, siehe `PROJECT_STATUS.md`); Dashboard-Artefakt neu veröffentlichen, wenn sich `artifact/` geändert hat; Entwicklungs-Dashboard aktualisieren; eigenen Branch auf `main` vorspulen.
+- **Nach dem Merge:** Feature-Issue offen lassen; der Thread, der das Feature gebaut hat, setzt selbst das Label `auto-user-test` und schreibt den Testschritte-Kommentar in sein Issue (siehe User-Test unten); **Worker-Deploy nur mit Gs Freigabe** (der Manager holt sie ein; Cloudflare nie von selbst anstoßen). Migrationen zuerst, siehe `PROJECT_STATUS.md`. Ohne Freigabe im Feature-Issue vermerken „gemergt, nicht deployt“, damit Tests nicht gegen den alten Stand laufen; Dashboard-Artefakt neu veröffentlichen, wenn sich `artifact/` geändert hat; Entwicklungs-Dashboard aktualisieren; eigenen Branch auf `main` vorspulen.
 - **User-Test `FEHLGESCHLAGEN`:** zuerst prüfen, ob der getestete Stand schon in `main` war; wenn nicht, im Issue darauf hinweisen und nach dem Merge um einen neuen Test bitten (zählt nicht als Fehlschlag). Sonst `needs-fix` + `priority: high`, Zeile in `IDEAS.md`, beheben, nach dem Merge Kommentar „Jetzt in main“ mit Erklärung und bei Bedarf neuem `## Testschritte`-Kommentar, Label wieder `auto-user-test` (der Test-Thread prüft erneut).
 - **User-Test im Feature-Issue (keine eigenen Test-Issues):** nach dem Merge Label `auto-user-test` und ein Kommentar, der mit `## Testschritte` beginnt: optional `**Voraussetzung:** …`, dann nummerierte Schritte, je Schritt darunter `→ Erwartet: …` (Format und Ablauf: [`scripts/usertest/README.md`](../scripts/usertest/README.md)). Der Test-Thread klickt die Schritte automatisch durch (Warteschlange: `node scripts/usertest/issues.mjs`):
   - **eindeutig bestanden** → Kommentar „Automatisch BESTANDEN“ mit Bildbericht, Label `done`, Issue schließen (`completed`), Vermerk „automatisch bestätigt (Datum)“ in `PROJECT_STATUS.md`;
+  - **Maßstab seit 23.10.:** Was automatisch oder am Screenshot beurteilt werden kann, erledigt der Test-Thread selbst (auch Optik). Gefühl („passt zu meinem Gefühl“) und Wortlaut von Claude-Antworten blockieren nicht. `user-test` für G nur bei echtem Gerät, echten Konten/Daten oder echtem Chat; Einzelheiten in [`scripts/usertest/README.md`](../scripts/usertest/README.md) › „Urteil“.
   - **unklar oder fehlgeschlagen** → Label `user-test` und ein Kommentar, was du dir anschauen sollst; du antwortest im selben Issue mit `BESTANDEN` bzw. `FEHLGESCHLAGEN: …`.
 - **Feature-Threads und ihre Hilfsagenten** arbeiten auf eigenem `claude/…`-Branch, ändern `IDEAS.md` und `PROJECT_STATUS.md` nicht und fassen fremde Dateien nicht an; Labels und Testschritte ihrer eigenen Feature-Issues setzen sie selbst. `IDEAS.md`, `PROJECT_STATUS.md`, die Dashboard-Oberfläche (`dashboard.html`, Abschnittsliste, „Neu im Dashboard“) und das Veröffentlichen des Artefakts macht der Haupt-Thread.
 
