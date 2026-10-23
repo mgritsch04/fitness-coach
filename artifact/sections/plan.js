@@ -186,10 +186,10 @@ FC.section({
     const open = el("button", { type: "button", text: "Workout für MyWhoosh öffnen" });
     open.onclick = () => {
       FC.goTo("bikewo");
-      // Der Abschnitt füllt seine Tage erst beim ersten Öffnen; dann kurz warten.
+      // Der Abschnitt füllt seine Tage erst beim ersten Öffnen; dann kurz warten. Bibliotheks-Empfehlung: Vorlage (#364) mitgeben.
       const pick = (n) => {
-        const sel = FC.$("bwDay");
-        if (sel && [...sel.options].some((o) => o.value === day)) { if (sel.value !== day) { sel.value = day; FC.$("bwType").value = ""; sel.dispatchEvent(new Event("change")); } }
+        const sel = FC.$("bwDay"), bw = FC.state.bikewo;
+        if (bw && sel && [...sel.options].some((o) => o.value === day)) bw.openFor(day, w.source === "library" ? w.templateId : null);
         else if (n) setTimeout(() => pick(n - 1), 250);
       };
       pick(8);

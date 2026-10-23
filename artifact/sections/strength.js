@@ -230,6 +230,7 @@ const STRENGTH = {
       sel.replaceChildren(el("option", { value: "", text: "– keine –" }), ...data.templates.map((t) => el("option", { value: t.name, text: t.name })));
       sel.value = data.templates.some((t) => t.name === cur) ? cur : "";
 
+      this.tplData = data.templates;
       this.drawTemplates(data.templates);
 
       const week = data.weeks[0];
@@ -412,7 +413,7 @@ const STRENGTH = {
       save.onclick = async () => {
         const n = nm.value.trim(), exercises = [];
         if (!n) { out.textContent = "Bitte einen Namen eingeben."; nm.focus(); return; }
-        if (n !== t.name && data.templates.some((x) => x.name.toLowerCase() === n.toLowerCase())) { out.textContent = `Es gibt schon eine Vorlage „${n}“.`; return; }
+        if (n !== t.name && (this.tplData ?? templates).some((x) => x.name.toLowerCase() === n.toLowerCase())) { out.textContent = `Es gibt schon eine Vorlage „${n}“.`; return; }
         for (const r of list.children) {
           const name = r.querySelector(".ex").value.trim(), sets = Number(r.querySelector(".sets").value), reps = Number(r.querySelector(".reps").value), kg = Number(r.querySelector(".kg").value || 0);
           if (!name) continue;

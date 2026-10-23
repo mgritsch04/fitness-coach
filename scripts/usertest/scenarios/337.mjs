@@ -35,7 +35,9 @@ export default {
         const out = norm(await t.page.locator("#bwOut").innerText());
         const lbl = t.ctx.lab.replace(/^[^:]*:\s*/, "").split(/[ :,]/)[0];
         t.ctx.dayVal = dayVal; t.ctx.sugg = norm(await t.page.locator("#planDetail").innerText().catch(() => ""));
-        return { status: visible && dayVal && /\.zwo gespeichert/.test(msg) && /FTP/.test(out) ? "ok" : "fail", observed: `Abschnitt sichtbar: ${visible}; gewählter Tag „${dayTxt}“ (${dayVal}); Download-Meldung (im Testbrowser kein Dateisystem-Download); Meldung „${msg}“; Anzeige: „${out.slice(0, 200)}“.`, locator: t.page.locator("#sec-bikewo") };
+        const shown = (t.ctx.sugg.match(/Workout für MyWhoosh: (.+?) ·/) ?? [])[1] ?? "";
+        const same = !shown || out.includes(shown); // #364: angezeigte Empfehlung = geladenes Workout
+        return { status: visible && dayVal && same && /\.zwo gespeichert/.test(msg) && /FTP/.test(out) ? "ok" : "fail", observed: `Abschnitt sichtbar: ${visible}; gewählter Tag „${dayTxt}“ (${dayVal}); Download-Meldung (im Testbrowser kein Dateisystem-Download); Meldung „${msg}“; Anzeige: „${out.slice(0, 200)}“.`, locator: t.page.locator("#sec-bikewo") };
       } },
     { nr: 3, action: "An einem Ruhetag mit „Locker ausfahren: ja“ (Heute-Tab): Hinweis mit passendem lockeren Workout.", expected: "Im Hinweis steht das passende lockere Workout (z. B. „Ausrollen 30 min“).",
       async run(t) {
