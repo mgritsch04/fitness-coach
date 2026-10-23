@@ -240,18 +240,20 @@ FC.section({
   tplNames: null,
   async renderTemplates(prefs) {
     const { $, el } = FC, box = $("tplDays");
-    if (box.contains(document.activeElement)) return;
+    if (this.tplDirty || box.contains(document.activeElement)) return;
     try {
       const d = await FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } });
       this.tplNames = (d.templates ?? []).map((t) => t.name);
     } catch { this.tplNames ??= []; }
-    if (box.contains(document.activeElement)) return;
+    // Ungespeicherte Auswahl nicht durch ein Neuzeichnen (Datenstand, Größenänderung) überschreiben.
+    if (this.tplDirty || box.contains(document.activeElement)) return;
     const names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
     box.replaceChildren(...names.map((n, i) => {
       const sel = el("select", { "data-day": String(i), "aria-label": `${n}: Kraft-Vorlage` },
         el("option", { value: "", text: "keine" }), ...this.tplNames.map((t) => el("option", { value: t, text: t })));
       const v = prefs?.templateByDay?.[i];
       sel.value = v && this.tplNames.includes(v) ? v : "";
+      sel.onchange = () => { this.tplDirty = true; };
       return el("label", {}, el("span", { text: n }), sel);
     }));
     if (!this.tplNames.length) box.append(el("p", { class: "fine muted", text: "Noch keine Vorlage gespeichert: Im Gym nach einer Einheit „Als Vorlage speichern“." }));
@@ -262,6 +264,7 @@ FC.section({
     $("tplSave").disabled = true; msg.textContent = "Speichere …";
     try {
       await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null });
+      this.tplDirty = false;
       msg.textContent = vals.some((v) => v) ? `Gespeichert: ${vals.filter((v) => v).length} Tage mit Vorlage.` : "Gespeichert: keine Vorlage je Wochentag.";
       await FC.reload();
     } catch (e) { msg.textContent = FC.errText(e); }
