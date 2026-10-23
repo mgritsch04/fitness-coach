@@ -1,0 +1,10 @@
+import { scenario, sectionStep, deviceStep, toolOk, D } from "./_auto.mjs";
+export default scenario(21, "Einflussfaktoren: Was beeinflusst meine Erholung?", "Einflussfaktoren Erholung", [
+  { action: "get_recovery_factors aufrufen.", expected: "Faktoren mit Stärke und Unterschied in Punkten; Beobachtungen, keine Ursachen.",
+    async run(t) { return toolOk(t, "get_recovery_factors", {}, (p) => (p.factors?.length >= 3 && p.factors.filter((f) => f.text).length >= 3 ? `${p.factors.length} Faktoren, z. B. „${p.factors[0].label}“ (${p.factors[0].strength}, Effekt ${p.factors[0].effect}); Hinweise: ${JSON.stringify(p.notes ?? "").slice(0, 200)}` : null)); } },
+  { action: "Dasselbe für die HRV.", expected: "Dieselben Faktoren für die HRV in ms.",
+    async run(t) { return toolOk(t, "get_recovery_factors", { target: "hrv" }, (p) => { const hrv = (p.factors ?? []).filter((f) => f.target === "hrv"); return hrv.length >= 3 ? `${hrv.length} HRV-Faktoren, z. B. „${hrv[0].label}“` : null; }); } },
+  deviceStep(3, "Aussagen mit eigenem Gefühl vergleichen.", "Richtung stimmt mit Erfahrung überein oder ist als schwach markiert.", D.feel),
+  { action: "Abschnitt „Was beeinflusst deine Erholung?“ (Verlauf): zwischen Erholung und HRV umschalten, „Von Claude deuten lassen“.", expected: "Balken je Faktor und kurze Deutung von Claude.",
+    async run(t) { await t.open("verlauf"); const sec = await t.section("insights"); const a = (await sec.innerText()).replace(/\s+/g, " "); const btn = sec.getByRole("button", { name: /HRV/ }).first(); await btn.click().catch(() => {}); await t.page.waitForTimeout(500); const b = (await sec.innerText()).replace(/\s+/g, " "); const bars = await sec.locator("[class*=bar], svg rect").count(); const claudeBtn = await sec.getByRole("button", { name: /Claude deuten/ }).count(); return { status: bars > 3 && claudeBtn === 1 && /Faktoren/.test(a) ? "look" : "fail", observed: `Balken: ${bars}; Umschalten ändert Anzeige: ${a !== b}; Knopf „Von Claude deuten lassen“ vorhanden. Die Deutung selbst ist in der Vorprüfung nur eine Beispielantwort.`, locator: sec }; } },
+]);

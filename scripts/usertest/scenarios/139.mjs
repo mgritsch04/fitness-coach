@@ -1,0 +1,9 @@
+import { scenario, sectionStep, seedFits, deviceStep, overflow, D } from "./_auto.mjs";
+export default scenario(139, "Ermüdungsresistenz (Durability)", "Ermüdungsresistenz", [
+  { action: "Längere Fahrt (> 1 h, harte Phase am Ende) als FIT hochladen.", expected: "Fahrt hochgeladen.",
+    async run(t) { await seedFits(t); const w = await t.tool("get_workouts", { days: 14 }); return { status: w.some((x) => x.duration_s >= 6000) ? "ok" : "fail", observed: `Lange synthetische Fahrt (110 min, 100 min 170 W, zum Schluss 10 min 260 W) importiert`, noFinalShot: true }; } },
+  { action: "Tab „Training“ › „Ermüdungsresistenz“.", expected: "Tabelle „frisch“ und kJ-Stufen 500/1000/1500 mit Watt und % der besten 5-/20-min-Leistung; oben Einordnung.",
+    async run(t) { await t.open("training"); const sec = await t.section("durability"); const txt = (await sec.innerText()).replace(/\s+/g, " "); const d = await t.tool("get_durability"); return { status: /frisch/.test(txt) && /500 kJ/.test(txt) && /1\.000 kJ/.test(txt) && /1\.500 kJ/.test(txt) && /\d+ ?W/.test(txt) && /\d+ ?%/.test(txt) ? "ok" : "fail", observed: `Tabelle: „${txt.slice(0, 330)}“`, locator: sec }; } },
+  { action: "Am Handy: Tabelle ohne seitliches Scrollen.", expected: "Werte plausibel, nichts abgeschnitten.",
+    async run(t) { await t.page.setViewportSize({ width: 390, height: 844 }); await t.open("training"); const sec = await t.section("durability"); const o = await overflow(t); const box = await sec.boundingBox(); const tableW = await sec.locator("table").first().evaluate((e) => e.scrollWidth - e.parentElement.clientWidth).catch(() => 0); return { status: o <= 1 && tableW <= 1 ? "look" : "fail", observed: `Seitenüberlauf ${o}px, Tabellenüberlauf ${tableW}px (Emulation 390 px). Plausibilität der Werte: bitte selbst ansehen.`, locator: sec }; } },
+]);

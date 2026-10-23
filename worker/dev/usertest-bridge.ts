@@ -48,8 +48,17 @@ createHttp(async (req, res) => {
     if (req.method === "POST" && req.url === "/fit") {
       let body = "";
       for await (const c of req) body += c;
-      const o = JSON.parse(body) as { start?: string; seconds?: number; watts?: number };
-      const fit = syntheticRide({ start: o.start, seconds: o.seconds, power: o.watts ? () => o.watts! : undefined });
+      const o = JSON.parse(body) as { start?: string; seconds?: number; watts?: number; shape?: "intervals" | "long" | "ramp" | "test20" };
+      // shape: "ramp" = 5 min 100 W, dann +20 W je Minute; "test20" = 15 min 150 W, 20 min 250 W; "intervals" = 10 min warm, 5 × (4 min 260 W / 2 min 120 W), 5 min cool; "long" = 100 min 170 W, danach 10 min 260 W
+      const shaped = o.shape === "intervals" ? (s: number) => (s < 600 ? 150 : s >= 600 + 5 * 360 ? 110 : (s - 600) % 360 < 240 ? 260 - Math.floor(((s - 600) % 360) / 80) : 120)
+        : o.shape === "long" ? (s: number) => (s < 6000 ? 170 : 260)
+        : o.shape === "ramp" ? (s: number) => (s < 300 ? 100 : s < 300 + 12 * 60 ? 100 + 20 * Math.floor((s - 300) / 60) : 80)
+        : o.shape === "test20" ? (s: number) => (s < 900 ? 150 : s < 2100 ? 250 : 100) : undefined;
+      const seconds = o.seconds ?? (o.shape === "intervals" ? 600 + 5 * 360 + 300 : o.shape === "long" ? 6600 : o.shape === "ramp" ? 300 + 12 * 60 + 300 : o.shape === "test20" ? 2400 : undefined);
+      // Puls ohne Überlauf: ruhiger Anstieg von 125 auf 145 (gleichmäßige Fahrt) bzw. folgt der Leistung (Intervalle)
+      const hr = (s: number) => Math.min(190, 125 + Math.round(((shaped ?? (() => o.watts ?? 150))(s) - 100) / 8) + Math.min(10, Math.floor(s / 600)));
+      const cadence = (s: number) => 82 + (((shaped ?? (() => o.watts ?? 150))(s) - 100) > 120 ? 12 : 0) + (s % 7);
+      const fit = syntheticRide({ start: o.start, seconds, power: shaped ?? (o.watts ? () => o.watts! : undefined), hr, cadence });
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ fileBase64: Buffer.from(fit).toString("base64") }));
       return;
     }

@@ -1,0 +1,11 @@
+import { scenario, deviceStep, desktopPage, D } from "./_auto.mjs";
+export default scenario(168, "Handy: Sprungleiste zu den Abschnitten eines Tabs", "Sprungleiste am Handy", [
+  { action: "Tab „Training“ öffnen.", expected: "Oben unter „Fitness Coach“ eine Reihe Knöpfe mit Abschnittsnamen (z. B. Gym-Modus, Trainingslast).",
+    async run(t) { await t.open("training"); const nav = t.page.locator("#jump"); const names = await nav.locator("button").allInnerTexts(); return { status: (await nav.isVisible()) && names.length >= 4 && names.some((n) => /Gym/.test(n)) && names.some((n) => /Trainingslast/.test(n)) ? "ok" : "fail", observed: `Leiste sichtbar, ${names.length} Knöpfe: ${names.slice(0, 8).join(", ")} …`, locator: nav }; } },
+  { action: "Leiste wischen und „Trittfrequenz“ antippen.", expected: "Seite springt zu diesem Abschnitt.",
+    async run(t) { const nav = t.page.locator("#jump"); const btn = nav.getByRole("button", { name: "Trittfrequenz" }); await btn.scrollIntoViewIfNeeded(); await btn.click(); await t.page.waitForTimeout(2200); const top = await t.page.locator("#sec-cadence").evaluate((e) => e.getBoundingClientRect().top); return { status: top >= -10 && top < 260 ? "ok" : "fail", observed: `Abschnitt „Trittfrequenz“ liegt nach dem Antippen ${Math.round(top)} px unter dem Bildschirmrand`, locator: t.page.locator("#sec-cadence") }; } },
+  { action: "Andere Tabs ansehen.", expected: "Leiste nur dort, wo ≥ 4 Abschnitte.",
+    async run(t) { const res = []; for (const tab of ["heute", "coach", "verlauf", "mehr"]) { await t.tab(tab); await t.page.waitForTimeout(500); const n = await t.page.evaluate(() => [...document.querySelectorAll("#sections > section")].filter((s) => !s.hidden && s.offsetParent).length); const vis = await t.page.locator("#jump").isVisible(); res.push({ tab, n, vis }); } const ok = res.every((r) => r.vis === (r.n >= 4)); return { status: ok ? "ok" : "fail", observed: res.map((r) => `${r.tab}: ${r.n} Abschnitte, Leiste ${r.vis ? "ja" : "nein"}`).join("; ") }; } },
+  { action: "Am Rechner ansehen.", expected: "Keine Leiste.",
+    async run(t) { const { p, ctx } = await desktopPage(t); const vis = await p.locator("#jump").isVisible(); await ctx.close(); return { status: !vis ? "ok" : "fail", observed: `Desktop (1280 px): Sprungleiste sichtbar: ${vis}`, noFinalShot: true }; } },
+], { device: "phone" });

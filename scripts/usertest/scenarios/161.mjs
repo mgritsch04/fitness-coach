@@ -1,0 +1,9 @@
+import { scenario, seedFits, deviceStep, overflow, D } from "./_auto.mjs";
+export default scenario(161, "Trittfrequenz-Profil", "Trittfrequenz-Profil", [
+  { action: "Tab „Training“ › „Trittfrequenz“ (nach FIT-Import mit Kadenz).", expected: "Verteilung der Kadenz, Kadenz je Leistungszone, Entwicklung der Grundlage je Woche, Hinweise.",
+    async run(t) { await seedFits(t); await t.open("training"); const sec = await t.section("cadence"); const txt = (await sec.innerText()).replace(/\s+/g, " "); return { status: !/Noch keine Fahrten mit Trittfrequenz/.test(txt) && /Verteilung/.test(txt) && /Z2 Grundlage/.test(txt) && /Kadenz in der Grundlage je Woche/.test(txt) && !/Keine Werte im Zeitraum/.test(txt) ? "ok" : "fail", observed: `„${txt.slice(0, 420)}“`, locator: sec }; } },
+  { action: "Verteilung und Kadenz je Zone prüfen (Grundlage um 85, Schwelle höher).", expected: "Plausibel, passt zum Gefühl.",
+    async run(t) { const txt = (await t.page.locator("#sec-cadence").innerText()).replace(/\s+/g, " "); const z2 = txt.match(/Z2 Grundlage [\d,]+ min (\d+)/); const z4 = txt.match(/Z4 Schwelle [\d,]+ min (\d+)/); return { status: z2 && Number(z2[1]) >= 80 && Number(z2[1]) <= 95 ? "device" : "fail", observed: `Kadenz in Z2 ${z2?.[1]} U/min, in Z4 ${z4?.[1] ?? "–"} U/min (synthetisch 82–88 locker, +12 bei hart). Ob die Werte zu deinem Gefühl passen: ${D.feel}`, locator: t.page.locator("#sec-cadence") }; } },
+  { action: "Am Handy lesbar, nicht seitlich scrollen.", expected: "Lesbar, kein seitliches Scrollen.",
+    async run(t) { await t.page.setViewportSize({ width: 390, height: 844 }); await t.open("training"); const sec = await t.section("cadence"); const o = await overflow(t); return { status: o <= 1 ? "look" : "fail", observed: `Überlauf bei 390 px: ${o}px (Emulation). Lesbarkeit: bitte selbst ansehen.`, locator: sec }; } },
+]);

@@ -1,0 +1,12 @@
+import { scenario, startGym, deviceStep, D } from "./_auto.mjs";
+export default scenario(143, "Gym-Modus: Scheibenrechner", "Gym-Modus: Scheibenrechner", [
+  { action: "Gym-Modus: Einheit mit Kniebeuge starten.", expected: "Einheit gestartet.",
+    async run(t) { await startGym(t, [{ exercise: "Kniebeuge", sets: 3, reps: 5, weightKg: 100 }]); return { status: (await t.page.locator(".gy-ex").count()) >= 1 ? "ok" : "fail", observed: "Einheit mit Kniebeuge gestartet", locator: t.page.locator(".gy-list") }; } },
+  { action: "Unter der aktuellen Übung nachsehen.", expected: "„Je Seite: …“, bei 100 kg „25 + 15 kg“.",
+    async run(t) { const txt = (await t.page.locator(".gy-plates").innerText()).replace(/\s+/g, " "); return { status: /Je Seite:/.test(txt) && /25 \+ 15 kg/.test(txt) ? "ok" : "fail", observed: `„${txt}“`, locator: t.page.locator(".gy-plates") }; } },
+  { action: "Gewicht im nächsten offenen Satz ändern.", expected: "Scheiben-Zeile passt sich an.",
+    async run(t) { const kg = t.page.locator(".gy-ex").first().locator(".gy-set").first().locator("input").nth(1); await kg.fill("60"); await kg.dispatchEvent("input"); await t.page.waitForTimeout(300); const txt = (await t.page.locator("#gyPlates").innerText()).trim(); return { status: /20 kg/.test(txt) ? "ok" : "fail", observed: `Bei 60 kg: „${txt}“ (erwartet 20 je Seite)`, locator: t.page.locator(".gy-plates") }; } },
+  { action: "Auf „Stange 20 kg“ tippen.", expected: "Stange wechselt auf 15 und 10 kg, Scheiben neu berechnet; nach Neuladen bleibt die Wahl.",
+    async run(t) { const btn = t.page.locator(".gy-plates button"); const seq = [await btn.innerText()]; await btn.click(); seq.push(await btn.innerText()); const plates15 = (await t.page.locator("#gyPlates").innerText()).trim(); await btn.click(); seq.push(await btn.innerText()); await t.page.reload(); await t.page.waitForFunction(() => window.FC?.state?.data); await t.page.waitForLoadState("networkidle"); await t.tab("training"); await t.section("gym"); await t.page.locator(".gy-list").waitFor({ timeout: 15_000 }); const after = await t.page.locator(".gy-plates button").innerText(); return { status: seq.join("|") === "Stange 20 kg|Stange 15 kg|Stange 10 kg" && after === "Stange 10 kg" ? "ok" : "fail", observed: `Reihenfolge: ${seq.join(" → ")}; Scheiben bei 15 kg: „${plates15}“; nach Neuladen: ${after}`, locator: t.page.locator(".gy-plates") }; } },
+  deviceStep(5, "Scheiben mit denen im eigenen Gym vergleichen.", "Passen.", "Nur im eigenen Gym prüfbar."),
+], { device: "phone" });
