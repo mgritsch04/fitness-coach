@@ -3,6 +3,7 @@
 // Faustregeln aus Erholungsampel, Ruhepuls, Schlaf, Belastung der letzten Tage, Frühwarnung und Tagebuch;
 // Schätzung für Training, keine medizinische Aussage.
 import { addDays, type DayPoint, type Trend } from "./analysis";
+import { workoutForSession, type WorkoutSuggestion } from "./bike-workout";
 import type { CoachAdvice } from "./coach";
 import type { JournalEntry } from "./journal";
 import type { ReturnToTraining } from "./return-to-training";
@@ -16,6 +17,8 @@ export interface RestRide {
   text: string;
   /** Gründe in Kurzform (für Oberfläche und Coach-Chat). */
   reasons: string[];
+  /** Passende lockere Einheit zum Import in MyWhoosh (#337), nur bei spin. */
+  workout?: WorkoutSuggestion | null;
   disclaimer: string;
 }
 
@@ -79,6 +82,7 @@ export function restRideAdvice(x: RestRideInput): RestRide | null {
     minutes,
     text: `Locker ausfahren ist okay: ${minutes.min}–${minutes.max} min ${where} in Zone 1, Puls deutlich unter der Grundlage, ohne Intervalle.${why} Fühlt es sich schwer an, abbrechen.`,
     reasons: soft,
+    workout: workoutForSession("recovery", minutes.max, x.today, t?.recovery ?? null),
     disclaimer: DISCLAIMER,
   };
 }

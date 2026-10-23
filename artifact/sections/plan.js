@@ -134,6 +134,7 @@ FC.section({
     const grid = $("wplan"); grid.replaceChildren();
     const fuel = new Map((t.fueling?.days ?? []).map((f) => [f.day, f]));
     const kraft = new Map((t.strengthWorkouts?.days ?? []).map((k) => [k.day, k]));
+    const rideWo = new Map((t.rideWorkouts?.days ?? []).map((r) => [r.day, r]));
     for (const x of cmp.days) {
       const box = el("button", { type: "button", class: `pd${x.type === "rest" ? " rest" : ""}${x.day === d.today ? " today" : ""}`, "aria-label": `${fmtDayLong(x.day)}: ${x.title}` });
       box.style.textAlign = "left"; box.style.font = "inherit"; box.style.color = "inherit"; box.style.background = "transparent"; box.style.cursor = "pointer";
@@ -150,6 +151,7 @@ FC.section({
           el("p", {}, el("strong", { text: `${fmtDayLong(x.day)}: ${x.title}` })),
           x.intensity ? el("p", { text: x.intensity }) : null,
           el("p", { text: x.description }),
+          ...(rideWo.get(x.day) ? this.workoutBlock(rideWo.get(x.day), x.day) : []),
           x.day === makeUpDay ? el("p", {}, el("strong", { text: `Vorschlag: „${t.makeUp.missed.title}“ statt dieser Einheit ${t.makeUp.kind === "postpone" ? "fahren (von heute verschoben)" : "nachholen"}.` })) : null,
           ...(x.day === ftpDay ? [el("p", {}, el("strong", { text: "Vorschlag: FTP-Test statt dieser Einheit. " }), t.ftpTest.reason), el("ul", {}, ...t.ftpTest.howTo.map((h) => el("li", { text: h })))] : []),
           ...(kraft.get(x.day) ? [
@@ -177,6 +179,26 @@ FC.section({
     }
     this.renderProjection(t.projection);
     this.busy(false);
+  },
+  // Passendes MyWhoosh-Workout zur Radeinheit (#337): Kurzprofil und Sprung in den Abschnitt „Workout für MyWhoosh“ (dort der .zwo-Download).
+  workoutBlock(w, day) {
+    const { el, de } = FC;
+    const open = el("button", { type: "button", text: "Workout für MyWhoosh öffnen" });
+    open.onclick = () => {
+      FC.goTo("bikewo");
+      // Der Abschnitt füllt seine Tage erst beim ersten Öffnen; dann kurz warten.
+      const pick = (n) => {
+        const sel = FC.$("bwDay");
+        if (sel && [...sel.options].some((o) => o.value === day)) { if (sel.value !== day) { sel.value = day; FC.$("bwType").value = ""; sel.dispatchEvent(new Event("change")); } }
+        else if (n) setTimeout(() => pick(n - 1), 250);
+      };
+      pick(8);
+    };
+    return [
+      el("p", {}, el("strong", { text: `Workout für MyWhoosh: ${w.name}` }), ` · ~${de(w.load)} Belastung · ${w.source === "library" ? "aus der Bibliothek" : "aus Art und Dauer gebaut"}. ${w.summary}`),
+      el("ul", {}, ...w.profile.map((l) => el("li", { text: l }))),
+      el("p", {}, open, " ", el("span", { class: "fine", text: "Die Datei (.zwo) lädst du im Abschnitt herunter und importierst sie über workout.mywhoosh.com. Nur sinnvoll bei Fahrten auf der Rolle; Zonen und Belastung sind Schätzungen." })),
+    ];
   },
   // Fester Wochenplan Kraft (#323): je Wochentag frei oder eine Kraft-Art.
   FIX_OPTIONS: ["", "Beine", "Oberkörper", "Oberkörper (Zug)", "Oberkörper (Druck)", "Ganzkörper", "Rumpf + Mobility"],
