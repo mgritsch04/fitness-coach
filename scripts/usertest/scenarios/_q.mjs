@@ -19,3 +19,9 @@ export async function gymStart(t, name, n = 2, kg = 60) {
   await set.locator("input").nth(0).fill("5"); await set.locator("input").nth(0).dispatchEvent("change");
   await set.locator("input").nth(1).fill(String(kg)); await set.locator("input").nth(1).dispatchEvent("change");
 }
+/** Chat-Schritt: Claude beantwortet aus dem Coach-Kontext; geprüft wird, dass der Kontext (get_coach_context bzw. angegebenes Werkzeug) die nötigen Angaben enthält. */
+export async function chatCtx(t, what, re, tool = "get_coach_context", input = {}) {
+  const j = JSON.stringify(await t.tool(tool, input));
+  const hit = re.test(j);
+  return res(hit, `Chat-Weg: Claude antwortet aus ${tool}; der Kontext enthält ${what}: ${hit ? "ja" : "nein"}. Der Wortlaut der Antwort ist Claudes Text (Gefühl/Stil nicht Teil der Abnahme).`);
+}

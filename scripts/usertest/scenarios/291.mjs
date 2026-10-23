@@ -1,7 +1,8 @@
 // #291 Dashboard: Lieblingsabschnitte anheften (Favoriten oben auf „Heute“). Wie am Handy bedient (390 px).
 // Gewünscht: Trainingslast, Schlaf im Detail, Gym-Modus. Ist der Stern dort am Handy nicht erreichbar, werden die weiteren Schritte
 // mit Abschnitten aus „Coach“ und „Mehr“ weitergeprüft (dort gibt es keine Einklapp-Leiste).
-const star = (t, id) => t.page.locator(`#h-${id} .fav-btn`);
+// Am Handy sitzt der Stern in einklappbaren Reitern in der Einklapp-Leiste (.fav-bar), sonst neben der Überschrift.
+const star = (t, id) => t.page.locator(`#sec-${id} > .fav-bar, #h-${id} .fav-btn`).locator("visible=true").first();
 const favs = (t) => t.page.locator("#favList li button").evaluateAll((bs) => bs.map((b) => b.innerText.replace(/\s+/g, " ").trim()));
 const WANT = [["training", "load", /Trainingslast.*Training/], ["verlauf", "sleep", /Schlaf im Detail.*Verlauf/], ["training", "gym", /Gym-Modus.*Training/]];
 const FALL = [["coach", "plan", /Wochenplan.*Coach/], ["mehr", "settings", /Einstellungen.*Mehr/], ["mehr", "sources", /Datenquellen.*Mehr/]];
