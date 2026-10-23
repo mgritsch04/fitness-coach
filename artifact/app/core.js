@@ -242,7 +242,7 @@
   /** Handy: Sprungleiste zu den sichtbaren Abschnitten des offenen Tabs (#168), ab 4 Abschnitten. */
   function jump() {
     const nav = $("jump"); if (!nav) return;
-    const list = phone?.matches ? live().filter((s) => (s.tab ?? "mehr") === tab && !$(`sec-${s.id}`)?.hidden && $(`h-${s.id}`)) : [];
+    const list = phone?.matches ? live().filter((s) => (s.tab ?? "mehr") === tab && !$(`sec-${s.id}`)?.hidden && !leaned(s) && $(`h-${s.id}`)) : [];
     nav.hidden = list.length < 4;
     if (nav.hidden) return nav.replaceChildren();
     nav.replaceChildren(...list.map((s) => {
@@ -374,7 +374,21 @@
   // Einzelseite (Gym-Seite, #321): ein Bereich, keine Reiter und keine gemeinsame Anordnung.
   const single = document.documentElement.dataset.page === "single";
   const tabsOn = () => !single && (!!phone?.matches || layout.deskTabs);
-  const wanted = (s) => (!tabsOn() || (s.tab ?? "mehr") === tab) && !folded(s);
+  const wanted = (s) => (!tabsOn() || (s.tab ?? "mehr") === tab) && !folded(s) && !leaned(s);
+  // Schlanke Startansicht (#372): „Heute“ zeigt nur den Abschnitt „Heute in 10 Sekunden“ (und Favoriten); der Rest ruht
+  // und lädt nichts. Gemerkt im Browser; LEAN_DEFAULT legt fest, womit ein neuer Browser startet.
+  const LEAN_KEY = "fc-lean", LEAN_DEFAULT = false;
+  let lean = LEAN_DEFAULT;
+  try { const v = localStorage.getItem(LEAN_KEY); if (v === "1") lean = true; else if (v === "0") lean = false; } catch {}
+  const leaned = (s) => lean && !single && (s.tab ?? "mehr") === "heute" && !s.keepLean && !layout.hidden.has("focus") && !!sections.find((x) => x.id === "focus")?.mounted;
+  const leanListeners = new Set();
+  function setLean(on, store = true) {
+    if (lean === !!on) return;
+    lean = !!on;
+    if (store) try { localStorage.setItem(LEAN_KEY, lean ? "1" : "0"); } catch {}
+    applyFolds(); readyWanted(); rerender(); jump();
+    for (const f of leanListeners) try { f(lean); } catch {}
+  }
   // Handy: lange Tabs einklappbar (#188). Offen sind die ersten zwei Abschnitte und was man selbst aufklappt;
   // eingeklappte zeigen nur ihre Überschrift als Leiste und laden ihre Daten erst beim Aufklappen.
   // Je Tab: wie viele Abschnitte oben standardmäßig offen sind (Heute: bis „Heute dran“, #191).
@@ -382,11 +396,12 @@
   const HEUTE_OPEN_TO = 10.5; // „Heute dran“ (agenda): davor ist alles offen, egal wie viele Abschnitte die Daten gerade zeigen
   let folds = {};
   try { folds = JSON.parse(localStorage.getItem(FOLD_KEY) ?? "{}") ?? {}; } catch {}
-  const shown = (t) => live().filter((x) => (x.tab ?? "mehr") === t && !$(`sec-${x.id}`)?.hidden);
+  const shown = (t) => live().filter((x) => (x.tab ?? "mehr") === t && !$(`sec-${x.id}`)?.hidden && !leaned(x));
   const foldable = (s) => !!phone?.matches && (s.tab ?? "mehr") in FOLD_TABS && shown(s.tab ?? "mehr").length >= FOLD_MIN;
   const isOpen = (s) => (typeof folds[s.id] === "boolean" ? folds[s.id] : (s.tab === "heute" ? s.order <= HEUTE_OPEN_TO : shown(s.tab ?? "mehr").indexOf(s) < FOLD_TABS[s.tab ?? "mehr"]));
   const folded = (s) => foldable(s) && !isOpen(s);
   function applyFolds() {
+    for (const s of sections) $(`sec-${s.id}`)?.classList.toggle("lean-off", leaned(s));
     for (const s of sections) {
       const host = $(`sec-${s.id}`); if (!host || !s.mounted) continue;
       const f = foldable(s), open = !f || isOpen(s), head = $(`h-${s.id}`);
@@ -444,6 +459,8 @@
       const root = $("sections"); for (const x of sections) root.append($(`sec-${x.id}`));
       applyFolds(); readyWanted(); jump();
     },
+    hideMany(ids) { for (const id of ids) this.setHidden(id, true); },
+    showAll() { for (const id of [...layout.hidden]) this.setHidden(id, false); },
     reset() { layout.hidden.clear(); layout.order = {}; layout.deskTabs = true; saveLayout(); applyDeskTabs(); readyWanted(); },
     deskTabs: () => layout.deskTabs,
     setDeskTabs(on) { layout.deskTabs = !!on; saveLayout(); applyDeskTabs(); readyWanted(); rerender(); jump(); },
@@ -457,6 +474,50 @@
       layoutStatus = ""; layoutSynced = false;
       if (layoutMode === "all") { if (upload) { layoutSynced = true; pushLayout(); } else if (state.data) syncLayout(state.data.uiLayout ?? null); }
       layoutChanged();
+    },
+  };
+
+  // ---------- Nutzung zählen (#372) ----------
+  // Nur lokal im Browser (fc-usage): ein Abschnitt zählt als geöffnet, wenn er pro Seitenaufruf mindestens 1,2 s
+  // sichtbar war (Einklapp-Leisten zählen nicht). Daraus schlägt „Dashboard anpassen“ Ungenutztes zum Ausblenden vor.
+  const USAGE_KEY = "fc-usage", USAGE_MIN_DAYS = 7, USAGE_MIN_VIEWS = 30;
+  const usage = (() => {
+    const fresh = () => ({ since: new Date().toISOString(), views: {} });
+    try { const v = JSON.parse(localStorage.getItem(USAGE_KEY) ?? "null"); if (v && typeof v.since === "string" && v.views && typeof v.views === "object") return v; } catch {}
+    return fresh();
+  })();
+  const usageSave = () => { try { localStorage.setItem(USAGE_KEY, JSON.stringify(usage)); } catch {} };
+  const usageSeen = new Set(), usageListeners = new Set();
+  function countView(id) {
+    if (usageSeen.has(id)) return;
+    usageSeen.add(id);
+    const v = usage.views[id] ?? (usage.views[id] = { n: 0, last: null });
+    v.n += 1; v.last = new Date().toISOString();
+    usageSave();
+    for (const f of usageListeners) try { f(); } catch {}
+  }
+  function watchUsage(s, host) {
+    if (single || typeof IntersectionObserver === "undefined" || s.locked) return;
+    let timer = null;
+    new IntersectionObserver((es) => {
+      const on = es.at(-1).isIntersecting && !host.hidden && !host.classList.contains("folded") && !host.classList.contains("lean-off");
+      clearTimeout(timer);
+      if (on) timer = setTimeout(() => { if (host.isConnected && host.offsetParent && !host.classList.contains("folded")) countView(s.id); }, 1200);
+    }, { threshold: 0.2 }).observe(host);
+  }
+  const usageApi = {
+    since: () => usage.since,
+    days: () => Math.floor((Date.now() - new Date(usage.since).getTime()) / 864e5),
+    views: (id) => usage.views[id]?.n ?? 0,
+    total: () => Object.values(usage.views).reduce((a, v) => a + v.n, 0),
+    onChange: (f) => { usageListeners.add(f); return () => usageListeners.delete(f); },
+    reset() { usage.since = new Date().toISOString(); usage.views = {}; usageSave(); for (const f of usageListeners) try { f(); } catch {} },
+    /** Vorschlag: genug Zählzeit und Aufrufe, dann alle derzeit sichtbaren, nie geöffneten Abschnitte (ohne Favoriten und feste; Abschnitte, die sich mangels Daten selbst verbergen, zählen nicht). */
+    suggest() {
+      const days = this.days(), total = this.total(), ready = days >= USAGE_MIN_DAYS && total >= USAGE_MIN_VIEWS;
+      let fav = []; try { fav = JSON.parse(localStorage.getItem("fc-fav") ?? "[]"); } catch {}
+      const ids = ready ? sections.filter((s) => !s.locked && !s.keepLean && !layout.hidden.has(s.id) && !$(`sec-${s.id}`)?.hidden && !fav.includes(s.id) && !usage.views[s.id]?.n).map((s) => s.id) : [];
+      return { ready, days, total, needDays: USAGE_MIN_DAYS, needViews: USAGE_MIN_VIEWS, ids };
     },
   };
 
@@ -477,6 +538,7 @@
   function goTo(id) {
     const s = sections.find((x) => x.id === id);
     if (!s) return;
+    if (leaned(s)) setLean(false, false);
     showTab(s.tab ?? "mehr");
     if (folded(s)) setFold(id, true);
     let stop = false; const halt = () => { stop = true; };
@@ -495,6 +557,7 @@
       host.hidden = layout.hidden.has(s.id);
       root.append(host);
       if (!host.hidden) mountOne(s);
+      watchUsage(s, host);
     }
     const bar = $("tabbar");
     for (const t of TABS) {
@@ -536,7 +599,8 @@
   window.FC = Object.freeze({
     SERVER, state, $, el, sv, de, dayDate, fmtDay, fmtDayLong, fmtWeekday, fmtH, ago, addDays, sport, SOURCES, recStatus, cssVar,
     chart, spark, rolling, richText, errText, sampleErrText, banner, call, watch, reload, section, rerender, setRange,
-    onRange: (f) => listeners.add(f), boot, showTab, goTo, layout: layoutApi,
+    onRange: (f) => listeners.add(f), boot, showTab, goTo, layout: layoutApi, usage: usageApi,
+    lean: { on: () => lean, set: setLean, onChange: (f) => { leanListeners.add(f); return () => leanListeners.delete(f); } },
     invalidate: () => state.mcp?.invalidate(SERVER, "get_dashboard").catch(() => {}),
   });
 })();

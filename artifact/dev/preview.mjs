@@ -530,6 +530,27 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (own.at(-1) !== "Reifen umwerfen") errors.push(`${name}: eigene Übung nicht angelegt ${JSON.stringify(own)}`);
   }
   if (name === "desktop-light") {
+    // Heute in 10 Sekunden (#372): Karte, schlanke Ansicht, Nutzungsvorschlag mit Ausblenden und Einblenden.
+    const fo = await p.evaluate(() => ({ txt: document.getElementById("foBody")?.innerText ?? "", vis: !document.getElementById("sec-focus").hidden }));
+    if (!fo.vis || !/tagesform/i.test(fo.txt) || !/heute dran/i.test(fo.txt)) errors.push(`${name}: „Heute in 10 Sekunden“ unvollständig ${JSON.stringify(fo)}`);
+    await p.evaluate(() => document.getElementById("foLean").click()); await p.waitForTimeout(200);
+    const lean = await p.evaluate(() => ({ vis: [...document.querySelectorAll("#sections > section.on")].filter((x) => x.offsetParent).map((x) => x.id) }));
+    if (lean.vis.join() !== "sec-focus") errors.push(`${name}: schlanke Ansicht zeigt ${JSON.stringify(lean.vis)}`);
+    await p.screenshot({ path: join(out, "desktop-focus-lean.png") });
+    await p.evaluate(() => document.getElementById("foLean").click()); await p.waitForTimeout(200);
+    if ((await p.evaluate(() => [...document.querySelectorAll("#sections > section.on")].filter((x) => x.offsetParent).length)) < 3) errors.push(`${name}: schlanke Ansicht lässt sich nicht aufheben`);
+    await p.evaluate(() => { localStorage.setItem("fc-usage", JSON.stringify({ since: new Date(Date.now() - 9 * 864e5).toISOString(), views: { today: { n: 40, last: null }, agenda: { n: 5, last: null } } })); });
+    await p.reload(); await p.waitForTimeout(900);
+    await p.evaluate(() => FC.goTo("layout")); await p.waitForTimeout(600);
+    const sug = await p.evaluate(() => ({ btn: document.getElementById("loSugApply")?.textContent ?? null, st: document.getElementById("loSugState")?.textContent ?? "" }));
+    if (!sug.btn) errors.push(`${name}: Vorschlag falsch ${JSON.stringify(sug)}`);
+    await p.click("#loSugApply"); await p.waitForTimeout(300);
+    const hid = await p.evaluate(() => ({ n: FC.layout.list().filter((x) => x.hidden).length, agenda: document.getElementById("sec-agenda").hidden, today: document.getElementById("sec-today").hidden }));
+    if (hid.n < 10 || hid.today || hid.agenda) errors.push(`${name}: Ausblenden falsch ${JSON.stringify(hid)}`);
+    await p.screenshot({ path: join(out, "desktop-focus-suggest.png") });
+    await p.click("#loShowAll"); await p.waitForTimeout(300);
+    if ((await p.evaluate(() => FC.layout.list().filter((x) => x.hidden).length)) !== 0) errors.push(`${name}: Wieder einblenden falsch`);
+    await p.evaluate(() => { localStorage.removeItem("fc-usage"); FC.showTab("heute"); window.scrollTo(0, 0); }); await p.waitForTimeout(200);
     // Favoriten (#291): Stern an „Trittfrequenz“ heftet sie oben auf „Heute“ an, Sprung, nach Neuladen gemerkt, lösen.
     const favNone = await p.evaluate(() => document.getElementById("sec-favorites").hidden && document.querySelectorAll(".fav-btn").length);
     if (!favNone || favNone < 20) errors.push(`${name}: Favoriten-Sterne fehlen oder Leiste ohne Favoriten sichtbar (${favNone})`);
