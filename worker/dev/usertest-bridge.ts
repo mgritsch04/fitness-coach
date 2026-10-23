@@ -4,6 +4,7 @@
 // Grunddaten bis heute (dev/seed.ts). Keine echten Messwerte, keine Secrets: WHOOP/Wahoo/Wetter sind nicht erreichbar.
 //   POST /tool  {"name": "...", "args": {...}}  → {"payload": ..., "isError": bool}
 //   POST /fit   {"start": ISO, "seconds": n, "watts": n} → {"fileBase64": ...} synthetische FIT-Fahrt (für import_fit)
+//   POST /gap   {"days": ["YYYY-MM-DD", ...]} → entfernt WHOOP-Tageswerte und Schlaf dieser Tage (Lücke für #379)
 //   GET  /...   Dateien aus <static-dir> (Vorschau-Seite des Artefakts, gleicher Ursprung wie /tool)
 import { createServer as createHttp } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -43,6 +44,17 @@ createHttp(async (req, res) => {
       let payload: unknown;
       try { payload = JSON.parse(text); } catch { payload = text; }
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ payload, isError: out.isError ?? false }));
+      return;
+    }
+    if (req.method === "POST" && req.url === "/gap") {
+      let body = "";
+      for await (const c of req) body += c;
+      const { days } = JSON.parse(body) as { days: string[] };
+      for (const d of days) {
+        await db.prepare("DELETE FROM daily WHERE source = 'whoop' AND day = ?").bind(d).run();
+        await db.prepare("DELETE FROM sleeps WHERE source = 'whoop' AND day = ?").bind(d).run();
+      }
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ removed: days }));
       return;
     }
     if (req.method === "POST" && req.url === "/fit") {

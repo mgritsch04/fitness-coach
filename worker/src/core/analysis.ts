@@ -314,6 +314,8 @@ export interface DayPoint {
   tsb: number;
   workouts: number;
   trainingMin: number;
+  /** Vergangener Tag ohne jeden WHOOP-Wert (nicht getragen, Akku leer): „keine Daten“, nicht 0 (#379). Heute zählt nie. */
+  noData?: boolean;
 }
 
 export function daySeries(daily: DailyRow[], sleeps: SleepRow[], workouts: (MergedWorkout & WorkoutLoad)[], load: LoadPoint[], from: string, to: string): DayPoint[] {
@@ -348,6 +350,8 @@ export function daySeries(daily: DailyRow[], sleeps: SleepRow[], workouts: (Merg
       workouts: ws.length,
       trainingMin: Math.round(ws.reduce((a, w) => a + (w.duration_s ?? 0), 0) / 60),
     });
+    const pt = out[out.length - 1];
+    if (day < to && [pt.recovery, pt.hrv, pt.rhr, pt.strain, pt.sleepH].every((v) => v == null)) pt.noData = true;
   }
   return out;
 }

@@ -79,6 +79,8 @@
     }
     const labelEvery = Math.ceil(n / Math.max(2, Math.floor(iw / 70)));
     days.forEach((p, i) => { if ((n - 1 - i) % labelEvery === 0) { const tx = sv("text", { x: x(i), y: H - 6, "text-anchor": "middle" }); tx.textContent = opts.xFmt ? opts.xFmt(p) : fmtDay(p.day); svg.append(tx); } });
+    // Tage ohne WHOOP-Werte (#379): leichte Spalte statt Null; im Tooltip „keine Daten“.
+    days.forEach((p, i) => { if (p.noData) svg.append(sv("rect", { x: x(i) - step / 2, y: m.t, width: step, height: ih, fill: cssVar("--ink-3"), opacity: 0.12, class: "nodata" })); });
     if (opts.band) svg.append(sv("rect", { x: m.l, width: iw, y: y(opts.band.hi), height: Math.max(0, y(opts.band.lo) - y(opts.band.hi)), fill: cssVar("--band") }));
     if (opts.bandFn) {
       // Band, das sich je Tag ändert (z. B. gleitender Normalbereich); Lücken trennen die Flächen.
@@ -131,7 +133,7 @@
       tip.replaceChildren(el("div", { class: "d", text: opts.tipTitle ? opts.tipTitle(p) : fmtDayLong(p.day) }));
       for (const s of [...series, ...(opts.extraTip ?? [])]) {
         const v = s.value(p); const k = el("i"); k.style.background = s.barColor ? s.barColor(p) : s.color;
-        tip.append(el("div", { class: "row" }, el("span", { class: "k" }, k, s.label), el("b", { text: v == null ? "–" : s.fmt ? s.fmt(v) : de(v, 1) })));
+        tip.append(el("div", { class: "row" }, el("span", { class: "k" }, k, s.label), el("b", { text: v == null ? (p.noData ? "keine Daten" : "–") : s.fmt ? s.fmt(v) : de(v, 1) })));
       }
       tip.hidden = false;
       const px = (x(cur) / W) * container.clientWidth, tw = tip.offsetWidth;
