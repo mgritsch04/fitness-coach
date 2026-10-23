@@ -166,7 +166,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         standards: strengthStandards(all, ((await readLatestBody(env.DB).catch(() => null)) as { weight_kg?: number | null } | null)?.weight_kg ?? null, t),
         autoregulation: rirTrend(all, t),
         repRecords: repRecords(all, t),
-        templates: await readTemplates(env.DB),
+        templates: (await readTemplates(env.DB)).map((t) => ({ ...t, exercises: t.exercises.map((e) => ({ ...e, name: exerciseName(e.exercise) })) })),
         coachNotes: strengthCoachNotes(all, t),
         note: "1RM und Belastung sind Schätzungen. Volumen: Hauptmuskel zählt einen Satz, Hilfsmuskel einen halben.",
       });

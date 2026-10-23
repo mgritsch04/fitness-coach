@@ -53,6 +53,7 @@ describe("Kraft-Werkzeuge", () => {
     expect(overview.sessions).toHaveLength(3);
     expect(overview.progress.find((p: { exercise: string }) => p.exercise === "back_squat").sessions).toBe(3);
     expect(overview.templates).toHaveLength(1);
+    expect(overview.templates[0].exercises[0]).toMatchObject({ exercise: "back_squat", name: "Kniebeuge" });
     expect(overview.autoregulation.exercises).toEqual([]);
     // Express (#281): aus der Vorlage, passt schon in 30 min.
     const ex = await call("get_express_session", { minutes: 30, template: "Beine" });
