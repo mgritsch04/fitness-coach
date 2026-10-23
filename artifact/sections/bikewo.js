@@ -50,6 +50,7 @@ FC.section({
         <p class="chart-cap">Intervalle nach gängigen Faustregeln in % deiner FTP, Belastung geschätzt. MyWhoosh rechnet mit der FTP aus deinem MyWhoosh-Profil.</p>
       </div>`;
     const { $ } = FC;
+    FC.state.bikewo = this; // Wochenplan springt von dort mit Tag und Bibliotheks-Vorlage hierher
     $("bwType").onchange = () => { $("bwMinL").hidden = !$("bwType").value; this.pick(null); };
     $("bwLCat").onchange = () => this.loadLib();
     $("bwLMax").onchange = () => this.loadLib();
@@ -81,6 +82,12 @@ FC.section({
     catch (err) { this.rep = { error: err?.code === "tool_error" ? this.toolMsg(err) : FC.errText(err) }; }
     finally { this.busy = false; }
     if (seq === this.seq) this.show();
+  },
+  /** Tag setzen und die Vorlage der Empfehlung (oder null = Plan) vorwählen (#364). */
+  openFor(day, templateId) {
+    const { $ } = FC;
+    $("bwDay").value = day; $("bwType").value = ""; $("bwMinL").hidden = true;
+    this.pick(templateId ?? null);
   },
   /** Vorlage wählen (id) oder zurück zu Plan/Einheit (null). */
   pick(id) {
