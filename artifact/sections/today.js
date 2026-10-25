@@ -1,6 +1,7 @@
 // Heute: Bereitschaft (regelbasierte Empfehlung), letzte 7 Tage, Kacheln mit Trends.
 FC.section({
   id: "today",
+  simple: true,
   tab: "heute",
   order: 10,
   mount(root) {

@@ -2,6 +2,7 @@
 // Nur Daten aus get_dashboard (training.thisWeek, today, strengthWorkouts, fueling, ftpTest).
 FC.section({
   id: "agenda",
+  simple: true,
   tab: "heute",
   order: 10.5,
   RIDES: ["recovery", "endurance", "long", "tempo", "threshold", "vo2max", "opener", "race"],

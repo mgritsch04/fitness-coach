@@ -2,6 +2,7 @@
 // Daten von get_strength (Worker core/strength.ts). 1RM und Belastung sind Schätzungen.
 const STRENGTH = {
   id: "strength",
+  simple: true,
   tab: "training",
   order: 45,
   css: `

@@ -1,6 +1,7 @@
 // Datenquellen: Abgleich (auch der Knopf in der Kopfzeile), Verlauf nachladen, Wahoo verbinden, Fußzeile.
 FC.section({
   id: "sources",
+  simple: true,
   tab: "mehr",
   order: 90,
   mount(root) {

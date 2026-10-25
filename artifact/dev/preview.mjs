@@ -77,7 +77,7 @@ const payloads = {
   get_strength: () => { const t = window.__MOCK__.get_dashboard.today, d = (n) => { const x = new Date(t + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }; const wk = d(-((new Date(t + "T12:00:00Z").getUTCDay() + 6) % 7));
     const sq = [{ exercise: "squat", exerciseName: "Kniebeuge", reps: 5, weightKg: 100 }, { exercise: "squat", exerciseName: "Kniebeuge", reps: 5, weightKg: 100 }, { exercise: "bench_press", exerciseName: "Bankdrücken", reps: 8, weightKg: 72.5 }];
     return { today: t, range: { from: d(-83), to: t },
-      sessions: [{ id: "s2", day: t, name: "Beine & Brust", durationMin: 60, rpe: 8, load: 70, sets: sq }, { id: "s1", day: d(-4), name: null, durationMin: 45, rpe: 6.5, load: 38, sets: sq.slice(2) }],
+      sessions: [{ id: "s2", day: t, name: "Beine & Brust", durationMin: 60, rpe: 8, load: 70, sets: sq }, { id: "s1", day: d(-4), name: null, durationMin: 45, rpe: 6.5, load: 38, sets: sq.slice(2) }, { id: "s0", day: d(-40), name: "Zug", durationMin: 50, rpe: 7, load: 40, sets: [{ exercise: "lat_pulldown", exerciseName: "Latziehen", reps: 10, weightKg: 55 }, { exercise: "lat_pulldown", exerciseName: "Latziehen", reps: 8, weightKg: 60, rpe: 8 }] }],
       weeks: [{ week: wk, sessions: 2, sets: 4, tonnageKg: 2740, muscles: [{ muscle: "quads", label: "Oberschenkel vorne", sets: 2, tonnageKg: 1000 }, { muscle: "chest", label: "Brust", sets: 2, tonnageKg: 1160 }, { muscle: "glutes", label: "Gesäß", sets: 1, tonnageKg: 0 }, { muscle: "triceps", label: "Trizeps", sets: 1, tonnageKg: 0 }] }],
       progress: [{ exercise: "squat", name: "Kniebeuge", sessions: 3, history: [[-20, 95], [-10, 97.5], [0, 100]].map(([o, w]) => ({ day: d(o), e1rmKg: Math.round(w * (1 + 5 / 30) * 10) / 10, topSet: { reps: 5, weightKg: w }, sets: 3 })), bestE1rmKg: 116.7, bestDay: t, change4wPct: 2.6, status: "progress", forecast: { available: true, reason: null, weeks: 8, currentKg: 116.7, perWeekKg: 1.2, points: [1, 2, 3, 4, 5, 6, 7, 8].map((k) => ({ day: d(7 * k), e1rmKg: Math.round((116.7 + 1.2 * k) * 10) / 10 })), targetKg: 126.3, target: { reps: 5, weightKg: 107.5 }, text: "Bei gleichem Tempo in 8 Wochen etwa 126,3 kg geschätztes Maximum (jetzt ≈ 116,7 kg), das wären 5 × 107,5 kg. Schätzung aus dem Trend der letzten 12 Wochen." } },
         { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau", forecast: { available: false, reason: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen).", weeks: 8, currentKg: null, perWeekKg: null, points: [], targetKg: null, target: null, text: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen)." } }],
@@ -88,6 +88,7 @@ const payloads = {
       note: "1RM und Belastung sind Schätzungen." }; },
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
+  delete_strength_session: (i) => { window.__deleted = i.id; return { deleted: i.id }; },
   save_strength_template: (i) => { window.__tplSaved = i; return i; },
   save_gym_draft: () => ({ saved: true }),
   get_gym_draft: () => ({ draft: null, updatedAt: null }),
@@ -146,6 +147,8 @@ const shots = [["desktop-light", { width: 1280, height: 900 }, "light"], ["deskt
   ["phone-gympage", { width: 390, height: 844 }, "light", null, "preview-gym.html"], ["desktop-gympage", { width: 1280, height: 900 }, "dark", null, "preview-gym.html"]];
 for (const [name, vp, scheme, tab, file] of shots) {
   const ctx = await browser.newContext({ viewport: vp, colorScheme: scheme, hasTouch: name.startsWith("phone") });
+  // Die bestehenden Ansichten prüfen den vollen Umfang; die einfache Ansicht (Standard) wird unten eigens geprüft.
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem("fc-layout")) localStorage.setItem("fc-layout", JSON.stringify({ simple: false })); } catch {} });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
   p.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
@@ -654,6 +657,52 @@ for (const [name, vp, scheme, tab, file] of shots) {
     for (const v of res) for (const n of v.nodes) a11y.push({ view: name, ...v, nodes: undefined, ...n });
   }
   await p.screenshot({ path: join(out, `${name}.png`), fullPage: !tab });
+  await ctx.close();
+}
+
+// Einfache Ansicht (Standard): nur Krafttraining und Radfahren; Liste der Krafteinheiten mit Detail, Bearbeiten, Löschen.
+for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, "light"], ["desktop-simple", { width: 1280, height: 900 }, "dark"]]) {
+  const ctx = await browser.newContext({ viewport: vp, colorScheme: scheme, hasTouch: name.startsWith("phone") });
+  const p = await ctx.newPage();
+  p.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
+  p.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
+  p.on("dialog", (d) => d.accept());
+  await p.goto("file://" + join(out, "preview.html"));
+  await p.waitForTimeout(800);
+  const tabs = await p.evaluate(() => [...document.querySelectorAll("#tabbar button")].filter((b) => !b.hidden).map((b) => b.dataset.tab).join());
+  if (tabs !== "heute,coach,training,mehr") errors.push(`${name}: Reiter der einfachen Ansicht falsch: ${tabs}`);
+  const secs = async () => (await p.evaluate(() => [...document.querySelectorAll("#sections > section.on")].filter((x) => !x.hidden && x.offsetHeight > 0).map((x) => x.id.slice(4)).join())).split(",");
+  const heute = await secs();
+  if (heute.some((x) => ["highlights", "briefing", "mobility", "whatsnew", "sleeptarget", "recovery", "health"].includes(x)) || !heute.includes("today")) errors.push(`${name}: Heute zeigt Unnötiges: ${heute}`);
+  await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(500);
+  const tr = await secs();
+  if (tr.join() !== "gym,liftlog,fit,strength,bikewo,workouts") errors.push(`${name}: Training falsch: ${tr}`);
+  const n = await p.$$eval("#llList .ll-item", (l) => l.length);
+  if (n !== 3) errors.push(`${name}: Krafteinheiten ${n} statt 3`);
+  await p.click("#ll-s2 > summary"); await p.waitForTimeout(150);
+  const view = await p.innerText("#ll-s2");
+  if (!/Kniebeuge/.test(view) || !/Satz 1: 100 kg × 5/.test(view) || !/Bankdrücken/.test(view)) errors.push(`${name}: Detail falsch ${view.slice(0, 200)}`);
+  await p.click("#ll-s2 .ll-actions .primary"); await p.waitForTimeout(150);
+  await p.fill("#ll-s2 .ll-exbox:first-child .ll-set:first-child .kg", "102.5");
+  await p.click("#ll-s2 .ll-exbox:first-child .ll-set:last-child button[aria-label='Satz entfernen']");
+  await p.click("#ll-s2 .ll-exbox:first-child >> text=+ Satz"); await p.waitForTimeout(100);
+  await p.fill("#ll-s2 .ll-exbox:first-child .ll-set:last-child .reps", "6");
+  await p.fill("#ll-s2 input[type=date]", "2026-03-30");
+  await p.click("#ll-s2 .ll-actions >> text=Speichern"); await p.waitForTimeout(500);
+  const sv = await p.evaluate(() => window.__gymSaved);
+  const first = sv?.exercises?.[0];
+  if (sv?.id !== "s2" || sv.day !== "2026-03-30" || sv.name !== "Beine & Brust" || first?.exercise !== "Kniebeuge" || first.sets.length !== 2 || first.sets[0].weightKg !== 102.5 || first.sets[1].reps !== 6) errors.push(`${name}: Bearbeiten speichert falsch ${JSON.stringify(sv)}`);
+  await p.click("#ll-s1 > summary"); await p.click("#ll-s1 .ll-actions >> text=Löschen"); await p.waitForTimeout(400);
+  if ((await p.evaluate(() => window.__deleted)) !== "s1") errors.push(`${name}: Löschen ruft nicht delete_strength_session`);
+  const sw = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (sw > 0) errors.push(`${name}: horizontal overflow ${sw}px`);
+  await p.click("#ll-s2 > summary").catch(() => {});
+  await p.screenshot({ path: join(out, `${name}-training.png`), fullPage: false });
+  // Umschalten auf den vollen Umfang in „Mehr“ blendet wieder alles ein.
+  await p.click("#tabbar [data-tab=mehr]"); await p.waitForTimeout(300);
+  await p.uncheck("#loSimple"); await p.waitForTimeout(500);
+  const all = await p.evaluate(() => [...document.querySelectorAll("#tabbar button")].filter((b) => !b.hidden).length);
+  if (all !== 5) errors.push(`${name}: Voller Umfang zeigt ${all} statt 5 Reiter`);
   await ctx.close();
 }
 await browser.close();

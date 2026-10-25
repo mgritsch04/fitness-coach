@@ -2,6 +2,7 @@
 // Claude bekommt nur die Daten, die hier zusammengestellt werden; keine API-Schlüssel.
 FC.section({
   id: "coach",
+  simple: true,
   tab: "coach",
   order: 20,
   mount(root) {

@@ -4,6 +4,7 @@
 // Der Browserspeicher des Handys kann nach einer Pause im Hintergrund leer zurückkommen, der Entwurf holt die Einheit dann zurück.
 FC.section({
   id: "gym",
+  simple: true,
   tab: "training",
   order: 39,
   KEY: "fc-gym",

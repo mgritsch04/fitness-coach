@@ -3,6 +3,7 @@
 // Ortssuche (#325): bei mehreren Treffern Auswahl mit Region und Land; nach dem Speichern frisch laden statt alter Antwort.
 FC.section({
   id: "weather",
+  simple: true,
   tab: "heute",
   order: 11,
   css: `
