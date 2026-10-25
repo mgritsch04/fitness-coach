@@ -113,6 +113,8 @@ export interface StrengthSession {
   notes: string | null;
   linkedSource: string | null;
   linkedSourceId: string | null;
+  /** Wiederholungen nicht verlässlich: Einheit zählt nicht für Bestwerte, Volumen und Belastung (Gewichte bleiben sichtbar). */
+  repsUnreliable?: boolean;
   sets: StrengthSet[];
 }
 
@@ -408,6 +410,7 @@ interface SessionRow {
   notes: string | null;
   linked_source: string | null;
   linked_source_id: string | null;
+  reps_unreliable: number;
 }
 
 interface SetRow {
@@ -421,11 +424,14 @@ interface SetRow {
   muscles: string | null;
 }
 
-export async function readStrengthSessions(db: D1Database, fromDay: string): Promise<StrengthSession[]> {
+/** Standard: ohne Einheiten mit unzuverlässigen Wiederholungen (Statistik); withUnreliable für die reine Auflistung. */
+export async function readStrengthSessions(db: D1Database, fromDay: string, opts: { withUnreliable?: boolean } = {}): Promise<StrengthSession[]> {
+  const only = opts.withUnreliable ? "" : " AND reps_unreliable = 0";
+  const onlyX = opts.withUnreliable ? "" : " AND x.reps_unreliable = 0";
   const [{ results: sessions }, { results: sets }] = await Promise.all([
-    db.prepare("SELECT * FROM strength_sessions WHERE day >= ? ORDER BY day DESC, start_time DESC").bind(fromDay).all<SessionRow>(),
+    db.prepare(`SELECT * FROM strength_sessions WHERE day >= ?${only} ORDER BY day DESC, start_time DESC`).bind(fromDay).all<SessionRow>(),
     db
-      .prepare("SELECT s.* FROM strength_sets s JOIN strength_sessions x ON x.id = s.session_id WHERE x.day >= ? ORDER BY s.session_id, s.idx")
+      .prepare(`SELECT s.* FROM strength_sets s JOIN strength_sessions x ON x.id = s.session_id WHERE x.day >= ?${onlyX} ORDER BY s.session_id, s.idx`)
       .bind(fromDay)
       .all<SetRow>(),
   ]);
@@ -445,6 +451,7 @@ export async function readStrengthSessions(db: D1Database, fromDay: string): Pro
     notes: s.notes,
     linkedSource: s.linked_source,
     linkedSourceId: s.linked_source_id,
+    ...(s.reps_unreliable ? { repsUnreliable: true } : {}),
     sets: setsBySession.get(s.id) ?? [],
   }));
 }
@@ -455,13 +462,13 @@ export async function saveStrengthSession(db: D1Database, s: StrengthSession): P
     db.prepare("DELETE FROM strength_sets WHERE session_id = ?").bind(s.id),
     db
       .prepare(
-        `INSERT INTO strength_sessions (id, day, start_time, duration_min, rpe, name, notes, linked_source, linked_source_id, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `INSERT INTO strength_sessions (id, day, start_time, duration_min, rpe, name, notes, linked_source, linked_source_id, reps_unreliable, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT (id) DO UPDATE SET day = excluded.day, start_time = excluded.start_time, duration_min = excluded.duration_min,
            rpe = COALESCE(excluded.rpe, strength_sessions.rpe), name = excluded.name, notes = excluded.notes, linked_source = excluded.linked_source,
-           linked_source_id = excluded.linked_source_id, updated_at = excluded.updated_at`,
+           linked_source_id = excluded.linked_source_id, reps_unreliable = excluded.reps_unreliable, updated_at = excluded.updated_at`,
       )
-      .bind(s.id, s.day, s.startTime, s.durationMin, s.rpe, s.name, s.notes, s.linkedSource, s.linkedSourceId),
+      .bind(s.id, s.day, s.startTime, s.durationMin, s.rpe, s.name, s.notes, s.linkedSource, s.linkedSourceId, s.repsUnreliable ? 1 : 0),
     ...s.sets.map((x, i) =>
       db
         .prepare("INSERT INTO strength_sets (session_id, idx, exercise, exercise_name, reps, weight_kg, rpe, muscles) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")

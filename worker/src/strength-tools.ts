@@ -91,6 +91,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         rpe: z.number().min(1).max(10).optional(),
         name: z.string().max(80).optional().describe("z. B. Beine, Push, Ganzkörper"),
         notes: z.string().max(1000).optional(),
+        repsUnreliable: z.boolean().optional().describe("Wiederholungen nicht verlässlich (z. B. nachgetragen): zählt nicht für Bestwerte, Volumen und Belastung, Gewichte bleiben Orientierung"),
         template: z.string().max(80).optional(),
         exercises: z.array(exerciseInput).max(30).optional(),
       },
@@ -121,6 +122,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         notes: input.notes ?? null,
         linkedSource: linked?.source ?? null,
         linkedSourceId: linked?.source_id ?? null,
+        ...(input.repsUnreliable ? { repsUnreliable: true } : {}),
         sets,
       };
       await saveStrengthSession(env.DB, session);
@@ -189,12 +191,13 @@ export function registerStrengthTools(server: McpServer, env: Env) {
     async ({ weeks }) => {
       const t = await today();
       const from = addDays(t, -7 * (weeks ?? 8) + 1);
-      const all = await readStrengthSessions(env.DB, addDays(t, -365));
+      const all = await readStrengthSessions(env.DB, addDays(t, -365)); // ohne Einheiten mit unzuverlässigen Wiederholungen
       const inRange = all.filter((s) => s.day >= from);
+      const listed = (await readStrengthSessions(env.DB, from, { withUnreliable: true })).filter((s) => s.day >= from);
       return json({
         today: t,
         range: { from, to: t },
-        sessions: inRange.map((s) => ({ ...s, load: srpeLoad(s.durationMin, s.rpe) })),
+        sessions: listed.map((s) => ({ ...s, load: s.repsUnreliable ? null : srpeLoad(s.durationMin, s.rpe) })),
         weeks: weeklyVolume(inRange),
         progress: exerciseProgress(all, t).map((p) => ({ ...p, forecast: exerciseForecast(p, t) })),
         deload: strengthDeload(all, t),
