@@ -495,3 +495,22 @@ export async function deleteTemplate(db: D1Database, name: string): Promise<bool
   await db.prepare("DELETE FROM strength_templates WHERE name = ?").bind(name).run();
   return true;
 }
+
+/** Entwurf der laufenden Gym-Einheit (nur einer; undurchsichtiges JSON des Browsers). */
+export async function saveGymDraft(db: D1Database, data: string): Promise<string> {
+  const at = new Date().toISOString();
+  await db
+    .prepare("INSERT INTO gym_draft (id, data, updated_at) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at")
+    .bind(data, at)
+    .run();
+  return at;
+}
+
+export async function readGymDraft(db: D1Database): Promise<{ data: string; updatedAt: string } | null> {
+  const row = await db.prepare("SELECT data, updated_at FROM gym_draft WHERE id = 1").first<{ data: string; updated_at: string }>();
+  return row ? { data: row.data, updatedAt: row.updated_at } : null;
+}
+
+export async function clearGymDraft(db: D1Database): Promise<void> {
+  await db.prepare("DELETE FROM gym_draft WHERE id = 1").run();
+}

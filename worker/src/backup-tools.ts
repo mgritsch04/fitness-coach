@@ -24,6 +24,7 @@ export const BACKUP_TABLES = [
   ["training_blocks", "rowid"],
   ["recommendation_feedback", "rowid"],
   ["sweat_tests", "rowid"],
+  ["gym_draft", "rowid"],
 ] as const;
 
 export async function buildBackup(db: D1Database, now = new Date()) {
