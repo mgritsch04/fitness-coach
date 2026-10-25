@@ -74,7 +74,7 @@ FC.section({
   },
   item(s) {
     const { el, de, fmtDayLong } = FC, groups = this.groups(s);
-    const meta = [`${groups.length} Übung${groups.length === 1 ? "" : "en"}`, `${s.sets.length} ${s.sets.length === 1 ? "Satz" : "Sätze"}`, s.durationMin ? `${de(s.durationMin)} min` : null, s.rpe ? `Anstrengung ${de(s.rpe, s.rpe % 1 ? 1 : 0)}` : null].filter(Boolean).join(" · ");
+    const meta = [`${groups.length} Übung${groups.length === 1 ? "" : "en"}`, `${s.sets.length} ${s.sets.length === 1 ? "Satz" : "Sätze"}`, s.durationMin ? `${de(s.durationMin)} min` : null, s.rpe ? `Anstrengung ${de(s.rpe, s.rpe % 1 ? 1 : 0)}` : null, s.repsUnreliable ? "Wiederholungen unsicher" : null].filter(Boolean).join(" · ");
     const det = el("details", { class: "ll-item", id: `ll-${s.id}` },
       el("summary", {}, el("b", { text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }), el("span", { class: "muted", text: meta }), el("span", { class: "muted", text: groups.map((g) => g.name).join(", ") })));
     det.open = this.open.has(s.id);
@@ -111,6 +111,8 @@ FC.section({
     const name = field("Name (z. B. Push)", { type: "text", maxlength: 80, value: s.name ?? "" }, "wide");
     const dur = field("Dauer (min)", { type: "number", inputmode: "numeric", min: 1, max: 600, value: s.durationMin ?? "" });
     const rpe = field("Anstrengung 1–10", { type: "number", inputmode: "decimal", min: 1, max: 10, step: 0.5, value: s.rpe ?? "" });
+    const unsure = el("label", { class: "row", style: "gap:8px; font-size:.9rem; color:var(--ink-2)" }, el("input", { type: "checkbox" }), el("span", { text: "Wiederholungen nicht verlässlich (zählt nicht für Bestwerte und Belastung)" }));
+    unsure.querySelector("input").checked = !!s.repsUnreliable;
     const rows = el("div", { class: "ll-edit" });
     const msg = el("span", { class: "muted", role: "status" });
     const num = (cls, label, attrs, v) => el("label", {}, el("span", { text: label }), el("input", { class: cls, type: "number", inputmode: "decimal", "aria-label": label, value: v ?? "", ...attrs }));
@@ -170,6 +172,7 @@ FC.section({
       const dV = n(dur.querySelector("input").value), rV = n(rpe.querySelector("input").value);
       if (dV != null) input.durationMin = Math.round(dV);
       if (rV != null) input.rpe = rV;
+      if (unsure.querySelector("input").checked) input.repsUnreliable = true;
       save.disabled = true; msg.textContent = "Speichere …";
       try {
         await FC.call("log_strength_session", input);
@@ -177,7 +180,7 @@ FC.section({
       } catch (err) { msg.textContent = err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err); save.disabled = false; }
     };
     return el("div", { class: "ll-body" }, el("div", { class: "ll-edit" },
-      el("div", { class: "ll-meta" }, day, dur, name, rpe), rows, el("div", { class: "ll-actions" }, addExBtn),
+      el("div", { class: "ll-meta" }, day, dur, name, rpe), rows, el("div", { class: "ll-actions" }, addExBtn), unsure,
       el("div", { class: "ll-actions" }, save, cancel, msg)));
   },
 });
