@@ -1,6 +1,7 @@
 // MyWhoosh-Fahrten per FIT-Datei hochladen (import_fit) Leistungskurve, FTP-Schätzung und Zeit je Zone (get_fitness_profile).
 FC.section({
   id: "fit",
+  simple: true,
   tab: "training",
   order: 45,
   css: `

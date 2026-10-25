@@ -2,6 +2,7 @@
 // Bibliothek (#221): Vorlagen je Art und Stufe aus list_bike_workouts, gefiltert nach Dauer und Art.
 FC.section({
   id: "bikewo",
+  simple: true,
   tab: "training",
   order: 47,
   css: `

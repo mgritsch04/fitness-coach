@@ -1,6 +1,7 @@
 // Persönliche Einstellungen (update_settings). Leere Felder = Schätzung aus den Daten.
 FC.section({
   id: "settings",
+  simple: true,
   tab: "mehr",
   order: 80,
   mount(root) {

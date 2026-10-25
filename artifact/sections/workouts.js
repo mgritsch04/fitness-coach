@@ -9,6 +9,7 @@ const kindOf = (sp) => {
 };
 FC.section({
   id: "workouts",
+  simple: true,
   tab: "training",
   order: 60,
   mount(root) {

@@ -316,14 +316,14 @@
   // wahlweise nur für dieses Gerät (nur im Browser). Der Browser behält immer eine Kopie, damit die Seite sofort richtig aufbaut.
   const LAYOUT_KEY = "fc-layout", LAYOUT_MODE_KEY = "fc-layout-mode";
   const layout = (() => {
-    try { const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "{}"); return { hidden: new Set(v.hidden ?? []), order: v.order ?? {}, deskTabs: v.deskTabs !== false, updatedAt: v.updatedAt ?? null }; }
-    catch { return { hidden: new Set(), order: {}, deskTabs: true, updatedAt: null }; }
+    try { const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "{}"); return { hidden: new Set(v.hidden ?? []), order: v.order ?? {}, deskTabs: v.deskTabs !== false, simple: v.simple !== false, updatedAt: v.updatedAt ?? null }; }
+    catch { return { hidden: new Set(), order: {}, deskTabs: true, simple: true, updatedAt: null }; }
   })();
   let layoutMode = "all";
   try { if (localStorage.getItem(LAYOUT_MODE_KEY) === "device") layoutMode = "device"; } catch {}
   let booted = false, layoutSynced = false, layoutStatus = "", pushT = null;
   const layoutListeners = new Set();
-  const layoutJson = () => ({ hidden: [...layout.hidden], order: layout.order, deskTabs: layout.deskTabs });
+  const layoutJson = () => ({ hidden: [...layout.hidden], order: layout.order, deskTabs: layout.deskTabs, simple: layout.simple });
   const storeLocal = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ ...layoutJson(), updatedAt: layout.updatedAt })); } catch {} };
   const layoutChanged = () => { for (const f of layoutListeners) try { f(layoutStatus); } catch {} };
   const saveLayout = () => {
@@ -341,32 +341,43 @@
   /** Gemeinsame Anordnung vom Worker übernehmen (oder die eigene hochladen, wenn dort noch keine liegt). */
   function syncLayout(remote) {
     if (layoutMode !== "all" || single) return;
-    const custom = layout.hidden.size || Object.keys(layout.order).length || !layout.deskTabs;
+    const custom = layout.hidden.size || Object.keys(layout.order).length || !layout.deskTabs || !layout.simple;
     if (!remote) { if (!layoutSynced && custom) pushLayout(); layoutSynced = true; return; }
     if (!layoutSynced && layout.updatedAt && remote.updatedAt && layout.updatedAt > remote.updatedAt) { layoutSynced = true; pushLayout(); return; }
     layoutSynced = true;
-    if (JSON.stringify(layoutJson()) === JSON.stringify({ hidden: remote.hidden ?? [], order: remote.order ?? {}, deskTabs: remote.deskTabs !== false })) return;
+    if (JSON.stringify(layoutJson()) === JSON.stringify({ hidden: remote.hidden ?? [], order: remote.order ?? {}, deskTabs: remote.deskTabs !== false, simple: remote.simple !== false })) return;
     applyLayout(remote);
   }
   function applyLayout(l) {
-    layout.hidden = new Set(l.hidden ?? []); layout.order = { ...(l.order ?? {}) }; layout.deskTabs = l.deskTabs !== false; layout.updatedAt = l.updatedAt ?? null;
+    layout.hidden = new Set(l.hidden ?? []); layout.order = { ...(l.order ?? {}) }; layout.deskTabs = l.deskTabs !== false; layout.simple = l.simple !== false; layout.updatedAt = l.updatedAt ?? null;
     storeLocal();
     if (!$("sections")?.children.length) return;
     for (const s of sections) {
       const host = $(`sec-${s.id}`); if (!host) continue;
-      const hid = layout.hidden.has(s.id) && !s.locked;
+      const hid = off(s);
       host.hidden = hid;
       if (!hid && !s.mounted) mountOne(s);
     }
     sortSections();
     const root = $("sections"); for (const x of sections) root.append($(`sec-${x.id}`));
-    applyDeskTabs(); applyFolds(); readyWanted(); jump(); layoutChanged();
+    applyDeskTabs(); applyFolds(); readyWanted(); jump(); drawTabs(); layoutChanged();
   }
   const applyDeskTabs = () => document.body.classList.toggle("desk-tabs", layout.deskTabs);
   const rank = (s) => layout.order[s.id] ?? s.order;
   const sortSections = () => sections.sort((a, b) => rank(a) - rank(b) || a.order - b.order);
   /** Abschnitte, die eingebaut und sichtbar sind; ausgeblendete laden keine Daten. */
-  const live = () => sections.filter((s) => s.mounted && !layout.hidden.has(s.id));
+  /** Einfache Ansicht: nur Abschnitte mit `simple: true` (Kraft und Rad); die übrigen ruhen, ohne dass die eigene Anordnung verloren geht. */
+  const off = (s) => !s.locked && (layout.hidden.has(s.id) || (layout.simple && !single && !s.simple));
+  const live = () => sections.filter((s) => s.mounted && !off(s));
+  /** Reiter ohne sichtbare Abschnitte (einfache Ansicht) ausblenden. */
+  function drawTabs() {
+    const bar = $("tabbar"); if (!bar) return;
+    let n = 0;
+    for (const b of bar.children) { const empty = !sections.some((s) => (s.tab ?? "mehr") === b.dataset.tab && !off(s)); b.hidden = empty; if (!empty) n++; }
+    bar.style.setProperty("--tabs", String(n || 1));
+    const cur = [...bar.children].find((b) => b.dataset.tab === tab);
+    if (cur?.hidden) { const first = [...bar.children].find((b) => !b.hidden); if (first) showTab(first.dataset.tab); }
+  }
   function mountOne(s) {
     try { s.mount?.($(`sec-${s.id}`)); s.mounted = true; } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
   }
@@ -382,7 +393,7 @@
   const LEAN_KEY = "fc-lean", LEAN_DEFAULT = false;
   let lean = LEAN_DEFAULT;
   try { const v = localStorage.getItem(LEAN_KEY); if (v === "1") lean = true; else if (v === "0") lean = false; } catch {}
-  const leaned = (s) => lean && !single && (s.tab ?? "mehr") === "heute" && !s.keepLean && !layout.hidden.has("focus") && !!sections.find((x) => x.id === "focus")?.mounted;
+  const leaned = (s) => lean && !single && (s.tab ?? "mehr") === "heute" && !s.keepLean && !off(sections.find((x) => x.id === "focus") ?? {}) && !!sections.find((x) => x.id === "focus")?.mounted;
   const leanListeners = new Set();
   function setLean(on, store = true) {
     if (lean === !!on) return;
@@ -435,7 +446,7 @@
     try { s.ready?.(); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); }
   }
   const layoutApi = {
-    list: () => sections.map((s) => ({ id: s.id, tab: s.tab ?? "mehr", title: $(`h-${s.id}`)?.textContent || s.title || s.id, hidden: layout.hidden.has(s.id), locked: !!s.locked })),
+    list: () => sections.map((s) => ({ id: s.id, tab: s.tab ?? "mehr", title: $(`h-${s.id}`)?.textContent || s.title || s.id, hidden: layout.hidden.has(s.id), simpleOff: off(s) && !layout.hidden.has(s.id), locked: !!s.locked })),
     setHidden(id, hidden) {
       const s = sections.find((x) => x.id === id); if (!s || s.locked) return;
       if (hidden) layout.hidden.add(id); else layout.hidden.delete(id);
@@ -463,7 +474,17 @@
     },
     hideMany(ids) { for (const id of ids) this.setHidden(id, true); },
     showAll() { for (const id of [...layout.hidden]) this.setHidden(id, false); },
-    reset() { layout.hidden.clear(); layout.order = {}; layout.deskTabs = true; saveLayout(); applyDeskTabs(); readyWanted(); },
+    simple: () => layout.simple,
+    setSimple(on) {
+      layout.simple = !!on; saveLayout();
+      for (const s of sections) {
+        const host = $(`sec-${s.id}`), hid = off(s); if (!host) continue;
+        host.hidden = hid;
+        if (!hid) { if (!s.mounted) mountOne(s); if (booted && wanted(s)) readyOne(s); if (state.data) try { s.render?.(state.data); } catch (e) { console.error(`Abschnitt ${s.id}:`, e); } }
+      }
+      applyFolds(); readyWanted(); drawTabs(); jump(); layoutChanged();
+    },
+    reset() { layout.hidden.clear(); layout.order = {}; layout.deskTabs = true; layout.simple = true; saveLayout(); applyDeskTabs(); readyWanted(); },
     deskTabs: () => layout.deskTabs,
     setDeskTabs(on) { layout.deskTabs = !!on; saveLayout(); applyDeskTabs(); readyWanted(); rerender(); jump(); },
     mode: () => layoutMode,
@@ -518,7 +539,7 @@
     suggest() {
       const days = this.days(), total = this.total(), ready = days >= USAGE_MIN_DAYS && total >= USAGE_MIN_VIEWS;
       let fav = []; try { fav = JSON.parse(localStorage.getItem("fc-fav") ?? "[]"); } catch {}
-      const ids = ready ? sections.filter((s) => !s.locked && !s.keepLean && !layout.hidden.has(s.id) && !$(`sec-${s.id}`)?.hidden && !fav.includes(s.id) && !usage.views[s.id]?.n).map((s) => s.id) : [];
+      const ids = ready ? sections.filter((s) => !s.locked && !s.keepLean && !off(s) && !$(`sec-${s.id}`)?.hidden && !fav.includes(s.id) && !usage.views[s.id]?.n).map((s) => s.id) : [];
       return { ready, days, total, needDays: USAGE_MIN_DAYS, needViews: USAGE_MIN_VIEWS, ids };
     },
   };
@@ -556,7 +577,7 @@
     sortSections();
     for (const s of sections) {
       const host = el("section", { id: `sec-${s.id}`, "aria-labelledby": `h-${s.id}` });
-      host.hidden = layout.hidden.has(s.id);
+      host.hidden = off(s);
       root.append(host);
       if (!host.hidden) mountOne(s);
       watchUsage(s, host);
@@ -576,6 +597,7 @@
     else {
       document.body.classList.add("tabs");
       applyDeskTabs();
+      drawTabs();
       showTab(tab);
     }
     // Nur bei geänderter Breite neu zeichnen (Diagramme): reine Höhenänderungen, etwa ein aufgeklapptes

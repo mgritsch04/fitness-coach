@@ -34,6 +34,7 @@ FC.section({
             <label><input type="radio" name="loMode" value="device" id="loDevice"> nur für dieses Gerät</label>
             <button type="button" id="loUpload" hidden>Diese Anordnung für alle Geräte speichern</button>
           </fieldset>
+          <label for="loSimple"><input type="checkbox" id="loSimple"> Einfache Ansicht: nur Krafttraining und Radfahren</label>
           <label for="loDesk"><input type="checkbox" id="loDesk"> Am PC Reiter statt einer langen Seite</label>
           <span class="muted" id="loState" role="status"></span>
         </div>
@@ -43,6 +44,7 @@ FC.section({
     FC.$("loReset").onclick = () => { FC.layout.reset(); FC.$("loNote").textContent = "Standard gespeichert. Seite neu laden, um alles wie anfangs zu sehen."; this.draw(); };
     for (const id of ["loAll", "loDevice"]) FC.$(id).onchange = (e) => { FC.layout.setMode(e.target.value); this.draw(); };
     FC.$("loUpload").onclick = () => { FC.layout.setMode("all", true); this.draw(); };
+    FC.$("loSimple").onchange = (e) => { FC.layout.setSimple(e.target.checked); this.draw(); };
     FC.$("loDesk").onchange = (e) => FC.layout.setDeskTabs(e.target.checked);
   },
   ready() { this.draw(); FC.layout.onChange(() => this.draw()); FC.usage.onChange(() => this.sug()); },
@@ -71,6 +73,7 @@ FC.section({
     $("loAll").checked = mode === "all"; $("loDevice").checked = mode === "device";
     $("loUpload").hidden = mode !== "device";
     $("loDesk").checked = FC.layout.deskTabs();
+    $("loSimple").checked = FC.layout.simple();
     $("loScope").textContent = mode === "all" ? "gilt auf allen Geräten" : "gilt nur auf diesem Gerät";
     $("loState").textContent = mode !== "all" ? "Änderungen bleiben in diesem Browser." : st === "saving" ? "Speichere für alle Geräte …" : st === "saved" ? "Für alle Geräte gespeichert." : st === "error" ? "Nicht gespeichert, gilt vorerst nur hier." : "";
   },
@@ -81,13 +84,13 @@ FC.section({
       const items = list.filter((x) => x.tab === id);
       if (!items.length) return null;
       return el("div", { class: "lo-tab" }, el("h4", { text: label }), ...items.map((x, i) => {
-        const cb = el("input", { type: "checkbox", "aria-label": `${x.title} anzeigen` }); cb.checked = !x.hidden; cb.disabled = x.locked;
+        const cb = el("input", { type: "checkbox", "aria-label": `${x.title} anzeigen` }); cb.checked = !x.hidden && !x.simpleOff; cb.disabled = x.locked || x.simpleOff;
         cb.onchange = () => { FC.layout.setHidden(x.id, !cb.checked); this.draw(); };
         const up = el("button", { type: "button", text: "↑", "aria-label": `${x.title} nach oben` }); up.disabled = i === 0;
         const down = el("button", { type: "button", text: "↓", "aria-label": `${x.title} nach unten` }); down.disabled = i === items.length - 1;
         up.onclick = () => { FC.layout.move(x.id, -1); this.draw(); };
         down.onclick = () => { FC.layout.move(x.id, 1); this.draw(); };
-        return el("div", { class: `lo-row${x.hidden ? " off" : ""}` }, cb, el("span", { text: x.title }), up, down);
+        return el("div", { class: `lo-row${x.hidden || x.simpleOff ? " off" : ""}` }, cb, el("span", { text: x.simpleOff ? `${x.title} (Einfache Ansicht)` : x.title }), up, down);
       }));
     }).filter(Boolean));
   },

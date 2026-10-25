@@ -3,6 +3,7 @@
 // Ungenutztes zum Ausblenden vorschlägt. Nur Daten aus get_dashboard; die Nutzung wird lokal im Browser gezählt.
 FC.section({
   id: "focus",
+  simple: true,
   tab: "heute",
   order: 1,
   keepLean: true,

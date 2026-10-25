@@ -1,6 +1,7 @@
 // Datenexport (#30) über export_csv und den Download-Dialog (Capability downloads).
 FC.section({
   id: "export",
+  simple: true,
   tab: "mehr",
   order: 85,
   mount(root) {
