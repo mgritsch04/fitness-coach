@@ -15,7 +15,10 @@ import { exerciseAlternatives } from "./core/exercises";
 import { readSettings } from "./core/settings";
 import { strengthDeload } from "./core/strength-deload";
 import {
+  clearGymDraft,
   deleteStrengthSession,
+  readGymDraft,
+  saveGymDraft,
   deleteTemplate,
   estimate1RM,
   exerciseKey,
@@ -121,6 +124,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         sets,
       };
       await saveStrengthSession(env.DB, session);
+      await clearGymDraft(env.DB); // Entwurf der laufenden Einheit ist jetzt gespeichert
 
       const before = history.filter((h) => h.id !== session.id && h.day < session.day);
       const exercises = [...new Set(sets.map((s) => s.exercise))].map((key) => {
@@ -141,6 +145,35 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         muscles: muscleVolume(sets),
         unknownExercises: [...new Set(sets.filter((s) => !exerciseKey(s.exercise).known).map((s) => s.exerciseName))],
       });
+    },
+  );
+
+  server.registerTool(
+    "save_gym_draft",
+    {
+      description:
+        "Gym-Modus: Zwischenstand der laufenden Einheit sichern (ein Entwurf, wird überschrieben), damit er nicht verloren geht, wenn das Handy den Browser neu lädt. " +
+        "draft = JSON-Text des Zwischenstands; leer oder weggelassen löscht den Entwurf. log_strength_session löscht ihn ebenfalls.",
+      inputSchema: { draft: z.string().max(100_000).optional() },
+      annotations: { readOnlyHint: false },
+    },
+    async ({ draft }) => {
+      if (!draft) { await clearGymDraft(env.DB); return json({ cleared: true }); }
+      try { JSON.parse(draft); } catch { return fail("invalid_input", "draft ist kein gültiges JSON."); }
+      return json({ saved: true, updatedAt: await saveGymDraft(env.DB, draft) });
+    },
+  );
+
+  server.registerTool(
+    "get_gym_draft",
+    {
+      description: "Gym-Modus: gesicherten Zwischenstand der laufenden Einheit holen (draft = JSON-Text oder null).",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const d = await readGymDraft(env.DB);
+      return json({ draft: d?.data ?? null, updatedAt: d?.updatedAt ?? null });
     },
   );
 

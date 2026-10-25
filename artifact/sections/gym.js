@@ -1,6 +1,7 @@
 // Gym-Modus (#107): Einheit aus Vorlage oder letzter Einheit starten, Sätze abhaken, Pausen-Timer, am Ende mit
 // Einzelsätzen, Startzeit und Dauer speichern (get_strength, suggest_strength_session, log_strength_session).
-// Der laufende Stand liegt nur in diesem Browser (localStorage), damit ein Neuladen nichts verliert.
+// Der laufende Stand liegt im Browser (localStorage) und zusätzlich als Entwurf auf dem Server (save_gym_draft/get_gym_draft):
+// Der Browserspeicher des Handys kann nach einer Pause im Hintergrund leer zurückkommen, der Entwurf holt die Einheit dann zurück.
 FC.section({
   id: "gym",
   tab: "training",
@@ -54,6 +55,7 @@ FC.section({
       <p class="muted" id="gyMsg" role="status" style="margin:8px 0 0"></p>`;
     this.root = root;
     this.st = this.loadState();
+    this.restoreDraft();
     FC.state.gym = this; // „Heute dran“ startet von dort die geplante Krafteinheit
   },
   ready() {
@@ -65,7 +67,28 @@ FC.section({
   render() { if (!this.drawn) this.draw(); },
 
   loadState() { try { const v = JSON.parse(localStorage.getItem(this.KEY) ?? "null"); return v?.exercises ? v : null; } catch { return null; } },
-  persist() { try { if (this.st) localStorage.setItem(this.KEY, JSON.stringify(this.st)); else localStorage.removeItem(this.KEY); } catch {} },
+  persist() {
+    try { if (this.st) localStorage.setItem(this.KEY, JSON.stringify(this.st)); else localStorage.removeItem(this.KEY); } catch {}
+    this.pushDraft();
+  },
+  /** Zwischenstand kurz verzögert auf den Server sichern (leer = Entwurf löschen); Fehler sind nur ein Komfortverlust. */
+  pushDraft() {
+    clearTimeout(this.draftT);
+    const send = () => FC.call("save_gym_draft", this.st ? { draft: JSON.stringify(this.st) } : {}).catch(() => {});
+    if (this.st) this.draftT = setTimeout(send, 1500); else send();
+  },
+  /** Ist lokal nichts mehr da, den Entwurf vom Server holen (z. B. nach Neustart des Browsers auf dem Handy). */
+  async restoreDraft() {
+    if (this.st) return;
+    try {
+      const r = await FC.call("get_gym_draft", {});
+      const v = r?.draft ? JSON.parse(r.draft) : null;
+      if (!v?.exercises || this.st) return;
+      this.st = v; this.persist();
+      this.msg("Laufende Einheit vom Server wiederhergestellt.");
+      if (this.drawn) this.draw();
+    } catch { /* offline oder kein Entwurf */ }
+  },
   restFor(name) { return /kniebeuge|kreuzheben|bankdr|schulterdr|rudern|klimmzug|beinpresse|hip thrust|dips|squat|deadlift|bench|press|row|pull/i.test(name) ? 180 : 90; },
   /** Verlauf einer Übung aus get_strength (nach Name, da Vorlagen und Plan Namen liefern). */
   prog(name) { const n = name.trim().toLowerCase(); return this.data?.progress?.find((p) => p.name.toLowerCase() === n || p.exercise === n) ?? null; },

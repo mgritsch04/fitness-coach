@@ -89,6 +89,8 @@ const payloads = {
   suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   save_strength_template: (i) => { window.__tplSaved = i; return i; },
+  save_gym_draft: () => ({ saved: true }),
+  get_gym_draft: () => ({ draft: null, updatedAt: null }),
   set_training_prefs: (i) => { window.__prefsSaved = i; return i; },
   set_day_time: (i) => { window.__dayTime = i; return window.__MOCK__.get_dashboard.training.thisWeek; },
   describe_exercise: (i) => (/reifen/i.test(i.text) ? { query: i.text, suggestions: [], custom: { name: "Reifen umwerfen" }, note: "Keine passende Übung im Katalog gefunden. Du kannst sie als eigene Übung anlegen." } : { query: i.text, suggestions: [{ exercise: "lat_pulldown", name: "Latziehen", muscles: ["Rücken", "Bizeps"], match: 100, why: ["kabel"] }, { exercise: "cable_row", name: "Rudern am Kabel", muscles: ["Rücken", "Bizeps"], match: 60, why: ["kabel"] }], custom: { name: "Am Kabel ziehen" }, note: "Vorschläge aus dem Übungskatalog." }),
