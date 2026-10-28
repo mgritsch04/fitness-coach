@@ -268,6 +268,8 @@ describe("Werkzeuge gegen D1", () => {
     // Eine importierte FIT-Fahrt mit Bestleistungskurve (wie vom MyWhoosh-Import gespeichert).
     stmts.push(upsertWorkout(db, { source: "mywhoosh", sourceId: "fit1", day: "2026-03-20", startTime: "2026-03-20T07:00:00.000Z", endTime: "2026-03-20T07:30:00.000Z", sport: "cycling", durationS: 1800, distanceM: 15000, energyKj: 450, avgHr: null, maxHr: null, avgPowerW: 240, normalizedPowerW: 255, strain: null }));
     stmts.push(upsertWorkoutStream(db, { source: "mywhoosh", sourceId: "fit1", startTime: "2026-03-20T07:00:00.000Z", power: null, heartRate: null, cadence: null, powerCurve: { "300": 330, "1200": 280 } }));
+    // Krafteinheit zählt nicht in die Zonen des Leistungsprofils.
+    stmts.push(upsertWorkout(db, { source: "whoop", sourceId: "gym1", day: "2026-03-25", startTime: "2026-03-25T05:00:00.000Z", endTime: "2026-03-25T06:00:00.000Z", sport: "bodybuilding", durationS: 3600, distanceM: null, energyKj: 400, avgHr: 100, maxHr: 130, avgPowerW: null, normalizedPowerW: null, strain: 8 }));
     await runBatched(db, stmts);
 
     const c = await analysisContext(db, { days: 28, now });
@@ -278,6 +280,7 @@ describe("Werkzeuge gegen D1", () => {
     expect(profile.ftp).toMatchObject({ watts: 266, origin: "data", estimate: { method: "curve_20min" } });
     expect(profile.zones.power).toHaveLength(7);
     expect(profile.zoneDistribution.power?.totalMinutes).toBe(14 * 90 + 30);
+    expect(profile.zoneDistribution.hr?.zones[0].minutes).toBe(0);
     expect(profile.powerCurve.allTime.map((p) => p.durationS)).toEqual([300, 1200]);
 
     const load = trainingLoadView(c);

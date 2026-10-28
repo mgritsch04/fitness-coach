@@ -33,7 +33,7 @@ import {
 import { recoveryFactors, strainRecovery } from "./insights";
 import { earlyWarning } from "./warnings";
 import { sleepReport } from "./sleep";
-import { recordsReport } from "./records";
+import { isRide, recordsReport } from "./records";
 import { lateTrainingDays, recoveryForecast, type ForecastInput } from "./forecast";
 import { interferenceReport } from "./interference";
 import { hrvTrend } from "./hrv-trend";
@@ -135,6 +135,8 @@ export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalR
   const powerStreams = new Map(rides.map((r) => [`${r.source}:${r.sourceId}`, r.power] as const));
   const hrStreams = new Map(rides.flatMap((r) => (r.heartRate ? [[`${r.source}:${r.sourceId}`, r.heartRate] as const] : [])));
   const inView = c.workouts.filter((w) => w.day >= c.viewFrom);
+  // Zeit je Zone im Leistungsprofil: nur Radeinheiten (Kraft, Gehen usw. verfälschen die Zonen).
+  const rideView = inView.filter((w) => isRide(w.sport));
   const zones = zonesFor(c.settings);
   return {
     today: c.today,
@@ -148,8 +150,8 @@ export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalR
     },
     zones,
     zoneDistribution: {
-      power: zones.power ? zoneDistribution(inView, zones.power, "power", powerStreams) : null,
-      hr: zones.hr ? zoneDistribution(inView, zones.hr, "hr", hrStreams) : null,
+      power: zones.power ? zoneDistribution(rideView, zones.power, "power", powerStreams) : null,
+      hr: zones.hr ? zoneDistribution(rideView, zones.hr, "hr", hrStreams) : null,
     },
     hrZoneTime: hrZoneReport(c.workouts, c.viewFrom, c.today),
     powerCurve: {
@@ -162,7 +164,7 @@ export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalR
     },
     notes: [
       "Zonen: Leistung nach Coggan (Anteile der FTP), Puls nach Friel (Anteile des Schwellenpulses).",
-      "Zeit je Zone: bei Fahrten mit Sekundenwerten (FIT) zählt jede Sekunde in ihrer Zone, sonst ganz die Zone des Mittelwerts (Näherung).",
+      "Zeit je Zone: bei Fahrten mit Sekundenwerten (FIT) zählt jede Sekunde in ihrer Zone, sonst ganz die Zone des Mittelwerts (Näherung). Nur Radeinheiten.",
       c.powerRows.length ? null : "Die Leistungskurve braucht Sekundenwerte der Leistung (FIT-Dateien von MyWhoosh oder Wahoo); bisher keine vorhanden.",
       ESTIMATE_NOTE,
     ].filter(Boolean),
