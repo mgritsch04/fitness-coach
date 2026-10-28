@@ -26,6 +26,7 @@ import {
   trainingLoadReport,
   zoneDistribution,
   zonesFor,
+  hrZonesByMax,
   type HealthKey,
   type Period,
   flattenCurves,
@@ -137,7 +138,9 @@ export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalR
   const inView = c.workouts.filter((w) => w.day >= c.viewFrom);
   // Zeit je Zone im Leistungsprofil: nur Radeinheiten (Kraft, Gehen usw. verfälschen die Zonen).
   const rideView = inView.filter((w) => isRide(w.sport));
-  const zones = zonesFor(c.settings);
+  const base = zonesFor(c.settings);
+  // Pulszonen im Leistungsprofil: Prozent des Max-Pulses wie WHOOP; Zeiten kommen je Einheit von WHOOP.
+  const zones = { ...base, hr: c.settings.maxHr ? hrZonesByMax(c.settings.maxHr) : base.hr };
   return {
     today: c.today,
     range: range(c),
@@ -163,8 +166,8 @@ export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalR
       allTime: powerCurve(c.powerRows),
     },
     notes: [
-      "Zonen: Leistung nach Coggan (Anteile der FTP), Puls nach Friel (Anteile des Schwellenpulses).",
-      "Zeit je Zone: bei Fahrten mit Sekundenwerten (FIT) zählt jede Sekunde in ihrer Zone, sonst ganz die Zone des Mittelwerts (Näherung). Nur Radeinheiten.",
+      "Zonen: Leistung nach Coggan (Anteile der FTP), Puls in Prozent des Max-Pulses wie bei WHOOP (60/70/80/90 %).",
+      "Zeit je Zone, nur Radeinheiten: Leistung sekundengenau (FIT), sonst Zone des Mittelwerts (Näherung). Puls: WHOOP-Zonenzeiten der Einheit (mit dem Max-Puls von damals), sonst Sekundenwerte bzw. Mittelwert in Prozent des Max-Pulses.",
       c.powerRows.length ? null : "Die Leistungskurve braucht Sekundenwerte der Leistung (FIT-Dateien von MyWhoosh oder Wahoo); bisher keine vorhanden.",
       ESTIMATE_NOTE,
     ].filter(Boolean),

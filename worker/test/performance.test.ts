@@ -6,6 +6,7 @@ import {
   formZone,
   healthBand,
   hrZones,
+  hrZonesByMax,
   periodKey,
   periodSummaries,
   powerCurve,
@@ -152,6 +153,18 @@ describe("Zeit je Zone aus Sekundenwerten", () => {
     expect(d.zones[4].minutes).toBe(6);
     expect(d.zones[0].minutes).toBe(15);
     expect(d.zones[1].minutes).toBe(5);
+  });
+
+  it("Puls: WHOOP-Zonenzeiten der Einheit gelten, sonst Prozent vom Max-Puls", () => {
+    const z = hrZonesByMax(197);
+    expect(z.map((x) => x.max)).toEqual([118, 138, 158, 177, null]);
+    // 26.10.: WHOOP-Zonen 0–5 in Sekunden (626 / 1605 / 1692), Mittelwert 131.
+    const withWhoop = workout({ source: "wahoo", source_id: "r1", duration_s: 3923, avg_hr: 131, hr_zone_s: "[626,1605,1692,0,0,0]" });
+    const d = zoneDistribution([withWhoop], z, "hr");
+    expect(d.zones.map((x) => x.minutes)).toEqual([37, 28, 0, 0, 0]);
+    // Ohne WHOOP-Zonen: Mittelwert 131 liegt in Zone 2 (119 bis 138).
+    const without = workout({ source: "mywhoosh", source_id: "r2", duration_s: 3600, avg_hr: 131, hr_zone_s: null });
+    expect(zoneDistribution([without], z, "hr").zones[1].minutes).toBe(60);
   });
 
   it("Intervalle bei 110 % FTP landen in Zone 5 (VO2max)", () => {

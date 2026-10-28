@@ -155,6 +155,11 @@ export function hrZones(thresholdHr: number): Zone[] {
   return buildZones(thresholdHr, [0.81, 0.89, 0.93, 0.99], ["Erholung", "Grundlage", "Tempo", "Schwelle", "Über der Schwelle"]);
 }
 
+/** Pulszonen in Prozent des Max-Pulses wie bei WHOOP (60/70/80/90 %); WHOOP-Zone 0 und 1 zählen zusammen als Zone 1. */
+export function hrZonesByMax(maxHr: number): Zone[] {
+  return buildZones(maxHr, [0.6, 0.7, 0.8, 0.9], ["Sehr leicht", "Leicht (Grundlage)", "Moderat", "Hart", "Maximal"]);
+}
+
 export function zoneOf(value: number, zones: readonly Zone[]): number {
   for (const z of zones) if (z.max == null || value <= z.max) return z.zone;
   return zones.at(-1)?.zone ?? 0;
@@ -169,7 +174,7 @@ export interface ZoneDistribution {
 }
 
 /**
- * Zeit je Zone. Ohne Sekundenwerte wird jede Einheit ohne Sekundenwerte vollständig der Zone ihrer mittleren
+ * Zeit je Zone. Ohne Sekundenwerte wird jede Einheit ohne Sekundenwerte (und ohne WHOOP-Zonen beim Puls) vollständig der Zone ihrer mittleren
  * (normalisierten) Leistung bzw. ihres mittleren Pulses zugeordnet – eine Näherung.
  */
 export function zoneDistribution(
@@ -181,6 +186,13 @@ export function zoneDistribution(
 ): ZoneDistribution {
   const acc = zones.map((z) => ({ ...z, minutes: 0, sharePct: 0, workouts: 0 }));
   for (const w of workouts) {
+    // Pulszonen: WHOOP-Zonenzeiten der Einheit gelten (mit dem Max-Puls von damals), wenn vorhanden.
+    const whoop = basis === "hr" && zones.length === 5 ? parseZones(w.hr_zone_s) : null;
+    if (whoop && whoop.some((x) => x > 0)) {
+      const per = [whoop[0] + whoop[1], whoop[2], whoop[3], whoop[4], whoop[5]];
+      per.forEach((sec, i) => { if (sec) { acc[i].minutes += sec / 60; acc[i].workouts++; } });
+      continue;
+    }
     const stream = streams?.get(`${w.source}:${w.source_id}`);
     // Leistung 0 W (Rollen) zählt in Zone 1; Puls 0 ist kein Messwert.
     const min = basis === "power" ? 0 : 1;
