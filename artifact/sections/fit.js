@@ -129,6 +129,6 @@ FC.section({
       ] });
     $("pcCap").textContent = `Beste Durchschnittsleistung je Dauer, nur Fahrten mit Sekundenwerten (FIT-Import).${ftp.watts ? " Gestrichelt: FTP." : ""} Geschätzte Werte sind Richtwerte.`;
     zones.replaceChildren(...[this.zoneList(c.zoneDistribution.power, "Leistungszonen"), this.zoneList(c.zoneDistribution.hr, "Pulszonen")].filter(Boolean));
-    if (zones.children.length) zones.append(el("p", { class: "chart-cap", text: "Letzte 6 Wochen. Näherung: jede Einheit zählt ganz in die Zone ihres Mittelwerts." }));
+    if (zones.children.length) zones.append(el("p", { class: "chart-cap", text: "Letzte 6 Wochen. Mit Sekundenwerten (FIT) zählt jede Sekunde in ihrer Zone, sonst ganz die Zone des Mittelwerts (Näherung)." }));
   },
 });

@@ -40,7 +40,7 @@ import { hrvTrend } from "./hrv-trend";
 import { timingReport } from "./timing";
 import { durabilityReport, readRideStreams } from "./durability";
 import { aerobicReport, readHrRideStreams } from "./aerobic";
-import { intervalReport, readIntervalRides } from "./intervals";
+import { intervalReport, readIntervalRides, type IntervalRide } from "./intervals";
 import { cadenceReport } from "./cadence";
 import { riderProfile } from "./rider-profile";
 import { combineCurves } from "./power";
@@ -131,7 +131,8 @@ export function trainingLoadView(c: AnalysisContext) {
   };
 }
 
-export function fitnessProfileView(c: AnalysisContext) {
+export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalRide[] = []) {
+  const powerStreams = new Map(rides.map((r) => [`${r.source}:${r.sourceId}`, r.power] as const));
   const inView = c.workouts.filter((w) => w.day >= c.viewFrom);
   const zones = zonesFor(c.settings);
   return {
@@ -146,7 +147,7 @@ export function fitnessProfileView(c: AnalysisContext) {
     },
     zones,
     zoneDistribution: {
-      power: zones.power ? zoneDistribution(inView, zones.power, "power") : null,
+      power: zones.power ? zoneDistribution(inView, zones.power, "power", powerStreams) : null,
       hr: zones.hr ? zoneDistribution(inView, zones.hr, "hr") : null,
     },
     hrZoneTime: hrZoneReport(c.workouts, c.viewFrom, c.today),
