@@ -15,7 +15,7 @@ FC.section({
     .wplan .pd .wd { font-size: 12px; opacity: .7; display: flex; justify-content: space-between; gap: 4px; }
     .wplan .pd .t { font-weight: 600; font-size: 13px; line-height: 1.2; overflow-wrap: anywhere; }
     .wplan .pd .m { font-size: 12px; opacity: .75; }
-    .wplan .pd .k { font-size: 11px; opacity: .8; }
+    .wplan .pd .k { font-size: 12px; opacity: .8; }
     .wplan .pd.rest { color: var(--ink-2); }
     .wplan .ck { font-weight: 700; }
     .wplan .ck.done { color: #2fbf2f; } .wplan .ck.missed { color: #e66767; } .wplan .ck.partial { color: #fab219; } .wplan .ck.extra { color: #4fb3cf; }

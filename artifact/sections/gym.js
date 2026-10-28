@@ -20,21 +20,21 @@ FC.section({
     .gy-rest { display: flex; align-items: center; gap: 8px; }
     .gy-rest b { font-family: var(--font-display); font-size: 1.7rem; font-variant-numeric: tabular-nums; min-width: 3.2em; }
     .gy-rest.over b { color: var(--good-ink); }
-    .gy-rest button { padding: 6px 9px; }
+    .gy-rest button { min-height: 44px; padding: 6px 12px; }
     .gy-ex { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
     .gy-ex.cur { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .gy-ex.done { opacity: .75; }
     .gy-exh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
     .gy-exh h3 { margin: 0; }
     .gy-swapbox { border-top: 1px dashed var(--line); padding-top: 8px; }
-    .gy-set { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 8px; align-items: center; }
-    .gy-set input { width: 100%; min-width: 0; font-size: 1rem; padding: 8px; text-align: center; }
+    .gy-set { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 10px; align-items: center; }
+    .gy-set input { width: 100%; min-width: 0; min-height: 48px; font-size: 1.15rem; padding: 8px; text-align: center; }
     .gy-plates { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 2px 0 8px; font-size: .9rem; }
     .gy-warm { margin: -4px 0 8px; font-size: .85rem; color: var(--ink-2); }
     .gy-warm ol { margin: 2px 0 0; padding-left: 1.4em; }
     .gy-plates strong { font-variant-numeric: tabular-nums; }
     .gy-set .n { color: var(--ink-3); font-size: .85rem; }
-    .gy-set .ok { height: 44px; border-radius: 10px; font-size: 1.2rem; padding: 0; }
+    .gy-set .ok { height: 48px; border-radius: 10px; font-size: 1.2rem; padding: 0; }
     .gy-set.on .ok { background: var(--good); border-color: var(--good); color: var(--panel); }
     .gy-set.on input { color: var(--ink-2); }
     .gy-head { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) minmax(0, 1fr) 3.2em; gap: 8px; font-size: .78rem; color: var(--ink-3); text-align: center; }
@@ -43,10 +43,10 @@ FC.section({
     .gy-list { display: grid; gap: 12px; }
     .gy-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .gy-rir { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -2px 0 6px; }
-    .gy-rir button { min-width: 3.2em; padding: 6px 0; }
+    .gy-rir button { min-width: 3.2em; min-height: 44px; padding: 6px 0; }
     .gy-rir button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink, #fff); }
     .gy-rpe { display: flex; flex-wrap: wrap; gap: 6px; }
-    .gy-rpe button { min-width: 2.6em; padding: 8px 0; }
+    .gy-rpe button { min-width: 2.6em; min-height: 44px; padding: 8px 0; }
     .gy-rpe button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink, #fff); }
     #sec-gym .linkish { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }`,
   mount(root) {
