@@ -31,7 +31,7 @@
     .wd-kpi b { font-family: var(--font-display); font-size: 1.15rem; }
     .wd-kpi span { font-size: 0.78rem; color: var(--ink-3); }
     .wd-chart svg { display: block; width: 100%; height: auto; }
-    .wd-chart text { font-size: 10px; fill: var(--ink-3); }
+    .wd-chart text { font-size: 11px; fill: var(--ink-3); }
     .wd-leg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.83rem; color: var(--ink-2); margin-top: 4px; }
     .wd-leg i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
     .wd-zone { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; font-size: 0.86rem; margin-bottom: 8px; }

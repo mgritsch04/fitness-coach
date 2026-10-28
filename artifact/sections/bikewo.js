@@ -12,7 +12,7 @@ FC.section({
     .bw-sum { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline; margin-bottom: 8px; }
     .bw-sum b { font-family: var(--font-display); font-size: 1.3rem; }
     .bw-prof svg { display: block; }
-    .bw-prof text { font-size: 10px; fill: var(--ink-3); }
+    .bw-prof text { font-size: 11px; fill: var(--ink-3); }
     .bw-steps { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .92rem; }
     .bw-how a { color: var(--accent); }
     .bw-how { margin: 6px 0 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .9rem; color: var(--ink-2); }

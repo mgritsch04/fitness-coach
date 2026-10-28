@@ -6,7 +6,7 @@ FC.section({
   css: `
     .yr-wrap { overflow-x: auto; padding-bottom: 4px; }
     .yr-wrap svg { display: block; }
-    .yr-wrap text { font-size: 10px; fill: var(--ink-3); }
+    .yr-wrap text { font-size: 11px; fill: var(--ink-3); }
     .yr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 12px; }
     .yr-stats b { display: block; font-family: var(--font-display); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
     .yr-legend { display: flex; align-items: center; gap: 4px; font-size: .8rem; color: var(--ink-2); margin-top: 6px; }
