@@ -133,6 +133,7 @@ export function trainingLoadView(c: AnalysisContext) {
 
 export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalRide[] = []) {
   const powerStreams = new Map(rides.map((r) => [`${r.source}:${r.sourceId}`, r.power] as const));
+  const hrStreams = new Map(rides.flatMap((r) => (r.heartRate ? [[`${r.source}:${r.sourceId}`, r.heartRate] as const] : [])));
   const inView = c.workouts.filter((w) => w.day >= c.viewFrom);
   const zones = zonesFor(c.settings);
   return {
@@ -148,7 +149,7 @@ export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalR
     zones,
     zoneDistribution: {
       power: zones.power ? zoneDistribution(inView, zones.power, "power", powerStreams) : null,
-      hr: zones.hr ? zoneDistribution(inView, zones.hr, "hr") : null,
+      hr: zones.hr ? zoneDistribution(inView, zones.hr, "hr", hrStreams) : null,
     },
     hrZoneTime: hrZoneReport(c.workouts, c.viewFrom, c.today),
     powerCurve: {
@@ -161,7 +162,7 @@ export function fitnessProfileView(c: AnalysisContext, rides: readonly IntervalR
     },
     notes: [
       "Zonen: Leistung nach Coggan (Anteile der FTP), Puls nach Friel (Anteile des Schwellenpulses).",
-      "Zeit je Zone ist eine Näherung: jede Einheit zählt ganz in die Zone ihrer mittleren Leistung bzw. ihres mittleren Pulses.",
+      "Zeit je Zone: bei Fahrten mit Sekundenwerten (FIT) zählt jede Sekunde in ihrer Zone, sonst ganz die Zone des Mittelwerts (Näherung).",
       c.powerRows.length ? null : "Die Leistungskurve braucht Sekundenwerte der Leistung (FIT-Dateien von MyWhoosh oder Wahoo); bisher keine vorhanden.",
       ESTIMATE_NOTE,
     ].filter(Boolean),

@@ -176,15 +176,17 @@ export function zoneDistribution(
   workouts: readonly WorkoutRow[],
   zones: readonly Zone[],
   basis: "power" | "hr",
-  /** Leistung je Sekunde nach "quelle:id"; damit zählt die Zeit je Zone statt des Mittelwerts (nur basis "power"). */
-  powerStreams?: ReadonlyMap<string, readonly (number | null)[]>,
+  /** Messwerte je Sekunde (Leistung bzw. Puls) nach "quelle:id"; damit zählt die Zeit je Zone statt des Mittelwerts. */
+  streams?: ReadonlyMap<string, readonly (number | null)[]>,
 ): ZoneDistribution {
   const acc = zones.map((z) => ({ ...z, minutes: 0, sharePct: 0, workouts: 0 }));
   for (const w of workouts) {
-    const stream = basis === "power" ? powerStreams?.get(`${w.source}:${w.source_id}`) : undefined;
-    if (stream?.some((p) => p != null)) {
+    const stream = streams?.get(`${w.source}:${w.source_id}`);
+    // Leistung 0 W (Rollen) zählt in Zone 1; Puls 0 ist kein Messwert.
+    const min = basis === "power" ? 0 : 1;
+    if (stream?.some((p) => p != null && p >= min)) {
       const secs = zones.map(() => 0);
-      for (const p of stream) if (p != null && p >= 0) secs[zoneOf(p, zones) - 1]++;
+      for (const p of stream) if (p != null && p >= min) secs[zoneOf(p, zones) - 1]++;
       secs.forEach((s, i) => { if (s) acc[i].minutes += s / 60; });
       for (const [i, s] of secs.entries()) if (s) acc[i].workouts++;
       continue;

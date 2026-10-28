@@ -143,6 +143,17 @@ describe("Zeit je Zone aus Sekundenwerten", () => {
     expect(d.intensity.hardPct).toBe(40);
   });
 
+  it("Puls: Sekundenwerte zählen in ihrer Zone, nicht der Mittelwert (Schwellenpuls 175)", () => {
+    // Einheit vom 28.10.: Mittelwert 141 (Zone 1), aber 6 min bei 176–186 (Zone 5).
+    const hr = [...Array(900).fill(125), ...Array(360).fill(180), ...Array(300).fill(150)];
+    const w = [workout({ source: "mywhoosh", source_id: "fit1", duration_s: 1560, avg_hr: 141 })];
+    expect(zoneDistribution(w, hrZones(175), "hr").zones[4].minutes).toBe(0);
+    const d = zoneDistribution(w, hrZones(175), "hr", new Map([["mywhoosh:fit1", hr]]));
+    expect(d.zones[4].minutes).toBe(6);
+    expect(d.zones[0].minutes).toBe(15);
+    expect(d.zones[1].minutes).toBe(5);
+  });
+
   it("Intervalle bei 110 % FTP landen in Zone 5 (VO2max)", () => {
     const p = Array(60).fill(202);
     const d = zoneDistribution(ws, powerZones(184), "power", new Map([["mywhoosh:fit1", p]]));
