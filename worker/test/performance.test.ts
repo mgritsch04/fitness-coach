@@ -120,6 +120,36 @@ describe("Zonen", () => {
   });
 });
 
+describe("Zeit je Zone aus Sekundenwerten", () => {
+  // MyWhoosh-VO2max-Einheit vom 28.10.: 8 × ca. 45 s bei 230 W, dazwischen 120 W, FTP 184 W.
+  const ride = (): (number | null)[] => {
+    const p: (number | null)[] = Array(300).fill(90);
+    for (let i = 0; i < 8; i++) p.push(...Array(45).fill(230), ...Array(30).fill(120));
+    return p;
+  };
+  const ws = [workout({ source: "mywhoosh", source_id: "fit1", duration_s: 540, avg_power_w: 129, normalized_power_w: 149 })];
+
+  it("Mittelwert allein ordnet die ganze Einheit Zone 3 zu (alte Näherung)", () => {
+    const d = zoneDistribution(ws, powerZones(184), "power");
+    expect(d.zones[2].minutes).toBe(9);
+    expect(d.zones[5].minutes).toBe(0);
+  });
+
+  it("zählt die harten Intervalle in ihrer Zone (230 W = 125 % FTP = Zone 6)", () => {
+    const d = zoneDistribution(ws, powerZones(184), "power", new Map([["mywhoosh:fit1", ride()]]));
+    expect(d.zones[5].minutes).toBe(6);
+    expect(d.zones[0].minutes).toBe(5);
+    expect(d.zones[1].minutes).toBe(4);
+    expect(d.intensity.hardPct).toBe(40);
+  });
+
+  it("Intervalle bei 110 % FTP landen in Zone 5 (VO2max)", () => {
+    const p = Array(60).fill(202);
+    const d = zoneDistribution(ws, powerZones(184), "power", new Map([["mywhoosh:fit1", p]]));
+    expect(d.zones[4].minutes).toBe(1);
+  });
+});
+
 describe("Form und Trainingslast", () => {
   it("ordnet die Form ein", () => {
     expect([-40, -20, 0, 10, 30].map(formZone)).toEqual(["overreaching", "productive", "maintaining", "fresh", "detraining"]);

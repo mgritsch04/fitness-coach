@@ -169,12 +169,26 @@ export interface ZoneDistribution {
 }
 
 /**
- * Zeit je Zone. Ohne Sekundenwerte wird jede Einheit vollständig der Zone ihrer mittleren
+ * Zeit je Zone. Ohne Sekundenwerte wird jede Einheit ohne Sekundenwerte vollständig der Zone ihrer mittleren
  * (normalisierten) Leistung bzw. ihres mittleren Pulses zugeordnet – eine Näherung.
  */
-export function zoneDistribution(workouts: readonly WorkoutRow[], zones: readonly Zone[], basis: "power" | "hr"): ZoneDistribution {
+export function zoneDistribution(
+  workouts: readonly WorkoutRow[],
+  zones: readonly Zone[],
+  basis: "power" | "hr",
+  /** Leistung je Sekunde nach "quelle:id"; damit zählt die Zeit je Zone statt des Mittelwerts (nur basis "power"). */
+  powerStreams?: ReadonlyMap<string, readonly (number | null)[]>,
+): ZoneDistribution {
   const acc = zones.map((z) => ({ ...z, minutes: 0, sharePct: 0, workouts: 0 }));
   for (const w of workouts) {
+    const stream = basis === "power" ? powerStreams?.get(`${w.source}:${w.source_id}`) : undefined;
+    if (stream?.some((p) => p != null)) {
+      const secs = zones.map(() => 0);
+      for (const p of stream) if (p != null && p >= 0) secs[zoneOf(p, zones) - 1]++;
+      secs.forEach((s, i) => { if (s) acc[i].minutes += s / 60; });
+      for (const [i, s] of secs.entries()) if (s) acc[i].workouts++;
+      continue;
+    }
     const v = basis === "power" ? (w.normalized_power_w ?? w.avg_power_w) : w.avg_hr;
     const minutes = (w.duration_s ?? 0) / 60;
     if (v == null || !(v > 0) || !(minutes > 0)) continue;

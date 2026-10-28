@@ -13,6 +13,7 @@ import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
 import { readIndoor, writeIndoor } from "./core/indoor";
 import { readLayout, writeLayout } from "./core/ui-layout";
+import { readIntervalRides } from "./core/intervals";
 import { analysisContext, fitnessProfileView, healthTrendsView, periodSummariesView, recoveryFactorsView, earlyWarningView, sleepReportView, recordsView, enduranceView, recoveryForecastView, interferenceView, hrvTrendView, trainingTimingView, durabilityView, aerobicView, intervalQualityView, cadenceView, riderProfileView, muscleBalanceView, analysisHighlightsView, recoveryCurveView, readinessAlignmentView, eftpView, indoorOutdoorView, powerCompareView, strainRecoveryView, trainingLoadView } from "./core/analytics";
 import type { AuthProps, Env } from "./env";
 import { registerStrengthTools } from "./strength-tools";
@@ -328,7 +329,10 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       inputSchema: viewDays(28),
       annotations: { readOnlyHint: true },
     },
-    async ({ days: d }) => json(fitnessProfileView(await analysisContext(env.DB, { days: d ?? 28, maxDays: 730 }))),
+    async ({ days: d }) => {
+      const c = await analysisContext(env.DB, { days: d ?? 28, maxDays: 730 });
+      return json(fitnessProfileView(c, await readIntervalRides(env.DB, c.viewFrom)));
+    },
   );
 
   server.registerTool(
