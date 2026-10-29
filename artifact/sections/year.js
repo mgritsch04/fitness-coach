@@ -1,6 +1,7 @@
 // Jahresübersicht (#25): Kalender-Heatmap der Tagesbelastung über 12 Monate, Serien und Spitzenwerte (get_training_load).
 FC.section({
   id: "year",
+  simple: true,
   tab: "training",
   order: 58,
   css: `

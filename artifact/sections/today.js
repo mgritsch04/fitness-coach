@@ -30,7 +30,7 @@ FC.section({
       </div>`;
   },
   render(d) {
-    const { $, el, sv, de, fmtDayLong, fmtWeekday, fmtH, cssVar, recStatus, spark, dayDate } = FC;
+    const { $, el, sv, de, fmtDayLong, fmtWeekday, fmtH, cssVar, recStatus, spark, dayDate, chart, fmtDay } = FC;
     const READY = { rest: "Ruhe", easy: "Locker", moderate: "Normal", hard: "Hart" };
     const c = d.coach;
     $("date").textContent = dayDate(d.today).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
@@ -76,24 +76,51 @@ FC.section({
       const bad = invert ? t.status === "above" : t.status === "below", good = invert ? t.status === "below" : t.status === "above";
       return el("span", { class: `st ${bad ? "bad" : good ? "good" : "none"}`, text: bad ? (invert ? "über Basis" : "unter Basis") : good ? (invert ? "unter Basis" : "über Basis") : "im Normalbereich" });
     };
-    const tile = (label, value, unit, sub, extra, sparkVals, color) =>
-      el("div", { class: "tile" }, el("span", { class: "label", text: label }), el("span", { class: "big" }, value, unit ? el("small", { text: unit }) : null),
+    // Antippen einer Kachel zeigt ihren Verlauf (30/90/180 Tage); die Kachel läuft dann über die ganze Breite.
+    const tile = (label, value, unit, sub, extra, sparkVals, color, trend) => {
+      const t = el("div", { class: "tile" }, el("span", { class: "label", text: label }), el("span", { class: "big" }, value, unit ? el("small", { text: unit }) : null),
         sub ? el("span", { class: "cmp", text: sub }) : null, extra, sparkVals ? spark(sparkVals, color) : null);
+      if (!trend) return t;
+      const key = `${label}`;
+      const draw = (box, n) => {
+        chart(box, { days: d.days.slice(-n), aria: `${label}, letzte ${n} Tage`, xFmt: (p) => fmtDay(p.day), height: 200,
+          series: [{ label, kind: trend.bar ? "bar" : "line", color, width: 2, value: trend.value, fmt: (v) => `${de(v, trend.digits ?? 0)} ${trend.unit}` }] });
+      };
+      const open = (on) => {
+        t.classList.toggle("open", on); t.setAttribute("aria-expanded", String(on));
+        t.querySelector(".tl-more")?.remove();
+        if (FC.tileOpen === key && !on) FC.tileOpen = null;
+        if (!on) return;
+        FC.tileOpen = key;
+        const box = el("div", { class: "tl-chart" });
+        const bar = el("div", { class: "tl-range" });
+        for (const n of [30, 90, 180]) bar.append(el("button", { class: "link", type: "button", text: `${n} Tage`, onclick: (e) => { e.stopPropagation(); draw(box, n); } }));
+        const more = el("div", { class: "tl-more", onclick: (e) => e.stopPropagation() }, bar, box);
+        t.append(more); draw(box, 90);
+      };
+      t.tabIndex = 0; t.setAttribute("role", "button"); t.setAttribute("aria-expanded", "false"); t.title = "Antippen: Verlauf anzeigen";
+      t.classList.add("tl");
+      t.addEventListener("click", () => open(!t.classList.contains("open")));
+      t.addEventListener("keydown", (e) => { if (e.target === t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(!t.classList.contains("open")); } });
+      if (FC.tileOpen === key) open(true);
+      return t;
+    };
     const tiles = $("tiles"); tiles.replaceChildren();
+    const trendOf = (k, unit, digits, bar) => ({ value: (p) => p[k], unit, digits, bar });
     const rp = last("recovery"), rs = recStatus(rp?.recovery);
-    tiles.append(tile("Erholung", de(rp?.recovery), "%", rp && rp.day !== d.today ? `Stand ${fmtDayLong(rp.day)}` : cmpTxt(tr.recovery), el("span", { class: `st ${rs}`, text: { good: "grün", warn: "gelb", bad: "rot", none: "keine Daten" }[rs] }), recent.map((p) => p.recovery), cssVar("--accent")));
+    tiles.append(tile("Erholung", de(rp?.recovery), "%", rp && rp.day !== d.today ? `Stand ${fmtDayLong(rp.day)}` : cmpTxt(tr.recovery), el("span", { class: `st ${rs}`, text: { good: "grün", warn: "gelb", bad: "rot", none: "keine Daten" }[rs] }), recent.map((p) => p.recovery), cssVar("--accent"), trendOf("recovery", "%")));
     const hp = last("hrv");
-    tiles.append(tile("HRV", de(hp?.hrv), "ms", cmpTxt(tr.hrv), stTxt(tr.hrv), recent.map((p) => p.hrv), cssVar("--s1")));
+    tiles.append(tile("HRV", de(hp?.hrv), "ms", cmpTxt(tr.hrv), stTxt(tr.hrv), recent.map((p) => p.hrv), cssVar("--s1"), trendOf("hrv", "ms")));
     const rh = last("rhr");
-    tiles.append(tile("Ruhepuls", de(rh?.rhr), "bpm", cmpTxt(tr.rhr), stTxt(tr.rhr, true), recent.map((p) => p.rhr), cssVar("--s2")));
+    tiles.append(tile("Ruhepuls", de(rh?.rhr), "bpm", cmpTxt(tr.rhr), stTxt(tr.rhr, true), recent.map((p) => p.rhr), cssVar("--s2"), trendOf("rhr", "bpm")));
     const sp = last("sleepH"), need = d.settings.sleepNeedH;
     const sleepSt = sp?.sleepH == null ? "none" : sp.sleepH >= need - 0.25 ? "good" : sp.sleepH >= need - 1.5 ? "warn" : "bad";
     tiles.append(tile("Schlaf", fmtH(sp?.sleepH), "h", sp ? `Bedarf ${de(need, 1)} h${sp.sleepPerf != null ? ` · Leistung ${de(sp.sleepPerf)} %` : ""}` : null,
-      el("span", { class: `st ${sleepSt}`, text: sp?.sleepH == null ? "keine Daten" : sleepSt === "good" ? "Bedarf gedeckt" : `${fmtH(need - sp.sleepH)} h zu wenig` }), recent.map((p) => p.sleepH), cssVar("--s7")));
-    tiles.append(tile("Tagesbelastung", de(tp?.strain, 1), "Strain", `Belastung heute ${de(tp?.load)} · ${tp?.workouts ?? 0} Workouts`, null, recent.map((p) => p.strain), cssVar("--ink-3")));
+      el("span", { class: `st ${sleepSt}`, text: sp?.sleepH == null ? "keine Daten" : sleepSt === "good" ? "Bedarf gedeckt" : `${fmtH(need - sp.sleepH)} h zu wenig` }), recent.map((p) => p.sleepH), cssVar("--s7"), trendOf("sleepH", "h", 1)));
+    tiles.append(tile("Tagesbelastung", de(tp?.strain, 1), "Strain", `Belastung heute ${de(tp?.load)} · ${tp?.workouts ?? 0} Workouts`, null, recent.map((p) => p.strain), cssVar("--ink-3"), trendOf("strain", "Strain", 1, true)));
     const tsb = tp?.tsb;
     tiles.append(tile("Form", tsb == null ? "–" : `${tsb > 0 ? "+" : ""}${de(tsb)}`, null, `Fitness ${de(tp?.ctl)} · Ermüdung ${de(tp?.atl)}`,
-      el("span", { class: `st ${tsb == null ? "none" : tsb < -30 ? "bad" : tsb < -10 ? "warn" : "good"}`, text: tsb == null ? "–" : tsb < -30 ? "sehr müde" : tsb < -10 ? "im Training" : tsb > 5 ? "ausgeruht" : "ausgeglichen" }), recent.map((p) => p.tsb), cssVar("--s3")));
+      el("span", { class: `st ${tsb == null ? "none" : tsb < -30 ? "bad" : tsb < -10 ? "warn" : "good"}`, text: tsb == null ? "–" : tsb < -30 ? "sehr müde" : tsb < -10 ? "im Training" : tsb > 5 ? "ausgeruht" : "ausgeglichen" }), recent.map((p) => p.tsb), cssVar("--s3"), trendOf("tsb", "", 0)));
   },
   rerender() {},
 });

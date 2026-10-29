@@ -1,6 +1,7 @@
 // Monate und Jahre: Trainingsstunden nach Art (Kraft, Rad, Sonstiges), Belastung, Erholung, Fitnessänderung (get_period_summaries).
 FC.section({
   id: "periods",
+  simple: true,
   tab: "training",
   order: 55,
   KRAFT: /bodybuilding|weight|strength|functional|crossfit|powerlifting/i,

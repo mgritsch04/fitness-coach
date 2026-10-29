@@ -1,6 +1,7 @@
 // Belastung und Erholung am Folgetag (get_strain_recovery): Mittelwerte je Strain- und Belastungsstufe, Beobachtungen.
 FC.section({
   id: "strain",
+  simple: true,
   tab: "verlauf",
   order: 38,
   css: `

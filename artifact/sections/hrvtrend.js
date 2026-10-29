@@ -1,6 +1,7 @@
 // HRV-Trend nach Plews (#125) aus get_hrv_trend: 7-Tage-Mittel gegen Normalband, Schwankung (CV) und Deutung.
 FC.section({
   id: "hrvtrend",
+  simple: true,
   tab: "verlauf",
   order: 36,
   css: `

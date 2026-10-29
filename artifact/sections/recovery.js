@@ -1,6 +1,7 @@
 // Erholung und Schlaf: Verläufe mit Zeitraum-Umschalter (gilt für alle Verlaufs-Abschnitte).
 FC.section({
   id: "recovery",
+  simple: true,
   tab: "verlauf",
   order: 30,
   mount(root) {
