@@ -312,6 +312,15 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (g.vis !== GYM_SECTIONS.length || g.bar || g.title !== "Gym Tracker" || !g.calls.includes("get_strength")) errors.push(`${name}: Gym-Seite falsch ${JSON.stringify({ ...g, calls: undefined, strength: g.calls.includes("get_strength") })}`);
   }
   if (tab === "verlauf") {
+    // HRV nur einmal im Verlauf (HRV-Trend), Erholung und Schlaf ohne eigenes HRV-Diagramm.
+    await p.evaluate(() => { FC.goTo("recovery"); }); await p.waitForTimeout(500);
+    const hv = await p.evaluate(() => ({ cHrv: !!document.getElementById("cHrv"), cHv: !!document.getElementById("cHv"), h3: [...document.querySelectorAll("#sections > section.on:not(.folded) h3")].map((x) => x.textContent).filter((t) => /HRV/.test(t)).length }));
+    if (hv.cHrv || !hv.cHv) errors.push(`${name}: HRV im Verlauf doppelt oder fehlt ${JSON.stringify(hv)}`);
+    await p.screenshot({ path: join(out, "phone-verlauf-erholung.png") });
+    await p.evaluate(() => { FC.goTo("hrvtrend"); }); await p.waitForTimeout(500);
+    await p.screenshot({ path: join(out, "phone-verlauf-hrv.png") });
+  }
+  if (tab === "verlauf") {
     // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.
     const box = p.locator("#sections > section.on:not(.folded) .chart svg").first();
     await box.scrollIntoViewIfNeeded(); const bb = await box.boundingBox();
@@ -407,10 +416,9 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#moStart").catch(() => errors.push(`${name}: Mobility ohne Start-Knopf`)); await p.waitForTimeout(1200);
     if (!(await p.evaluate(() => !document.getElementById("moRun").hidden && /\d+ s/.test(document.getElementById("moRun").textContent)))) errors.push(`${name}: Mobility-Timer läuft nicht`);
     await p.click("#moStart").catch(() => {});
-    // Kraft pro kg (#203): Tabelle mit Stufen im Abschnitt Krafttraining.
+    // Kraft pro kg ist ausgeblendet (G braucht sie nicht).
     await p.evaluate(() => FC.goTo("strength")); await p.waitForTimeout(800);
-    const stdN = await p.$$eval("#stStd tbody tr", (r) => r.length).catch(() => 0);
-    if (stdN !== 2) errors.push(`${name}: Kraft pro kg zeigt ${stdN} statt 2 Zeilen`);
+    if (await p.$("#stStd")) errors.push(`${name}: Kraft pro kg sollte nicht mehr angezeigt werden`);
     await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
     await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
   }
