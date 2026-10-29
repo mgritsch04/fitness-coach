@@ -2,6 +2,7 @@
 // Frühere Werte nachtragen: Zeilen „Datum Gewicht“ einfügen oder eine CSV-Datei wählen (z. B. Export der Waage); gelesen wird nur im Browser.
 FC.section({
   id: "body",
+  simple: true,
   tab: "verlauf",
   order: 38,
   css: `

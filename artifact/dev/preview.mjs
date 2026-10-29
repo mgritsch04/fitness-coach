@@ -307,6 +307,12 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (await p.evaluate(() => [...document.querySelectorAll(".tip")].some((x) => !x.hidden))) errors.push(`${name}: Tippen daneben blendet Werte nicht aus`);
   }
   if (tab === "heute") {
+    // Kachel antippen zeigt den Verlauf (Diagramm), nochmal antippen schließt ihn.
+    await p.click("#tiles .tile.tl").catch(() => errors.push(`${name}: Kachel nicht anklickbar`)); await p.waitForTimeout(250);
+    const tl = await p.evaluate(() => ({ open: !!document.querySelector("#tiles .tile.open svg"), n: document.querySelectorAll("#tiles .tile.tl").length }));
+    if (!tl.open || tl.n !== 6) errors.push(`${name}: Kachel-Verlauf falsch ${JSON.stringify(tl)}`);
+    await p.click("#tiles .tile.open .label").catch(() => {}); await p.waitForTimeout(150);
+    if (await p.$("#tiles .tile.open")) errors.push(`${name}: Kachel-Verlauf schließt nicht`);
     // Heute (#191): bis „Heute dran“ offen, darunter eingeklappt.
     const hf = await p.evaluate(() => [...document.querySelectorAll("#sections > section.on.foldable")].map((x) => `${x.id.slice(4)}:${x.classList.contains("folded") ? "zu" : "auf"}`));
     if (!hf.includes("agenda:auf") || !hf.includes("weather:zu") || !hf.includes("forecast:zu")) errors.push(`${name}: Heute-Einklappen falsch ${JSON.stringify(hf)}`);
@@ -670,7 +676,7 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   await p.goto("file://" + join(out, "preview.html"));
   await p.waitForTimeout(800);
   const tabs = await p.evaluate(() => [...document.querySelectorAll("#tabbar button")].filter((b) => !b.hidden).map((b) => b.dataset.tab).join());
-  if (tabs !== "heute,coach,training,mehr") errors.push(`${name}: Reiter der einfachen Ansicht falsch: ${tabs}`);
+  if (tabs !== "heute,coach,verlauf,training,mehr") errors.push(`${name}: Reiter der einfachen Ansicht falsch: ${tabs}`);
   const secs = async () => (await p.evaluate(() => [...document.querySelectorAll("#sections > section.on")].filter((x) => !x.hidden && x.offsetHeight > 0).map((x) => x.id.slice(4)).join())).split(",");
   const heute = await secs();
   if (heute.some((x) => ["highlights", "briefing", "mobility", "whatsnew", "sleeptarget", "recovery", "health"].includes(x)) || !heute.includes("today")) errors.push(`${name}: Heute zeigt Unnötiges: ${heute}`);
