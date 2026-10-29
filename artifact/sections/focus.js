@@ -39,20 +39,21 @@ FC.section({
     // Heute dran
     const x = t?.thisWeek?.comparison?.days?.find((y) => y.day === d.today);
     const wd = (new Date(`${d.today}T12:00:00Z`).getUTCDay() + 6) % 7;
-    const kraft = t?.prefs?.templateByDay?.[wd] ?? null;
+    const dp = FC.dayPlan(t?.prefs, wd);
     const plan = el("div", { class: "fo-row" }, el("span", { class: "label", text: "Heute dran" }));
     const act = el("div", { class: "fo-act" });
-    // Eigener Plan (prefs.templateByDay): Kraft-Vorlage, „@rad“ oder „@ruhe“ ersetzt den App-Vorschlag.
-    const own = kraft && kraft !== "@rad" && kraft !== "@ruhe" ? kraft : null;
+    // Eigener Plan (prefs.templateByDay + rideByDay): Kraft-Vorlage und/oder Rad (beides am selben Tag möglich) oder Ruhetag ersetzt den App-Vorschlag.
+    const own = dp.strength;
     const ride = this.RIDES.includes(x?.type);
-    if (kraft) {
-      plan.append(el("p", { class: "fo-big", text: kraft === "@rad" ? "Radeinheit" : kraft === "@ruhe" ? "Ruhetag" : `Kraft: ${kraft}` }), el("p", { class: "fo-tip", text: "Von dir geplant." }));
-      if (own) {
+    if (dp.own) {
+      const parts = dp.rest ? ["Ruhetag"] : [dp.strength ? `Kraft: ${dp.strength}` : null, dp.ride ? "Rad" : null].filter(Boolean);
+      plan.append(el("p", { class: "fo-big", text: parts.join(" + ") }), el("p", { class: "fo-tip", text: "Von dir geplant." }));
+      if (own && !dp.rest) {
         const b = el("button", { type: "button", class: "primary", text: FC.state.gym?.st ? "Zum Gym-Modus" : `Vorlage „${own}“ starten` });
         b.onclick = () => { FC.goTo("gym"); FC.state.gym?.startTemplate(own); };
         act.append(b);
       }
-      if (kraft === "@rad") {
+      if (dp.ride) {
         const b = el("button", { type: "button", class: "primary", text: "Workout für MyWhoosh" });
         b.onclick = () => FC.goTo("bikewo");
         act.append(b);
@@ -68,7 +69,7 @@ FC.section({
         act.append(b);
       }
     }
-    plan.append(this.dayPicker(wd, kraft));
+    plan.append(this.dayPicker(wd, dp));
     // Höchstens eine Warnung: Frühwarnung vor den Hinweisen der Tagesform.
     const w = d.earlyWarning && d.earlyWarning.level !== "none" ? { level: d.earlyWarning.level, text: d.earlyWarning.headline } : c.warnings?.length ? { level: "", text: c.warnings[0] } : null;
     const warn = w ? el("p", { class: `fo-warn ${w.level}`, role: "status", text: w.text }) : null;
@@ -82,17 +83,23 @@ FC.section({
   names: null,
   dayPicker(wd, cur) {
     const { el } = FC;
-    const sel = el("select", { "aria-label": "Heute stattdessen" }, el("option", { value: "", text: "App-Vorschlag" }), el("option", { value: "@rad", text: "Rad" }), el("option", { value: "@ruhe", text: "Ruhetag" }));
-    const fill = () => { for (const n of this.names ?? []) sel.append(el("option", { value: n, text: `Kraft: ${n}` })); if (cur && ![...sel.options].some((o) => o.value === cur)) sel.append(el("option", { value: cur, text: `Kraft: ${cur}` })); sel.value = cur ?? ""; };
+    const base = el("option", { value: "" });
+    const sel = el("select", { "aria-label": "Kraft heute stattdessen" }, base, el("option", { value: "@ruhe", text: "Ruhetag" }));
+    const rad = el("input", { type: "checkbox", "aria-label": "Rad heute" }); rad.checked = cur.ride;
+    const label = () => { base.textContent = rad.checked ? "keine Kraft" : "App-Vorschlag"; };
+    const fill = () => { for (const n of this.names ?? []) sel.append(el("option", { value: n, text: `Kraft: ${n}` })); if (cur.strength && ![...sel.options].some((o) => o.value === cur.strength)) sel.append(el("option", { value: cur.strength, text: `Kraft: ${cur.strength}` })); sel.value = cur.rest ? "@ruhe" : cur.strength ?? ""; rad.disabled = cur.rest; };
+    label();
     if (this.names) fill(); else FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } }).then((r) => { this.names = (r.templates ?? []).map((x) => x.name); fill(); }).catch(() => { this.names = []; fill(); });
     const msg = el("span", { class: "muted", role: "status" });
-    sel.onchange = async () => {
-      const vals = [...(FC.state.data?.training?.prefs?.templateByDay ?? [])]; while (vals.length < 7) vals.push(null);
-      vals[wd] = sel.value || null; sel.disabled = true; msg.textContent = "Speichere …";
-      try { await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null }); await FC.reload(); }
-      catch (e) { msg.textContent = FC.errText(e); sel.disabled = false; }
+    const save = async () => {
+      const rest = sel.value === "@ruhe";
+      sel.disabled = rad.disabled = true; msg.textContent = "Speichere …"; label();
+      try { await FC.call("set_training_prefs", FC.dayPlanPatch(FC.state.data?.training?.prefs, wd, { strength: rest ? null : sel.value, ride: rad.checked, rest })); await FC.reload(); }
+      catch (e) { msg.textContent = FC.errText(e); sel.disabled = false; rad.disabled = rest; }
     };
-    return el("label", { class: "fo-pick", style: "display:grid;gap:2px;font-size:.85rem;color:var(--ink-3)" }, el("span", { text: "Heute stattdessen" }), sel, msg);
+    sel.onchange = save; rad.onchange = save;
+    return el("div", { class: "fo-pick", style: "display:grid;gap:4px;font-size:.85rem;color:var(--ink-3)" }, el("span", { text: "Heute stattdessen" }),
+      el("div", { style: "display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center" }, sel, el("label", { style: "display:inline-flex;gap:6px;align-items:center" }, rad, "Rad")), msg);
   },
   /** Hinweis auf den Vorschlag „Ungenutztes ausblenden“, sobald genug Nutzung gezählt ist. */
   hint() {

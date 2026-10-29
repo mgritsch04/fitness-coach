@@ -57,6 +57,8 @@ export interface TrainingPrefs {
   noFtpTest?: boolean | null;
   /** Gespeicherte Kraft-Vorlage je Wochentag (#370, Mo … So, Name der Vorlage); null im Feld = keine. Das Gym schlägt sie vor, der Plan bleibt unberührt. */
   templateByDay?: (string | null)[] | null;
+  /** Rad am Wochentag (Mo … So), unabhängig von der Kraft-Vorlage: ein Tag kann beides haben (Wochenplan „Meine Woche“). Ältere Pläne mit „@rad“ in templateByDay gelten weiter als Rad. */
+  rideByDay?: (boolean | null)[] | null;
 }
 
 /** Feste Krafteinheit an einem Wochentag (0 = Montag … 6 = Sonntag). */
@@ -71,7 +73,7 @@ export const isLegFocus = (focus: string) => /bein|unterk|ganzk|leg|squat|kniebe
 
 // Standard für G: Rennrad (derzeit indoor mit MyWhoosh) plus Kraft im Gym; Häufigkeit und Dauer
 // der Krafteinheiten werden aus den letzten Wochen übernommen, solange nichts eingetragen ist.
-export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null, strengthPhase: null, ridesPerWeek: null, fixedStrength: null, dayMinutes: null, easyDays: null, dayOverrides: null, noFtpTest: null, templateByDay: null };
+export const DEFAULT_PREFS: TrainingPrefs = { weeklyHours: null, restDays: [], longDay: null, maxWeekdayMin: null, mainSport: "cycling", strengthPerWeek: null, strengthMin: null, strengthPhase: null, ridesPerWeek: null, fixedStrength: null, dayMinutes: null, easyDays: null, dayOverrides: null, noFtpTest: null, templateByDay: null, rideByDay: null };
 
 export type Phase = "base" | "build" | "peak" | "taper" | "race" | "recovery" | "maintain";
 export type SessionType = "rest" | "recovery" | "endurance" | "long" | "tempo" | "threshold" | "vo2max" | "strength" | "opener" | "race";

@@ -197,6 +197,20 @@
     server_unavailable: "Der Fitness-Coach-Server antwortet gerade nicht. Gleich noch einmal versuchen.",
     tool_error: "Der Server hat einen Fehler gemeldet.",
   };
+  // Eigener Wochenplan (prefs.templateByDay + prefs.rideByDay): je Tag Kraft-Vorlage und/oder Rad, oder Ruhetag.
+  // Ältere Pläne mit „@rad“ in templateByDay bleiben lesbar (= nur Rad).
+  const dayPlan = (prefs, wd) => {
+    const t = prefs?.templateByDay?.[wd] ?? null, rest = t === "@ruhe", ride = !rest && (prefs?.rideByDay?.[wd] === true || t === "@rad");
+    const strength = t && t !== "@rad" && t !== "@ruhe" ? t : null;
+    return { own: !!(t || ride), rest, ride, strength };
+  };
+  /** Prefs-Patch für einen Tag: { strength: Name|null, ride: bool, rest: bool } ändert nur diesen Tag und wandelt altes „@rad“ um. */
+  const dayPlanPatch = (prefs, wd, v) => {
+    const tpl = Array.from({ length: 7 }, (_, i) => prefs?.templateByDay?.[i] ?? null), ride = Array.from({ length: 7 }, (_, i) => prefs?.rideByDay?.[i] === true);
+    tpl.forEach((x, i) => { if (x === "@rad") { tpl[i] = null; ride[i] = true; } });
+    tpl[wd] = v.rest ? "@ruhe" : v.strength || null; ride[wd] = !v.rest && !!v.ride;
+    return { templateByDay: tpl.some((x) => x) ? tpl : null, rideByDay: ride.some((x) => x) ? ride.map((x) => (x ? true : null)) : null };
+  };
   const errText = (e) => (ERR[e?.code] ?? "Die Anfrage ist fehlgeschlagen.") + (e?.code === "tool_error" && e.message ? ` (${String(e.message).slice(0, 200)})` : "");
   const SAMPLE_ERR = { not_granted: "Der Coach ist für diese Seite nicht freigegeben.", sampling_disabled: "Claude ist für dein Konto hier nicht verfügbar.", rate_limited: "Gerade zu viele Anfragen oder dein Limit ist erreicht. Bitte später noch einmal.", session_expired: "Bitte melde dich in claude.ai neu an.", refused: "Dazu kann der Coach nichts sagen. Formuliere die Frage anders.", invalid_json: "Die Antwort kam nicht im erwarteten Format. Bitte noch einmal versuchen.", prompt_too_large: "Zu viele Daten für eine Anfrage.", upstream_error: "Claude ist gerade kurz gestört. Bitte gleich noch einmal versuchen.", empty_completion: "Der Coach hat keine Antwort geschrieben. Bitte die Frage einfacher stellen.", tools_unavailable: "Der Coach kann hier keine Zusatzdaten abrufen. Bitte noch einmal fragen." };
   // Fehlercode immer mit anzeigen und protokollieren, damit die Ursache erkennbar ist (#338).
@@ -622,7 +636,7 @@
 
   window.FC = Object.freeze({
     SERVER, state, $, el, sv, de, dayDate, fmtDay, fmtDayLong, fmtWeekday, fmtH, ago, addDays, sport, SOURCES, recStatus, cssVar,
-    chart, spark, rolling, richText, errText, sampleErrText, banner, call, watch, reload, section, rerender, setRange,
+    chart, spark, rolling, richText, dayPlan, dayPlanPatch, errText, sampleErrText, banner, call, watch, reload, section, rerender, setRange,
     onRange: (f) => listeners.add(f), boot, showTab, goTo, layout: layoutApi, usage: usageApi,
     lean: { on: () => lean, set: setLean, onChange: (f) => { leanListeners.add(f); return () => leanListeners.delete(f); } },
     invalidate: () => state.mcp?.invalidate(SERVER, "get_dashboard").catch(() => {}),
