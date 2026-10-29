@@ -171,7 +171,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#sec-cadence > .fold-bar"); await p.waitForTimeout(300);
     const g = await p.evaluate(() => ({ open: !document.getElementById("sec-cadence").classList.contains("folded"), cad: window.__calls.includes("get_cadence_profile"), text: document.getElementById("sec-cadence").innerText.length }));
     if (!g.open || !g.cad || g.text < 100) errors.push(`${name}: Aufklappen lädt nicht ${JSON.stringify(g)}`);
-    await p.reload(); await p.waitForTimeout(800); await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(300);
+    await p.reload(); await p.waitForSelector("body.has-data"); await p.waitForTimeout(800); await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(300);
     if (await p.evaluate(() => document.getElementById("sec-cadence").classList.contains("folded"))) errors.push(`${name}: Aufgeklappt wird nicht gemerkt`);
     await p.screenshot({ path: join(out, "phone-training-folded.png"), fullPage: true });
     // Für die folgenden Tests alles aufklappen.
@@ -192,7 +192,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (!w2.rows.length || w2.rows.some((r) => !/Radfahren/.test(r))) errors.push(`${name}: Quelle/Suche falsch ${JSON.stringify(w2.rows.slice(0, 3))}`);
     await p.fill("#woSearch", "gibtsnicht"); await p.waitForTimeout(150);
     if (!/passen zum Filter/.test(await p.locator("#tWorkouts tbody").innerText())) errors.push(`${name}: leerer Filter ohne Hinweis`);
-    await p.fill("#woSearch", "radfahren"); await p.reload(); await p.waitForTimeout(800); await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(300);
+    await p.fill("#woSearch", "radfahren"); await p.reload(); await p.waitForSelector("body.has-data"); await p.waitForTimeout(800); await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(300);
     const w3 = await p.evaluate(() => ({ q: document.getElementById("woSearch").value, src: document.getElementById("woSource").value, kind: document.querySelector("#woKind [aria-pressed=true]")?.dataset.k }));
     if (w3.q !== "radfahren" || w3.src !== "mywhoosh" || w3.kind !== "bike") errors.push(`${name}: Filter nicht gemerkt ${JSON.stringify(w3)}`);
     await p.locator("#sec-workouts").scrollIntoViewIfNeeded(); await p.evaluate(() => document.getElementById("sec-workouts").scrollIntoView()); await p.waitForTimeout(200);
@@ -348,7 +348,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
       const at = await p.evaluate(() => document.querySelector("#tabbar [aria-current=page]")?.dataset.tab ?? "alle");
       if (at !== "training") errors.push(`${name}: Neu im Dashboard springt nach ${at} statt Training`);
       await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
-      await p.click("#wnSeen"); await p.reload(); await p.waitForTimeout(800);
+      await p.click("#wnSeen"); await p.reload(); await p.waitForSelector("body.has-data"); await p.waitForTimeout(800);
       await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(300);
       if (await p.evaluate(() => !document.getElementById("sec-whatsnew").hidden)) errors.push(`${name}: Neu im Dashboard nach „Alles gesehen“ noch da`);
     }
@@ -580,7 +580,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.evaluate(() => document.getElementById("foLean").click()); await p.waitForTimeout(200);
     if ((await p.evaluate(() => [...document.querySelectorAll("#sections > section.on")].filter((x) => x.offsetParent).length)) < 3) errors.push(`${name}: schlanke Ansicht lässt sich nicht aufheben`);
     await p.evaluate(() => { localStorage.setItem("fc-usage", JSON.stringify({ since: new Date(Date.now() - 9 * 864e5).toISOString(), views: { today: { n: 40, last: null }, agenda: { n: 5, last: null } } })); });
-    await p.reload(); await p.waitForTimeout(900);
+    await p.reload(); await p.waitForSelector("body.has-data"); await p.waitForTimeout(900);
     await p.evaluate(() => FC.goTo("layout")); await p.waitForTimeout(600);
     const sug = await p.evaluate(() => ({ btn: document.getElementById("loSugApply")?.textContent ?? null, st: document.getElementById("loSugState")?.textContent ?? "" }));
     if (!sug.btn) errors.push(`${name}: Vorschlag falsch ${JSON.stringify(sug)}`);
@@ -597,7 +597,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.evaluate(() => document.querySelector("#h-cadence .fav-btn").click()); await p.waitForTimeout(100);
     const fav = await p.evaluate(() => ({ vis: !document.getElementById("sec-favorites").hidden, items: [...document.querySelectorAll("#favList button")].map((b) => b.textContent), pressed: document.querySelector("#h-cadence .fav-btn").getAttribute("aria-pressed") }));
     if (!fav.vis || fav.items.join() !== "TrittfrequenzTraining" || fav.pressed !== "true") errors.push(`${name}: Anheften falsch ${JSON.stringify(fav)}`);
-    await p.reload(); await p.waitForTimeout(900);
+    await p.reload(); await p.waitForSelector("body.has-data"); await p.waitForTimeout(900);
     const kept = await p.$$eval("#favList button", (b) => b.map((x) => x.textContent));
     if (kept.join() !== "TrittfrequenzTraining") errors.push(`${name}: Favorit nach Neuladen weg ${JSON.stringify(kept)}`);
     await p.screenshot({ path: join(out, "desktop-favorites.png") });
@@ -646,7 +646,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     // Reiter am PC (#322): Leiste oben, nur Abschnitte des offenen Reiters, nach Neuladen derselbe Reiter.
     const dt = await p.evaluate(() => ({ bar: getComputedStyle(document.getElementById("tabbar")).display, vis: [...document.querySelectorAll("#sections > section:not([hidden])")].filter((s) => s.offsetParent).map((s) => s.id) }));
     if (dt.bar === "none" || !dt.vis.includes("sec-today") || dt.vis.includes("sec-cadence") || dt.vis.includes("sec-settings")) errors.push(`${name}: Reiter am PC falsch ${JSON.stringify(dt)}`);
-    await p.click("#tabbar [data-tab=training]"); await p.reload(); await p.waitForTimeout(800);
+    await p.click("#tabbar [data-tab=training]"); await p.reload(); await p.waitForSelector("body.has-data"); await p.waitForTimeout(800);
     const dt2 = await p.evaluate(() => ({ tab: document.querySelector("#tabbar [aria-current=page]")?.dataset.tab, today: !!document.getElementById("sec-today").offsetParent, cad: !!document.getElementById("sec-cadence").offsetParent }));
     if (dt2.tab !== "training" || dt2.today || !dt2.cad) errors.push(`${name}: Reiter nach Neuladen falsch ${JSON.stringify(dt2)}`);
     // Anordnung für alle Geräte (#67): Ausblenden speichert über update_settings; „nur dieses Gerät“ speichert nichts.
@@ -670,7 +670,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (!bad || bad.length || cnt < 25) errors.push(`${name}: Coach-Werkzeuge fehlerhaft (${cnt}) ${JSON.stringify(bad)}`);
     // Fragen-Vorschlag antippen, dann neu laden: der Chat bleibt erhalten (#118).
     await p.click("#askChips .chip"); await p.waitForTimeout(300);
-    await p.reload(); await p.waitForTimeout(800);
+    await p.reload(); await p.waitForSelector("body.has-data"); await p.waitForTimeout(800);
     const kept = await p.$$eval("#chat .q", (q) => q.length);
     if (kept !== 2) errors.push(`${name}: Coach-Chat nach Neuladen ${kept} statt 2 Fragen`);
     // Werkzeuge abgelehnt: einmal ohne Werkzeuge neu fragen; sonst Meldung mit Fehlercode (#338).
