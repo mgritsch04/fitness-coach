@@ -46,7 +46,7 @@ FC.section({
     const own = dp.strength;
     const ride = this.RIDES.includes(x?.type);
     if (dp.own) {
-      const parts = dp.rest ? ["Ruhetag"] : [dp.strength ? `Kraft: ${dp.strength}` : null, dp.ride ? "Rad" : null].filter(Boolean);
+      const parts = dp.rest ? ["Ruhetag"] : [dp.strength ? `Kraft: ${dp.strength}` : null, dp.ride ? (dp.rideText ? `Rad: ${dp.rideText}` : "Rad") : null].filter(Boolean);
       plan.append(el("p", { class: "fo-big", text: parts.join(" + ") }), el("p", { class: "fo-tip", text: "Von dir geplant." }));
       if (own && !dp.rest) {
         const b = el("button", { type: "button", class: "primary", text: FC.state.gym?.st ? "Zum Gym-Modus" : `Vorlage „${own}“ starten` });
@@ -85,8 +85,8 @@ FC.section({
     const { el } = FC;
     const base = el("option", { value: "" });
     const sel = el("select", { "aria-label": "Kraft heute stattdessen" }, base, el("option", { value: "@ruhe", text: "Ruhetag" }));
-    const rad = el("input", { type: "checkbox", "aria-label": "Rad heute" }); rad.checked = cur.ride;
-    const label = () => { base.textContent = rad.checked ? "keine Kraft" : "App-Vorschlag"; };
+    const rad = FC.rideInput("Rad heute (was wird gefahren?)", cur.rideText || (cur.ride ? "Rad" : ""), cur.rest);
+    const label = () => { base.textContent = rad.value.trim() ? "keine Kraft" : "App-Vorschlag"; };
     const fill = () => { for (const n of this.names ?? []) sel.append(el("option", { value: n, text: `Kraft: ${n}` })); if (cur.strength && ![...sel.options].some((o) => o.value === cur.strength)) sel.append(el("option", { value: cur.strength, text: `Kraft: ${cur.strength}` })); sel.value = cur.rest ? "@ruhe" : cur.strength ?? ""; rad.disabled = cur.rest; };
     label();
     if (this.names) fill(); else FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } }).then((r) => { this.names = (r.templates ?? []).map((x) => x.name); fill(); }).catch(() => { this.names = []; fill(); });
@@ -94,12 +94,12 @@ FC.section({
     const save = async () => {
       const rest = sel.value === "@ruhe";
       sel.disabled = rad.disabled = true; msg.textContent = "Speichere …"; label();
-      try { await FC.call("set_training_prefs", FC.dayPlanPatch(FC.state.data?.training?.prefs, wd, { strength: rest ? null : sel.value, ride: rad.checked, rest })); await FC.reload(); }
+      try { await FC.call("set_training_prefs", FC.dayPlanPatch(FC.state.data?.training?.prefs, wd, { strength: rest ? null : sel.value, ride: rad.value.trim(), rest })); await FC.reload(); }
       catch (e) { msg.textContent = FC.errText(e); sel.disabled = false; rad.disabled = rest; }
     };
-    sel.onchange = save; rad.onchange = save;
+    sel.onchange = save; rad.onchange = save; rad.onkeydown = (e) => { if (e.key === "Enter") rad.blur(); };
     return el("div", { class: "fo-pick", style: "display:grid;gap:4px;font-size:.85rem;color:var(--ink-3)" }, el("span", { text: "Heute stattdessen" }),
-      el("div", { style: "display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center" }, sel, el("label", { style: "display:inline-flex;gap:6px;align-items:center" }, rad, "Rad")), msg);
+      el("div", { style: "display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center" }, sel, rad), msg);
   },
   /** Hinweis auf den Vorschlag „Ungenutztes ausblenden“, sobald genug Nutzung gezählt ist. */
   hint() {

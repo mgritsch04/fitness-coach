@@ -95,6 +95,8 @@ const payloads = {
       last: { day: "2026-03-08", sets: [{ reps: 10, weightKg: 20 }] }, history: [{ day: "2026-03-08", sets: [{ reps: 10, weightKg: 20 }] }, { day: "2026-03-01", sets: [{ reps: 10, weightKg: 15 }, { reps: 8, weightKg: 17.5 }] }] },
     { exercise: "bizeps curls", name: "Bizeps curls", sessions: 1, sets: 3, lastDay: "2026-03-02", bestE1rmKg: 22, hidden: false, mergedFrom: [], muscles: { primary: ["biceps"], secondary: [], source: "auto" },
       last: { day: "2026-03-02", sets: [{ reps: 10, weightKg: 15 }, { reps: 8, weightKg: 17.5 }, { reps: 8, weightKg: 17.5 }] }, history: [{ day: "2026-03-02", sets: [{ reps: 10, weightKg: 15 }, { reps: 8, weightKg: 17.5 }, { reps: 8, weightKg: 17.5 }] }] },
+    { exercise: "einarmrudern", name: "Einarmrudern", sessions: 1, sets: 4, lastDay: "2026-03-03", bestE1rmKg: 32, hidden: false, unilateral: true, mergedFrom: [], muscles: { primary: ["back"], secondary: ["biceps"], source: "auto" },
+      last: { day: "2026-03-03", sets: [{ reps: 10, weightKg: 24, side: "L" }, { reps: 9, weightKg: 24, side: "R" }] }, history: [{ day: "2026-03-03", sets: [{ reps: 10, weightKg: 24, side: "L" }, { reps: 9, weightKg: 24, side: "R" }] }] },
     { exercise: "xyz", name: "Maschine X", sessions: 0, sets: 0, lastDay: null, bestE1rmKg: null, hidden: false, mergedFrom: [], muscles: { primary: ["other"], secondary: [], source: "unknown" }, last: null, history: [] },
     { exercise: "alt", name: "Alte Übung", sessions: 1, sets: 1, lastDay: "2026-01-01", bestE1rmKg: null, hidden: true, mergedFrom: [], muscles: { primary: ["core"], secondary: [], source: "auto" }, last: null, history: [] }],
     duplicates: [{ reason: "Alle enthalten „bizeps“", exercises: [{ exercise: "bizeps schwarze", name: "Bizeps schwarze" }, { exercise: "bizeps curls", name: "Bizeps curls" }] }], note: "" }),
@@ -272,10 +274,10 @@ for (const [name, vp, scheme, tab, file] of shots) {
     const tp = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("tplMsg").textContent }));
     if (JSON.stringify(tp.saved?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || !/2 Tage/.test(tp.msg)) errors.push(`${name}: Vorlage je Wochentag speichern falsch ${JSON.stringify(tp)}`);
     // Rad und Kraft getrennt je Tag (#399): Montag Kraft UND Rad, Mittwoch nur Rad; alles bleibt lesbar.
-    await p.check("#tplDays input[data-ride='0']"); await p.check("#tplDays input[data-ride='2']");
+    await p.fill("#tplDays input[data-ride='0']", "Z2"); await p.fill("#tplDays input[data-ride='2']", "Intervalle 4x8");
     await p.click("#tplSave"); await p.waitForTimeout(200);
     const tr2 = await p.evaluate(() => window.__prefsSaved);
-    if (JSON.stringify(tr2?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || JSON.stringify(tr2?.rideByDay) !== JSON.stringify([true, null, true, null, null, null, null])) errors.push(`${name}: Rad und Kraft getrennt speichern falsch ${JSON.stringify(tr2)}`);
+    if (JSON.stringify(tr2?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || JSON.stringify(tr2?.rideByDay) !== JSON.stringify(["Z2", null, "Intervalle 4x8", null, null, null, null])) errors.push(`${name}: Rad und Kraft getrennt speichern falsch ${JSON.stringify(tr2)}`);
     // Radzeit je Wochentag (#336): Montag 0 min, Freitag 120 min, Dienstag locker; dazu „Heute nur 45 min“.
     await p.evaluate(() => { document.getElementById("timeBox").open = true; });
     await p.fill("#dayTimes input[data-day='0']", "0"); await p.fill("#dayTimes input[data-day='4']", "120"); await p.check("#dayTimes input[data-easy='1']");
@@ -425,7 +427,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     // Heute ist die Vorlage je Wochentag (#370) vorausgewählt; die Planeinheit bleibt wählbar.
     const plan = await p.$eval("#gySrc", (s) => s.value);
-    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || !(await p.$("#gyWeek select")) || !(await p.$("#gyWeek input[type=checkbox]"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
+    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || (await p.$("#gyWeek"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage nicht an oder zeigt Wochenplan (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
     // Verlauf und Prognose im Gym-Modus (#328)
@@ -492,6 +494,20 @@ for (const [name, vp, scheme, tab, file] of shots) {
       if (!(up?.name === "Beine & Brust" && up.exercises?.[0]?.exercise === "Bizeps curls" && !(await p.$("#gyTplUpdate")))) errors.push(`${name}: Vorlage aktualisieren falsch ${JSON.stringify(up)}`);
     }
     await p.click("#gyBody .linkish:text('Nein danke')").catch(() => errors.push(`${name}: „Nein danke“ fehlt`)); await p.waitForTimeout(100);
+    // Einseitige Übung (#399): links und rechts getrennt, Pause nur nach rechts, Seiten werden gespeichert
+    await p.selectOption("#gySrc", ""); await p.click("#gyBody .gy-start button.primary"); await p.waitForTimeout(200);
+    await p.fill("#gyBody .gy-ex input[list=gyEx]", "Einarmrudern"); await p.press("#gyBody .gy-ex input[list=gyEx]", "Tab"); await p.waitForTimeout(200);
+    const uni = await p.evaluate(() => ({ n: [...document.querySelectorAll("#gyBody .gy-ex:first-of-type .gy-set .n")].map((x) => x.textContent), v: [...document.querySelectorAll("#gyBody .gy-ex:first-of-type .gy-set")].map((r) => [...r.querySelectorAll("input")].map((i) => i.value).join("/")) }));
+    if (JSON.stringify(uni.n) !== JSON.stringify(["1 L", "1 R"]) || JSON.stringify(uni.v) !== JSON.stringify(["10/24", "9/24"])) errors.push(`${name}: einseitige Übung falsch ${JSON.stringify(uni)}`);
+    await p.evaluate(() => document.querySelectorAll("#gyBody .gy-ex:first-of-type .gy-set .ok")[0].click()); await p.waitForTimeout(100);
+    const restL = await p.evaluate(() => !document.getElementById("gyRest").hidden);
+    await p.evaluate(() => document.querySelectorAll("#gyBody .gy-ex:first-of-type .gy-set .ok")[1].click()); await p.waitForTimeout(100);
+    const restR = await p.evaluate(() => !document.getElementById("gyRest").hidden);
+    if (restL || !restR) errors.push(`${name}: Pause nach links ${restL} / nach rechts ${restR}`);
+    await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(6)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
+    const us = await p.evaluate(() => window.__gymSaved?.exercises?.[0]?.sets?.map((x) => x.side));
+    if (JSON.stringify(us) !== JSON.stringify(["L", "R"])) errors.push(`${name}: Seiten nicht gespeichert ${JSON.stringify(us)}`);
+    await p.click("#gyBody .linkish:text('Nein danke')").catch(() => {}); await p.waitForTimeout(100);
     // Krafttraining-Abschnitt: Verlauf und Prognose (#328), Einheit als Vorlage (#319)
     await p.click("#stProg tbody tr:first-child button").catch(() => errors.push(`${name}: Übung im Krafttraining nicht antippbar`)); await p.waitForTimeout(200);
     const sp = await p.evaluate(() => ({ svg: !!document.querySelector("#stProg .st-detail svg"), t: document.querySelector("#stProg .st-detail .chart-cap")?.textContent ?? "" }));

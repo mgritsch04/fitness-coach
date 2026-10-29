@@ -58,7 +58,7 @@ export interface TrainingPrefs {
   /** Gespeicherte Kraft-Vorlage je Wochentag (#370, Mo … So, Name der Vorlage); null im Feld = keine. Das Gym schlägt sie vor, der Plan bleibt unberührt. */
   templateByDay?: (string | null)[] | null;
   /** Rad am Wochentag (Mo … So), unabhängig von der Kraft-Vorlage: ein Tag kann beides haben (Wochenplan „Meine Woche“). Ältere Pläne mit „@rad“ in templateByDay gelten weiter als Rad. */
-  rideByDay?: (boolean | null)[] | null;
+  rideByDay?: (boolean | string | null)[] | null;
 }
 
 /** Feste Krafteinheit an einem Wochentag (0 = Montag … 6 = Sonntag). */

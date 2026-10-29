@@ -7,9 +7,10 @@ describe("Rad und Kraft getrennt je Tag", () => {
     const db = fakeD1();
     await writePrefs(db, { templateByDay: ["@rad", "Push", "@ruhe", null, null, null, null] });
     expect((await readPrefs(db)).rideByDay).toBeNull();
-    const p = await writePrefs(db, { templateByDay: [null, "Push", "@ruhe", null, null, null, null], rideByDay: [true, true, null, null, null, null, null] });
+    const p = await writePrefs(db, { templateByDay: [null, "Push", "@ruhe", null, null, null, null], rideByDay: [true, "Z2", null, null, null, null, null] });
     expect(p.templateByDay?.[1]).toBe("Push");
-    expect(p.rideByDay?.[1]).toBe(true);
+    expect(p.rideByDay?.[0]).toBe(true);
+    expect(p.rideByDay?.[1]).toBe("Z2");
     expect((await writePrefs(db, { rideByDay: null })).rideByDay).toBeNull();
   });
 });

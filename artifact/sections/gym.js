@@ -87,11 +87,20 @@ FC.section({
   },
   /** Sätze, Wdh. und Gewicht vom letzten Mal in die offenen Sätze übernehmen (true, wenn es ein letztes Mal gibt). */
   fillLast(x) {
-    const last = this.exByName(x.name)?.last?.sets;
-    if (!last?.length) return false;
-    if (!x.sets.some((s) => s.done)) x.sets = last.slice(0, 10).map((s) => ({ reps: s.reps, kg: s.weightKg, done: false }));
+    const known = this.exByName(x.name), last = known?.last?.sets;
+    if (known?.unilateral) x.unilateral = true;
+    if (!last?.length) { if (x.unilateral) this.setSides(x, true); return false; }
+    if (!x.sets.some((s) => s.done)) x.sets = last.slice(0, 20).map((s) => ({ reps: s.reps, kg: s.weightKg, ...(s.side ? { side: s.side } : {}), done: false }));
     else { const top = Math.max(...last.map((s) => s.weightKg)); for (const t of x.sets) if (!t.done) t.kg = top; }
+    if (x.sets.some((s) => s.side)) x.unilateral = true;
+    if (x.unilateral) this.setSides(x, true);
     return true;
+  },
+  /** Einseitig (einarmig/einbeinig, #399): jeder offene Satz wird zu zwei Zeilen (links, rechts); aus = nur noch ein Satz je Paar. */
+  setSides(x, on) {
+    x.unilateral = on;
+    if (on) { if (!x.sets.some((s) => s.side)) x.sets = x.sets.flatMap((s) => (s.done ? [s] : [{ ...s, side: "L" }, { ...s, side: "R", done: false }])); return; }
+    x.sets = x.sets.filter((s) => s.side !== "R" || s.done).map((s) => { if (s.side !== "L" || s.done) return s; const { side, ...rest } = s; return rest; });
   },
   newEx(name) { const e = { name, rest: this.restFor(name), sets: [{ reps: 8, kg: 0, done: false }] }; this.fillLast(e); return e; },
 
@@ -166,39 +175,8 @@ FC.section({
     go.onclick = () => this.start(sel.value, go, Number(time.value) || null);
     body.replaceChildren(this.updatePanel() ?? "", this.savedPanel() ?? "", el("div", { class: "panel" },
       el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Vorlage für diese Einheit", sel), el("label", { for: "gyTime" }, "Zeit", time), go),
-      hasSugg ? el("p", { class: "chart-cap", id: "gyTplHint", text: `Für heute vorgeschlagen: Vorlage „${sugg}“. Unten planst du deine Woche.` }) : null,
-      el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })),
-      this.weekPanel(d.templates, wd));
-  },
-  /** Meine Woche: je Wochentag eine eigene Vorlage (prefs.templateByDay, #370); speichert beim Ändern, der heutige Tag steht vorn im Start. */
-  weekPanel(templates, wd) {
-    const { el } = FC, names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
-    const have = new Set(templates.map((t) => t.name));
-    const out = el("span", { class: "muted", role: "status", id: "gyWeekMsg" });
-    const rows = names.map((n, i) => {
-      // Kraft und Rad getrennt: ein Tag kann beides haben (Kraft-Vorlage UND Rad); „Ruhetag“ schließt beides aus.
-      const cur = FC.dayPlan(FC.state.data?.training?.prefs, i);
-      const sel = el("select", { "aria-label": `${n}: Kraft-Vorlage` }, el("option", { value: "", text: "keine Kraft" }), el("option", { value: "@ruhe", text: "Ruhetag" }), ...templates.map((t) => el("option", { value: t.name, text: `Kraft: ${t.name}` })));
-      sel.value = cur.rest ? "@ruhe" : cur.strength && have.has(cur.strength) ? cur.strength : "";
-      const rad = el("input", { type: "checkbox", "aria-label": `${n}: Rad` }); rad.checked = cur.ride; rad.disabled = cur.rest;
-      const save = async () => {
-        const rest = sel.value === "@ruhe";
-        sel.disabled = rad.disabled = true; out.textContent = "Speichere …";
-        try {
-          await FC.call("set_training_prefs", FC.dayPlanPatch(FC.state.data?.training?.prefs, i, { strength: rest ? null : sel.value, ride: rad.checked, rest }));
-          out.textContent = `${n}: ${rest ? "Ruhetag" : [sel.value ? `Kraft „${sel.value}“` : null, rad.checked ? "Rad" : null].filter(Boolean).join(" + ") || "nichts geplant"} gespeichert.`;
-          await FC.reload();
-        } catch (e) { out.textContent = FC.errText(e); }
-        finally { sel.disabled = false; rad.disabled = sel.value === "@ruhe"; }
-      };
-      sel.onchange = save; rad.onchange = save;
-      return el("div", { class: "gy-wk", style: `display:flex;flex-wrap:wrap;gap:8px;align-items:center${i === wd ? ";font-weight:600" : ""}` },
-        el("span", { text: i === wd ? `${n} (heute)` : n, style: "flex:0 0 8em" }), sel, el("label", { style: "display:inline-flex;gap:6px;align-items:center;font-weight:400" }, rad, "Rad"));
-    });
-    return el("div", { class: "panel", id: "gyWeek", style: "margin-top:12px;display:grid;gap:8px" },
-      el("h3", { text: "Meine Woche" }),
-      el("p", { class: "chart-cap", style: "margin:0", text: templates.length ? "Plane Kraft und Rad getrennt: pro Tag eine Kraft-Vorlage und/oder Rad. Am Tag ist die Vorlage beim Start vorausgewählt." : "Noch keine Kraft-Vorlage gespeichert (nach einer Einheit „Als Vorlage speichern“); Rad und Ruhetage kannst du schon planen." }),
-      el("div", { style: "display:grid;gap:6px" }, ...rows), out);
+      hasSugg ? el("p", { class: "chart-cap", id: "gyTplHint", text: `Für heute vorgeschlagen: Vorlage „${sugg}“.` }) : null,
+      el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })));
   },
   /** Vorlage direkt starten (z. B. von der Startseite); läuft schon eine Einheit, bleibt sie. */
   startTemplate(name) { if (!this.st) this.start(`t:${name}`); },
@@ -267,24 +245,27 @@ FC.section({
         const s = await FC.call("suggest_strength_session", { template: name });
         tpl = name;
         // Sätze, Wdh. und Gewicht wie beim letzten Mal dieser Übung (#399); ohne Vorgeschichte die Werte der Vorlage.
-        list = s.exercises.map((x) => ({ name: x.name, from: x.name, sets: x.lastSets?.length ? x.lastSets.slice(0, 10).map((y) => ({ reps: y.reps, kg: y.weightKg })) : Array.from({ length: x.sets }, () => ({ reps: x.reps, kg: x.weightKg ?? 0 })) }));
+        list = s.exercises.map((x) => ({ name: x.name, from: x.name, sets: x.lastSets?.length ? x.lastSets.slice(0, 20).map((y) => ({ reps: y.reps, kg: y.weightKg, ...(y.side ? { side: y.side } : {}) })) : Array.from({ length: x.sets }, () => ({ reps: x.reps, kg: x.weightKg ?? 0 })) }));
         const down = s.coachNotes?.find((n) => n.effect === "down");
         if (down) this.msg(down.text);
       } else if (src.startsWith("s:")) {
         const s = this.data.sessions.find((x) => x.id === src.slice(2));
         name = s?.name ?? null;
         const by = new Map();
-        for (const x of s?.sets ?? []) { if (!by.has(x.exercise)) by.set(x.exercise, { name: x.exerciseName, sets: [] }); by.get(x.exercise).sets.push({ reps: x.reps, kg: x.weightKg }); }
+        for (const x of s?.sets ?? []) { if (!by.has(x.exercise)) by.set(x.exercise, { name: x.exerciseName, sets: [] }); by.get(x.exercise).sets.push({ reps: x.reps, kg: x.weightKg, ...(x.side ? { side: x.side } : {}) }); }
         list = [...by.values()];
       }
       list = list.filter((x) => x.name || !minutes);
+      for (const x of list) x.unilateral = x.sets.some((y) => y.side) || !!this.exByName(x.name)?.unilateral;
       if (minutes && list.length) {
-        const r = await FC.call("get_express_session", { minutes, exercises: list.map((x) => ({ name: x.name, sets: x.sets.length, reps: x.sets[0]?.reps || 8, weightKg: x.sets[0]?.kg ?? null, unit: x.unit === "s" ? "s" : "Wdh" })) });
-        list = r.exercises.map((e) => ({ name: e.name, unit: e.unit, restS: e.restS, superset: e.superset, sets: Array.from({ length: e.sets }, () => ({ reps: e.reps, kg: e.weightKg })) }));
+        const uni = new Set(list.filter((x) => x.unilateral).map((x) => x.name));
+        const r = await FC.call("get_express_session", { minutes, exercises: list.map((x) => ({ name: x.name, sets: x.unilateral ? Math.ceil(x.sets.length / 2) : x.sets.length, reps: x.sets[0]?.reps || 8, weightKg: x.sets[0]?.kg ?? null, unit: x.unit === "s" ? "s" : "Wdh" })) });
+        list = r.exercises.map((e) => ({ name: e.name, unilateral: uni.has(e.name), unit: e.unit, restS: e.restS, superset: e.superset, sets: Array.from({ length: e.sets }, () => ({ reps: e.reps, kg: e.weightKg })) }));
         this.msg(r.text);
       }
       this.st = { startedAt: new Date().toISOString(), name, tpl, cur: 0, restEnd: null, rpe: null, finishing: false,
-        exercises: list.map((x) => ({ name: x.name, from: x.from, unit: x.unit === "s" ? "s" : undefined, rest: x.restS ?? this.restFor(x.name), superset: x.superset ?? undefined, sets: x.sets.map((y) => ({ ...y, done: false })) })) };
+        exercises: list.map((x) => ({ name: x.name, from: x.from, unit: x.unit === "s" ? "s" : undefined, rest: x.restS ?? this.restFor(x.name), superset: x.superset ?? undefined, ...(x.unilateral ? { unilateral: true } : {}), sets: x.sets.map((y) => ({ ...y, done: false })) })) };
+      for (const e of this.st.exercises) if (e.unilateral) this.setSides(e, true);
       if (!this.st.exercises.length) this.st.exercises.push({ name: "", rest: 90, sets: [{ reps: 8, kg: 0, done: false }] });
       this.persist(); this.draw();
     } catch (err) { this.msg(err?.code === "tool_error" ? `Vorschlag nicht verfügbar: ${String(err.message).slice(0, 160)}` : FC.errText(err)); }
@@ -358,14 +339,21 @@ FC.section({
       };
       const ok = el("button", { type: "button", class: "ok", text: "✓", "aria-pressed": String(!!s.done), "aria-label": `${x.name} Satz ${j + 1} geschafft` });
       ok.onclick = () => this.toggle(x, i, s, num(reps.value), num(kg.value));
-      card.append(el("div", { class: `gy-set${s.done ? " on" : ""}` }, el("span", { class: "n", text: `${j + 1}.` }), reps, kg, ok));
+      card.append(el("div", { class: `gy-set${s.done ? " on" : ""}` }, el("span", { class: "n", text: this.setLabel(x, j) }), reps, kg, ok));
       if (s.done && x.unit !== "s" && j === x.sets.map((t) => t.done).lastIndexOf(true)) card.append(this.rirRow(x, s, j));
     });
     const more = el("button", { type: "button", text: "+ Satz" });
-    more.onclick = () => { const l = x.sets.at(-1) ?? { reps: 8, kg: 0 }; x.sets.push({ reps: l.reps, kg: l.kg, done: false }); this.persist(); this.draw(); };
-    const less = el("button", { type: "button", text: "− Satz" }); less.disabled = x.sets.length <= 1 || x.sets.at(-1).done;
-    less.onclick = () => { x.sets.pop(); this.persist(); this.draw(); };
-    const row = el("div", { class: "gy-row" }, more, less);
+    more.onclick = () => {
+      if (x.unilateral) { const l = [...x.sets].reverse().find((t) => t.side === "L") ?? { reps: 8, kg: 0 }, r = [...x.sets].reverse().find((t) => t.side === "R") ?? l; x.sets.push({ reps: l.reps, kg: l.kg, side: "L", done: false }, { reps: r.reps, kg: r.kg, side: "R", done: false }); }
+      else { const l = x.sets.at(-1) ?? { reps: 8, kg: 0 }; x.sets.push({ reps: l.reps, kg: l.kg, done: false }); }
+      this.persist(); this.draw();
+    };
+    const less = el("button", { type: "button", text: "− Satz" }); const step = x.unilateral ? 2 : 1;
+    less.disabled = x.sets.length <= step || x.sets.slice(-step).some((t) => t.done);
+    less.onclick = () => { x.sets.splice(-step, step); this.persist(); this.draw(); };
+    const uni = el("button", { type: "button", class: "linkish", text: "Einseitig", "aria-pressed": String(!!x.unilateral), title: "Einarmig/einbeinig: links und rechts getrennt eintragen" });
+    uni.onclick = () => { this.setSides(x, !x.unilateral); this.persist(); this.draw(); };
+    const row = el("div", { class: "gy-row" }, more, less, uni);
     if (i !== st.cur) { const sel = el("button", { type: "button", class: "linkish", text: "Jetzt diese Übung" }); sel.onclick = () => { st.cur = i; this.persist(); this.draw(); }; row.append(sel); }
     // Übung tauschen (#204): gleichwertige Alternative, Satzzahl bleibt.
     if (x.name && !x.sets.every((t) => t.done)) {
@@ -376,6 +364,13 @@ FC.section({
     card.append(row);
     if (this.swapAt === i) card.append(this.swapPanel(x));
     return card;
+  },
+  /** Bezeichnung des Satzes: „1.“ oder bei einseitigen Übungen „1 L“ / „1 R“ (Paar-Nummer, Seite). */
+  setLabel(x, j) {
+    const s = x.sets[j];
+    if (!s.side) return `${j + 1}.`;
+    const pair = x.sets.slice(0, j + 1).filter((t) => t.side === "L").length || 1;
+    return `${pair} ${s.side === "L" ? "L" : "R"}`;
   },
   async loadSwap(i, x) {
     if (this.swapAt === i) { this.swapAt = null; this.draw(); return; }
@@ -451,7 +446,7 @@ FC.section({
     s.reps = reps; s.kg = kg ?? 0; s.done = !s.done; this.msg(""); this.note = null;
     if (s.done) {
       st.lastSetAt = Date.now();
-      st.restEnd = Date.now() + x.rest * 1000; this.beeped = false;
+      if (!(x.unilateral && s.side === "L")) { st.restEnd = Date.now() + x.rest * 1000; this.beeped = false; } // nach links keine Pause, erst nach rechts
       if (x.sets.every((y) => y.done)) { const next = st.exercises.findIndex((y, k) => k > i && y.sets.some((z) => !z.done)); st.cur = next >= 0 ? next : i; }
       else st.cur = i;
       this.checkBest(x, s);
@@ -583,7 +578,7 @@ FC.section({
   },
   async save(btn) {
     const st = this.st;
-    const exercises = st.exercises.filter((x) => x.name).map((x) => ({ exercise: x.name, sets: x.sets.filter((s) => s.done && s.reps).map((s) => ({ reps: Math.round(s.reps), weightKg: s.kg ?? 0, ...(s.rir ? { rpe: this.RIR[s.rir].rpe } : {}) })) })).filter((x) => x.sets.length);
+    const exercises = st.exercises.filter((x) => x.name).map((x) => ({ exercise: x.name, sets: x.sets.filter((s) => s.done && s.reps).map((s) => ({ reps: Math.round(s.reps), weightKg: s.kg ?? 0, ...(s.side ? { side: s.side } : {}), ...(s.rir ? { rpe: this.RIR[s.rir].rpe } : {}) })) })).filter((x) => x.sets.length);
     if (!exercises.length) { this.msg("Noch kein Satz abgehakt."); return; }
     // Anstrengung vergessen (#320)? Einmal nachfragen, beim zweiten Tippen ohne speichern.
     if (!st.rpe && !btn.dataset.noRpe) { btn.dataset.noRpe = "1"; this.msg("Anstrengung noch nicht gewählt: bitte oben 1 bis 10 antippen. Nochmal auf Speichern tippen, um ohne Anstrengung zu speichern."); return; }

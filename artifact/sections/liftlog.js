@@ -87,7 +87,7 @@ FC.section({
     const body = el("div", { class: "ll-body" });
     for (const g of groups) {
       body.append(el("div", { class: "ll-ex" }, el("h4", { text: g.name }),
-        el("ol", {}, ...g.sets.map((x, i) => el("li", { text: `Satz ${i + 1}: ${x.weightKg ? this.kg(x.weightKg) : "Körpergewicht"} × ${x.reps}${x.rpe ? ` · Anstrengung ${FC.de(x.rpe, x.rpe % 1 ? 1 : 0)}` : ""}` })))));
+        el("ol", {}, ...g.sets.map((x, i) => el("li", { text: `Satz ${i + 1}${x.side ? (x.side === "L" ? " links" : " rechts") : ""}: ${x.weightKg ? this.kg(x.weightKg) : "Körpergewicht"} × ${x.reps}${x.rpe ? ` · Anstrengung ${FC.de(x.rpe, x.rpe % 1 ? 1 : 0)}` : ""}` })))));
     }
     if (s.notes) body.append(el("p", { class: "muted", text: s.notes }));
     const edit = el("button", { type: "button", class: "primary", text: "Bearbeiten" });
@@ -116,10 +116,10 @@ FC.section({
     const rows = el("div", { class: "ll-edit" });
     const msg = el("span", { class: "muted", role: "status" });
     const num = (cls, label, attrs, v) => el("label", {}, el("span", { text: label }), el("input", { class: cls, type: "number", inputmode: "decimal", "aria-label": label, value: v ?? "", ...attrs }));
-    const renumber = (box) => box.querySelectorAll(".ll-set").forEach((r, i) => { r.querySelector(".ll-n").textContent = `Satz ${i + 1}`; });
+    const renumber = (box) => { let c = 0; box.querySelectorAll(".ll-set").forEach((r) => { const sd = r.dataset.side; if (sd !== "R") c++; r.querySelector(".ll-n").textContent = sd ? `Satz ${c || 1} ${sd}` : `Satz ${c}`; }); };
     const addSet = (box, v = {}) => {
       const sets = box.querySelector(".ll-sets");
-      const row = el("div", { class: "ll-set" }, el("span", { class: "ll-n" }),
+      const row = el("div", { class: "ll-set", "data-side": v.side ?? "" }, el("span", { class: "ll-n" }),
         num("kg", "kg", { min: 0, max: 500, step: 0.5 }, v.weightKg),
         num("reps", "Wdh", { min: 1, max: 100, step: 1 }, v.reps),
         num("rpe", "Anstr.", { min: 1, max: 10, step: 0.5, placeholder: "optional" }, v.rpe));
@@ -140,7 +140,7 @@ FC.section({
       for (const x of g.sets) addSet(box, x);
       rows.append(box);
     };
-    for (const g of this.groups(s)) addEx({ name: g.name, muscles: g.muscles, sets: g.sets.map((x) => ({ weightKg: x.weightKg, reps: x.reps, rpe: x.rpe })) });
+    for (const g of this.groups(s)) addEx({ name: g.name, muscles: g.muscles, sets: g.sets.map((x) => ({ weightKg: x.weightKg, reps: x.reps, rpe: x.rpe, side: x.side })) });
     const addExBtn = el("button", { type: "button", text: "+ Übung" });
     addExBtn.onclick = () => { addEx(); rows.lastElementChild.querySelector(".ex").focus(); };
     const save = el("button", { type: "button", class: "primary", text: "Speichern" });
@@ -157,7 +157,7 @@ FC.section({
           if (reps == null && kg == null && r2 == null) continue;
           if (!reps || reps < 1 || reps > 100) { msg.textContent = `Bei „${nm}“ fehlen Wiederholungen (1–100) in einem Satz.`; return; }
           if (kg != null && (kg < 0 || kg > 500)) { msg.textContent = `Bei „${nm}“ muss das Gewicht zwischen 0 und 500 kg liegen.`; return; }
-          sets.push({ reps: Math.round(reps), weightKg: kg ?? 0, ...(r2 != null ? { rpe: r2 } : {}) });
+          sets.push({ reps: Math.round(reps), weightKg: kg ?? 0, ...(r2 != null ? { rpe: r2 } : {}), ...(r.dataset.side ? { side: r.dataset.side } : {}) });
         }
         if (!sets.length) { msg.textContent = `Bei „${nm}“ fehlt mindestens ein Satz.`; return; }
         const ex = { exercise: nm, sets };

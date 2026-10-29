@@ -79,3 +79,20 @@ describe("Vorlage wie letztes Mal", () => {
     expect(out[1].lastSets).toEqual([]);
   });
 });
+
+describe("Einseitige Übungen (links/rechts)", () => {
+  it("speichert die Seite je Satz, zeigt sie im Verlauf und zählt Volumen je Seite halb", async () => {
+    const db = fakeD1();
+    const side = (s: "L" | "R", reps: number, kg: number) => ({ ...set("einarmrudern", "Einarmrudern", reps, kg), side: s });
+    await saveStrengthSession(db, { ...base, id: "a", day: "2026-03-01", sets: [side("L", 10, 24), side("R", 9, 24), side("L", 8, 24), side("R", 8, 24)] });
+    const raw = await readStrengthSessions(db, "2026-01-01", { raw: true });
+    expect(raw[0].sets.map((x) => x.side)).toEqual(["L", "R", "L", "R"]);
+    const m = manageExercises(raw, [], await readOverrides(db)).exercises[0];
+    expect(m.unilateral).toBe(true);
+    expect(m.last?.sets[1]).toEqual({ reps: 9, weightKg: 24, side: "R" });
+    // 4 Seiten-Sätze = 2 volle Sätze
+    expect(muscleVolume(raw[0].sets)[0].sets).toBe(2);
+    await saveOverride(db, { key: "xyz", mergedInto: null, displayName: null, hidden: false, musclesPrimary: null, musclesSecondary: null, unilateral: true });
+    expect((await readOverrides(db)).get("xyz")?.unilateral).toBe(true);
+  });
+});

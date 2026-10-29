@@ -106,6 +106,8 @@ export interface StrengthSet {
   weightKg: number;
   rpe?: number | null;
   muscles?: Muscle[] | null;
+  /** Seite bei einseitigen Übungen (einarmig/einbeinig): L = links, R = rechts, sonst beidseitig. */
+  side?: "L" | "R" | null;
   /** Manuelle Zuordnung aus der Übungsverwaltung (überstimmt Katalog und Erkennung). */
   muscleOverride?: { primary: Muscle[]; secondary: Muscle[] } | null;
 }
@@ -155,8 +157,10 @@ export function muscleVolume(sets: StrengthSet[]): MuscleVolume[] {
   };
   for (const s of sets) {
     const { primary, secondary } = musclesOf(s.exercise, s.muscles, s.muscleOverride);
-    for (const m of primary) add(m, 1, s.reps * s.weightKg);
-    for (const m of secondary) add(m, 0.5, 0);
+    // Je Seite zählt ein halber Satz: links + rechts ergeben einen Satz.
+    const w = s.side ? 0.5 : 1;
+    for (const m of primary) add(m, w, s.reps * s.weightKg);
+    for (const m of secondary) add(m, w / 2, 0);
   }
   return [...acc.entries()]
     .map(([muscle, v]) => ({ muscle, label: MUSCLE_LABEL[muscle], sets: v.sets, tonnageKg: Math.round(v.tonnageKg) }))
@@ -404,7 +408,7 @@ export function suggestFromTemplate(template: TemplateExercise[], sessions: Stre
       basis: lastWeight == null ? "template" : allDone ? "increase" : "repeat",
       lastDay: last?.day ?? null,
       /** Sätze vom letzten Mal (#399): so oft und so schwer wie zuletzt, auch aus einer anderen Vorlage oder ohne Vorlage. */
-      lastSets: lastSets.map((x) => ({ reps: x.reps, weightKg: x.weightKg })),
+      lastSets: lastSets.map((x) => ({ reps: x.reps, weightKg: x.weightKg, ...(x.side ? { side: x.side } : {}) })),
     };
   });
 }
@@ -433,6 +437,7 @@ interface SetRow {
   weight_kg: number;
   rpe: number | null;
   muscles: string | null;
+  side: string | null;
 }
 
 /** Standard: ohne Einheiten mit unzuverlässigen Wiederholungen (Statistik); withUnreliable für die reine Auflistung. */
@@ -449,7 +454,7 @@ export async function readStrengthSessions(db: D1Database, fromDay: string, opts
   const setsBySession = new Map<string, StrengthSet[]>();
   for (const r of sets) {
     const list = setsBySession.get(r.session_id) ?? [];
-    list.push({ exercise: r.exercise, exerciseName: r.exercise_name, reps: r.reps, weightKg: r.weight_kg, rpe: r.rpe, muscles: r.muscles ? (JSON.parse(r.muscles) as Muscle[]) : null });
+    list.push({ exercise: r.exercise, exerciseName: r.exercise_name, reps: r.reps, weightKg: r.weight_kg, rpe: r.rpe, muscles: r.muscles ? (JSON.parse(r.muscles) as Muscle[]) : null, ...(r.side ? { side: r.side as "L" | "R" } : {}) });
     setsBySession.set(r.session_id, list);
   }
   return applyOverrides(sessions.map((s) => ({
@@ -482,8 +487,8 @@ export async function saveStrengthSession(db: D1Database, s: StrengthSession): P
       .bind(s.id, s.day, s.startTime, s.durationMin, s.rpe, s.name, s.notes, s.linkedSource, s.linkedSourceId, s.repsUnreliable ? 1 : 0),
     ...s.sets.map((x, i) =>
       db
-        .prepare("INSERT INTO strength_sets (session_id, idx, exercise, exercise_name, reps, weight_kg, rpe, muscles) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(s.id, i, x.exercise, x.exerciseName, x.reps, x.weightKg, x.rpe ?? null, x.muscles?.length ? JSON.stringify(x.muscles) : null),
+        .prepare("INSERT INTO strength_sets (session_id, idx, exercise, exercise_name, reps, weight_kg, rpe, muscles, side) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(s.id, i, x.exercise, x.exerciseName, x.reps, x.weightKg, x.rpe ?? null, x.muscles?.length ? JSON.stringify(x.muscles) : null, x.side ?? null),
     ),
   ]);
 }

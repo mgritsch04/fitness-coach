@@ -54,6 +54,8 @@ FC.section({
       FC.reload?.();
     } catch (err) { this.msg(err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err)); }
   },
+  /** Sätze: bei einseitigen Übungen zählen links + rechts als ein Satz. */
+  setCount(sets) { return sets.some((s) => s.side) ? Math.ceil(sets.length / 2) : sets.length; },
   kg(v) { return v ? `${FC.de(v, v % 1 ? 1 : 0)} kg` : "Körpergewicht"; },
   label(m) { return this.MUSCLES.find((x) => x[0] === m)?.[1] ?? "Sonstige"; },
   musclesText(e) {
@@ -102,7 +104,7 @@ FC.section({
     // Verlauf: jede Einheit mit Datum und allen Sätzen
     body.append(e.history.length
       ? el("div", {}, el("h4", { text: "Verlauf", style: "margin:0 0 6px" }), el("ol", { class: "ex-hist", "aria-label": `Verlauf ${e.name}` },
-        ...e.history.map((h) => el("li", {}, el("span", { class: "d", text: fmtDayLong(h.day) }), el("span", { text: `${h.sets.length} ${h.sets.length === 1 ? "Satz" : "Sätze"}: ${h.sets.map((s) => `${this.kg(s.weightKg)} × ${s.reps}`).join(" · ")}` })))))
+        ...e.history.map((h) => el("li", {}, el("span", { class: "d", text: fmtDayLong(h.day) }), el("span", { text: `${this.setCount(h.sets)} ${this.setCount(h.sets) === 1 ? "Satz" : "Sätze"}: ${h.sets.map((s) => `${s.side ? `${s.side === "L" ? "links" : "rechts"} ` : ""}${this.kg(s.weightKg)} × ${s.reps}`).join(" · ")}` })))))
       : el("p", { class: "muted", style: "margin:0", text: "Noch keine Einheit mit dieser Übung." }));
     if (e.mergedFrom.length) {
       body.append(el("div", {}, el("p", { class: "ex-sub", text: "Hier zusammengeführt (der Verlauf oben enthält sie):" }),
@@ -148,7 +150,9 @@ FC.section({
     // Ausblenden
     const hide = el("button", { type: "button", text: "Ausblenden" });
     hide.onclick = () => this.act({ action: "hide", exercise: e.exercise }, `„${e.name}“ ausgeblendet. Der Verlauf bleibt; unten wieder einblendbar.`);
-    body.append(el("div", { class: "ex-row" }, hide));
+    const uni = el("button", { type: "button", text: e.unilateral ? "Nicht einseitig" : "Einseitig (links/rechts)", "aria-pressed": String(!!e.unilateral) });
+    uni.onclick = () => this.act({ action: e.unilateral ? "bilateral" : "unilateral", exercise: e.exercise }, e.unilateral ? `„${e.name}“ wird wieder beidseitig erfasst.` : `„${e.name}“ ist einseitig: im Gym-Modus links und rechts getrennt.`);
+    body.append(el("div", { class: "ex-row" }, uni, hide));
     det.append(body);
     return det;
   },
