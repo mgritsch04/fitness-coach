@@ -312,6 +312,15 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (g.vis !== GYM_SECTIONS.length || g.bar || g.title !== "Gym Tracker" || !g.calls.includes("get_strength")) errors.push(`${name}: Gym-Seite falsch ${JSON.stringify({ ...g, calls: undefined, strength: g.calls.includes("get_strength") })}`);
   }
   if (tab === "verlauf") {
+    // HRV nur einmal im Verlauf (HRV-Trend), Erholung und Schlaf ohne eigenes HRV-Diagramm.
+    await p.evaluate(() => { FC.goTo("recovery"); }); await p.waitForTimeout(500);
+    const hv = await p.evaluate(() => ({ cHrv: !!document.getElementById("cHrv"), cHv: !!document.getElementById("cHv"), h3: [...document.querySelectorAll("#sections > section.on:not(.folded) h3")].map((x) => x.textContent).filter((t) => /HRV/.test(t)).length }));
+    if (hv.cHrv || !hv.cHv) errors.push(`${name}: HRV im Verlauf doppelt oder fehlt ${JSON.stringify(hv)}`);
+    await p.screenshot({ path: join(out, "phone-verlauf-erholung.png") });
+    await p.evaluate(() => { FC.goTo("hrvtrend"); }); await p.waitForTimeout(500);
+    await p.screenshot({ path: join(out, "phone-verlauf-hrv.png") });
+  }
+  if (tab === "verlauf") {
     // Diagramme am Handy (#210): Tippen zeigt die Werte und lässt sie stehen, Tippen daneben blendet sie aus.
     const box = p.locator("#sections > section.on:not(.folded) .chart svg").first();
     await box.scrollIntoViewIfNeeded(); const bb = await box.boundingBox();

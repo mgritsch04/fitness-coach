@@ -11,17 +11,21 @@ FC.section({
     .hv-within, .hv-stable, .hv-high { color: var(--good-ink); } .hv-unsettled, .hv-low { color: var(--warn-ink); } .hv-fatigue, .hv-saturation, .hv-below { color: var(--bad-ink); }`,
   mount(root) {
     root.innerHTML = `
-      <div class="sec-head"><h2 id="h-hrvtrend">HRV-Trend</h2><span class="muted">7-Tage-Mittel und Normalbereich</span></div>
+      <div class="sec-head"><h2 id="h-hrvtrend">HRV-Trend</h2><span class="muted">7-Tage-Mittel und Normalbereich, Zeitraum wie oben</span></div>
       <div class="grid2">
         <div class="panel"><p class="hv-state" id="hvState"><span class="muted">Lädt …</span></p><p id="hvAdvice"></p><div class="hv-top" id="hvTop"></div></div>
-        <div class="panel"><h3>Verlauf (90 Tage)</h3><div class="chart" id="cHv"></div>
+        <div class="panel"><h3>Verlauf</h3><div class="chart" id="cHv"></div>
           <p class="chart-cap">Linie: 7-Tage-Mittel, Punkte: einzelne Morgen, Fläche: dein Normalbereich (60 Tage davor ± 0,5 Standardabweichungen).</p></div>
       </div>
       <p class="chart-cap" id="hvNotes"></p>`;
   },
   ready() {
+    this.sub();
+    if (!this.hooked) { this.hooked = true; FC.onRange(() => this.sub()); }
+  },
+  sub() {
     this.stop?.();
-    this.stop = FC.watch("get_hrv_trend", { days: 90 }, (data, err) => { this.rep = err ? { error: FC.errText(err) } : data; this.show(); });
+    this.stop = FC.watch("get_hrv_trend", { days: Math.max(60, FC.state.range) }, (data, err) => { this.rep = err ? { error: FC.errText(err) } : data; this.show(); });
   },
   render() { this.show(); },
   show() {
