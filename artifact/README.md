@@ -12,7 +12,7 @@ Die Oberfläche des Fitness Coach als Claude-Artefakt:
 - Keine Messwerte im Seiten-Code; alles kommt zur Laufzeit vom Worker.
 
 ## Einfache Ansicht
-Standard: nur Abschnitte mit `simple: true` (Kraft und Rad, im Verlauf Gewicht, Belastung und Erholung, HRV-Trend, Erholung und Schlaf) sind sichtbar, Reiter ohne sichtbare Abschnitte verschwinden. Die übrigen ruhen (laden nichts), nichts ist gelöscht; „Mehr › Dashboard anpassen › Einfache Ansicht“ schaltet den vollen Umfang wieder ein (Flag `simple` in der Anordnung, gilt auf allen Geräten). `sections/liftlog.js` („Meine Krafteinheiten“): alle Einheiten der letzten 12 Monate, Detail, Bearbeiten, Löschen.
+Standard: nur Abschnitte mit `simple: true` (Kraft und Rad, im Verlauf Gewicht, Belastung und Erholung, HRV-Trend, Erholung und Schlaf, im Training Pulszonen, Monate und Jahre, Jahresübersicht) sind sichtbar, Reiter ohne sichtbare Abschnitte verschwinden. Die übrigen ruhen (laden nichts), nichts ist gelöscht; „Mehr › Dashboard anpassen › Einfache Ansicht“ schaltet den vollen Umfang wieder ein (Flag `simple` in der Anordnung, gilt auf allen Geräten). `sections/liftlog.js` („Meine Krafteinheiten“): alle Einheiten der letzten 12 Monate, Detail, Bearbeiten, Löschen.
 
 ## Veröffentlichen
 Mit dem Artifact-Werkzeug `dashboard.html` auf dieselbe URL veröffentlichen, `root` = `artifact/`, und in `files` `app/core.js` sowie jede Datei unter `sections/` angeben (u. a. `workoutdetail.js`) (neue Abschnitte nicht vergessen). Kommt ein neues Connector-Werkzeug dazu, die `capabilities` vollständig neu angeben (Liste der Werkzeuge erweitern).

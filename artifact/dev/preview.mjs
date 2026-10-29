@@ -682,7 +682,7 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   if (heute.some((x) => ["highlights", "briefing", "mobility", "whatsnew", "sleeptarget", "recovery", "health"].includes(x)) || !heute.includes("today")) errors.push(`${name}: Heute zeigt Unnötiges: ${heute}`);
   await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(500);
   const tr = await secs();
-  if (tr.join() !== "gym,liftlog,fit,strength,bikewo,workouts") errors.push(`${name}: Training falsch: ${tr}`);
+  if (tr.join() !== "gym,liftlog,fit,strength,bikewo,hrzones,periods,year,workouts") errors.push(`${name}: Training falsch: ${tr}`);
   const n = await p.$$eval("#llList .ll-item", (l) => l.length);
   if (n !== 3) errors.push(`${name}: Krafteinheiten ${n} statt 3`);
   await p.click("#ll-s2 > summary"); await p.waitForTimeout(150);
