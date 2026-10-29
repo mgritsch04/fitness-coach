@@ -159,7 +159,7 @@ FC.section({
     const time = el("select", { id: "gyTime" }, ...[["", "Volle Einheit"], ["45", "Nur 45 min"], ["30", "Nur 30 min"], ["20", "Nur 20 min"]].map(([v, t]) => el("option", { value: v, text: t })));
     // Vorlage je Wochentag (#370): für heute vorausgewählt; gelöschte Vorlagen bleiben ohne Vorschlag.
     const wd = today ? (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7 : null;
-    const sugg = wd == null ? null : FC.state.data?.training?.prefs?.templateByDay?.[wd] ?? null;
+    const sugg = wd == null ? null : FC.dayPlan(FC.state.data?.training?.prefs, wd).strength;
     const hasSugg = !!sugg && d.templates.some((t) => t.name === sugg);
     if (hasSugg) sel.value = `t:${sugg}`;
     const go = el("button", { type: "button", class: "primary", text: "Einheit starten" });
@@ -174,27 +174,31 @@ FC.section({
   weekPanel(templates, wd) {
     const { el } = FC, names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
     const have = new Set(templates.map((t) => t.name));
-    const cur = () => { const a = FC.state.data?.training?.prefs?.templateByDay ?? []; return names.map((_, i) => (a[i] && (have.has(a[i]) || a[i] === "@rad" || a[i] === "@ruhe") ? a[i] : null)); };
     const out = el("span", { class: "muted", role: "status", id: "gyWeekMsg" });
     const rows = names.map((n, i) => {
-      const sel = el("select", { "aria-label": `${n}: Vorlage` }, el("option", { value: "", text: "frei / keine" }), el("option", { value: "@rad", text: "Rad" }), el("option", { value: "@ruhe", text: "Ruhetag" }), ...templates.map((t) => el("option", { value: t.name, text: `Kraft: ${t.name}` })));
-      sel.value = cur()[i] ?? "";
-      sel.onchange = async () => {
-        const vals = cur(); vals[i] = sel.value || null;
-        sel.disabled = true; out.textContent = "Speichere …";
+      // Kraft und Rad getrennt: ein Tag kann beides haben (Kraft-Vorlage UND Rad); „Ruhetag“ schließt beides aus.
+      const cur = FC.dayPlan(FC.state.data?.training?.prefs, i);
+      const sel = el("select", { "aria-label": `${n}: Kraft-Vorlage` }, el("option", { value: "", text: "keine Kraft" }), el("option", { value: "@ruhe", text: "Ruhetag" }), ...templates.map((t) => el("option", { value: t.name, text: `Kraft: ${t.name}` })));
+      sel.value = cur.rest ? "@ruhe" : cur.strength && have.has(cur.strength) ? cur.strength : "";
+      const rad = el("input", { type: "checkbox", "aria-label": `${n}: Rad` }); rad.checked = cur.ride; rad.disabled = cur.rest;
+      const save = async () => {
+        const rest = sel.value === "@ruhe";
+        sel.disabled = rad.disabled = true; out.textContent = "Speichere …";
         try {
-          await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null });
-          out.textContent = `${n}: ${sel.value ? `„${sel.value}“` : "keine Vorlage"} gespeichert.`;
+          await FC.call("set_training_prefs", FC.dayPlanPatch(FC.state.data?.training?.prefs, i, { strength: rest ? null : sel.value, ride: rad.checked, rest }));
+          out.textContent = `${n}: ${rest ? "Ruhetag" : [sel.value ? `Kraft „${sel.value}“` : null, rad.checked ? "Rad" : null].filter(Boolean).join(" + ") || "nichts geplant"} gespeichert.`;
           await FC.reload();
         } catch (e) { out.textContent = FC.errText(e); }
-        finally { sel.disabled = false; }
+        finally { sel.disabled = false; rad.disabled = sel.value === "@ruhe"; }
       };
-      return el("label", { class: "gy-wk", style: i === wd ? "font-weight:600" : "" }, el("span", { text: i === wd ? `${n} (heute)` : n }), sel);
+      sel.onchange = save; rad.onchange = save;
+      return el("div", { class: "gy-wk", style: `display:flex;flex-wrap:wrap;gap:8px;align-items:center${i === wd ? ";font-weight:600" : ""}` },
+        el("span", { text: i === wd ? `${n} (heute)` : n, style: "flex:0 0 8em" }), sel, el("label", { style: "display:inline-flex;gap:6px;align-items:center;font-weight:400" }, rad, "Rad"));
     });
     return el("div", { class: "panel", id: "gyWeek", style: "margin-top:12px;display:grid;gap:8px" },
       el("h3", { text: "Meine Woche" }),
-      el("p", { class: "chart-cap", style: "margin:0", text: templates.length ? "Lege fest, welche Vorlage an welchem Tag dran ist. Am Tag ist sie beim Start vorausgewählt." : "Noch keine Vorlage gespeichert: nach einer Einheit „Als Vorlage speichern“, dann kannst du hier deine Woche planen." }),
-      templates.length ? el("div", { style: "display:grid;gap:6px" }, ...rows) : "", out);
+      el("p", { class: "chart-cap", style: "margin:0", text: templates.length ? "Plane Kraft und Rad getrennt: pro Tag eine Kraft-Vorlage und/oder Rad. Am Tag ist die Vorlage beim Start vorausgewählt." : "Noch keine Kraft-Vorlage gespeichert (nach einer Einheit „Als Vorlage speichern“); Rad und Ruhetage kannst du schon planen." }),
+      el("div", { style: "display:grid;gap:6px" }, ...rows), out);
   },
   /** Vorlage direkt starten (z. B. von der Startseite); läuft schon eine Einheit, bleibt sie. */
   startTemplate(name) { if (!this.st) this.start(`t:${name}`); },

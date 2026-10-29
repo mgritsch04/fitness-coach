@@ -115,7 +115,13 @@ export function registerCoachTools(server: McpServer, env: Env) {
       .length(7)
       .nullable()
       .optional()
-      .describe("Gespeicherte Kraft-Vorlage je Wochentag [Mo … So] (Name der Vorlage), die das Gym an dem Tag vorschlägt; null im Feld = keine. Fällt eine Vorlage weg, gibt es an dem Tag keinen Vorschlag. null = zurücksetzen."),
+      .describe("Gespeicherte Kraft-Vorlage je Wochentag [Mo … So] (Name der Vorlage), die das Gym an dem Tag vorschlägt; null im Feld = keine. Fällt eine Vorlage weg, gibt es an dem Tag keinen Vorschlag. „@ruhe“ = Ruhetag, „@rad“ (älter) = nur Rad; null = zurücksetzen."),
+    rideByDay: z
+      .array(z.boolean().nullable())
+      .length(7)
+      .nullable()
+      .optional()
+      .describe("Rad je Wochentag [Mo … So], unabhängig von templateByDay: ein Tag kann Kraft-Vorlage UND Rad haben. null im Feld = kein Rad geplant. null = zurücksetzen."),
   };
 
   server.registerTool(
