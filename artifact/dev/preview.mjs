@@ -274,10 +274,10 @@ for (const [name, vp, scheme, tab, file] of shots) {
     const tp = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("tplMsg").textContent }));
     if (JSON.stringify(tp.saved?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || !/2 Tage/.test(tp.msg)) errors.push(`${name}: Vorlage je Wochentag speichern falsch ${JSON.stringify(tp)}`);
     // Rad und Kraft getrennt je Tag (#399): Montag Kraft UND Rad, Mittwoch nur Rad; alles bleibt lesbar.
-    await p.check("#tplDays input[data-ride='0']"); await p.check("#tplDays input[data-ride='2']");
+    await p.fill("#tplDays input[data-ride='0']", "Z2"); await p.fill("#tplDays input[data-ride='2']", "Intervalle 4x8");
     await p.click("#tplSave"); await p.waitForTimeout(200);
     const tr2 = await p.evaluate(() => window.__prefsSaved);
-    if (JSON.stringify(tr2?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || JSON.stringify(tr2?.rideByDay) !== JSON.stringify([true, null, true, null, null, null, null])) errors.push(`${name}: Rad und Kraft getrennt speichern falsch ${JSON.stringify(tr2)}`);
+    if (JSON.stringify(tr2?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || JSON.stringify(tr2?.rideByDay) !== JSON.stringify(["Z2", null, "Intervalle 4x8", null, null, null, null])) errors.push(`${name}: Rad und Kraft getrennt speichern falsch ${JSON.stringify(tr2)}`);
     // Radzeit je Wochentag (#336): Montag 0 min, Freitag 120 min, Dienstag locker; dazu „Heute nur 45 min“.
     await p.evaluate(() => { document.getElementById("timeBox").open = true; });
     await p.fill("#dayTimes input[data-day='0']", "0"); await p.fill("#dayTimes input[data-day='4']", "120"); await p.check("#dayTimes input[data-easy='1']");
@@ -427,7 +427,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     // Heute ist die Vorlage je Wochentag (#370) vorausgewählt; die Planeinheit bleibt wählbar.
     const plan = await p.$eval("#gySrc", (s) => s.value);
-    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || !(await p.$("#gyWeek select")) || !(await p.$("#gyWeek input[type=checkbox]"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
+    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || (await p.$("#gyWeek"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage nicht an oder zeigt Wochenplan (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
     // Verlauf und Prognose im Gym-Modus (#328)

@@ -267,17 +267,17 @@ FC.section({
       const sel = el("select", { "data-day": String(i), "aria-label": `${n}: Kraft-Vorlage` },
         el("option", { value: "", text: "keine" }), el("option", { value: "@ruhe", text: "Ruhetag" }), ...this.tplNames.map((t) => el("option", { value: t, text: t })));
       sel.value = cur.rest ? "@ruhe" : cur.strength && this.tplNames.includes(cur.strength) ? cur.strength : "";
-      const rad = el("input", { type: "checkbox", "data-ride": String(i), "aria-label": `${n}: Rad` }); rad.checked = cur.ride; rad.disabled = cur.rest;
-      sel.onchange = () => { this.tplDirty = true; rad.disabled = sel.value === "@ruhe"; if (rad.disabled) rad.checked = false; };
-      rad.onchange = () => { this.tplDirty = true; };
-      return el("label", {}, el("span", { text: n }), sel, el("span", { class: "row", style: "gap:6px" }, rad, "Rad"));
+      const rad = FC.rideInput(`${n}: Rad (was wird gefahren?)`, cur.rideText || (cur.ride ? "Rad" : ""), cur.rest); rad.dataset.ride = String(i);
+      sel.onchange = () => { this.tplDirty = true; rad.disabled = sel.value === "@ruhe"; if (rad.disabled) rad.value = ""; };
+      rad.oninput = () => { this.tplDirty = true; };
+      return el("label", {}, el("span", { text: n }), sel, rad);
     }));
     if (!this.tplNames.length) box.append(el("p", { class: "fine muted", text: "Noch keine Vorlage gespeichert: Im Gym nach einer Einheit „Als Vorlage speichern“." }));
   },
   async saveTemplates() {
     const { $ } = FC, msg = $("tplMsg");
     const sels = [...$("tplDays").querySelectorAll("select")], rides = [...$("tplDays").querySelectorAll("input[data-ride]")];
-    const vals = sels.map((s) => s.value || null), ride = rides.map((c) => (c.checked && !c.disabled ? true : null));
+    const vals = sels.map((s) => s.value || null), ride = rides.map((c) => (!c.disabled && c.value.trim() ? c.value.trim() : null));
     $("tplSave").disabled = true; msg.textContent = "Speichere …";
     try {
       await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null, rideByDay: ride.some((v) => v) ? ride : null });
