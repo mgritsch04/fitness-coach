@@ -139,7 +139,9 @@ header.top .date { color: var(--ink-2); margin-top: 4px; }
 .tile.tl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tile.open { grid-column: 1 / -1; cursor: default; }
 .tile .tl-more { margin-top: 8px; display: grid; gap: 6px; }
-.tile .tl-range { display: flex; gap: 14px; }
+.tile .tl-range { justify-self: start; flex-wrap: wrap; max-width: 100%; }
+.tile .tl-range button { padding: 6px 10px; font-size: 0.88rem; }
+.tile .tl-chart { margin-top: 4px; }
 .tile .cmp { font-size: 0.85rem; color: var(--ink-2); }
 .tile svg.spark { width: 100%; height: 30px; display: block; margin-top: 4px; }
 .st { display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; font-weight: 700; }
@@ -182,6 +184,7 @@ section { display: grid; gap: 14px; }
 .chart { position: relative; min-width: 0; }
 .chart svg { display: block; width: 100%; overflow: visible; }
 .chart text { fill: var(--ink-3); font-size: 11px; font-family: var(--font-body); }
+.chart text.pk { fill: var(--ink); font-weight: 700; font-size: 12px; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
 .chart .gridl { stroke: var(--grid); stroke-width: 1; }
 .chart .zero { stroke: var(--ink-3); stroke-width: 1; }
 .chart .xh { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
