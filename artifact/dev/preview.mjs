@@ -313,6 +313,10 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (!tl.open || tl.n !== 6) errors.push(`${name}: Kachel-Verlauf falsch ${JSON.stringify(tl)}`);
     await p.click("#tiles .tile.open button[data-n='180']").catch(() => errors.push(`${name}: Zeitraum-Knopf fehlt`)); await p.waitForTimeout(200);
     if (!(await p.$("#tiles .tile.open svg"))) errors.push(`${name}: Kachel klappt beim Zeitraumwechsel zu`);
+    for (const n of [365, 3650]) {
+      await p.click(`#tiles .tile.open button[data-n='${n}']`).catch(() => errors.push(`${name}: Zeitraum ${n} fehlt`)); await p.waitForTimeout(400);
+      if (!(await p.$("#tiles .tile.open svg"))) errors.push(`${name}: Kachel-Verlauf ${n} ohne Diagramm`);
+    }
     await (await p.$("#tiles .tile.open"))?.screenshot({ path: join(out, `${name}-kachel.png`) });
     await p.click("#tiles .tile.open .label").catch(() => {}); await p.waitForTimeout(150);
     if (await p.$("#tiles .tile.open")) errors.push(`${name}: Kachel-Verlauf schließt nicht`);
