@@ -4,8 +4,8 @@
 FC.section({
   id: "exlist",
   simple: true,
-  tab: "training",
-  order: 41,
+  tab: "uebungen",
+  order: 1,
   MUSCLES: [["chest", "Brust"], ["back", "Rücken"], ["shoulders", "Schultern"], ["biceps", "Bizeps"], ["triceps", "Trizeps"], ["quads", "Oberschenkel vorne"], ["hamstrings", "Oberschenkel hinten"], ["glutes", "Gesäß"], ["calves", "Waden"], ["core", "Rumpf"]],
   SOURCE: { manual: "manuell gesetzt", catalog: "aus dem Katalog", auto: "automatisch aus dem Namen erkannt", unknown: "nicht erkannt" },
   css: `
@@ -85,7 +85,7 @@ FC.section({
       const go = el("button", { type: "button", text: "Alle in diese zusammenführen" });
       go.onclick = async () => {
         const names = g.exercises.map((x) => x.name).join(", ");
-        if (!window.confirm(`Alle in „${sel.selectedOptions[0].text}“ zusammenführen? (${names}) Verlauf und Bestwerte bleiben erhalten.`)) return;
+        if (!FC.ask(go, `Alle in „${sel.selectedOptions[0].text}“ zusammenführen? (${names}) Verlauf und Bestwerte bleiben erhalten. Zum Bestätigen nochmal tippen.`)) return;
         go.disabled = true;
         for (const x of g.exercises) if (x.exercise !== sel.value) await this.act({ action: "merge", exercise: x.exercise, into: sel.value }, `Zusammengeführt in „${sel.selectedOptions[0]?.text ?? ""}“.`);
       };
@@ -127,7 +127,7 @@ FC.section({
       mg.onclick = () => {
         if (!sel.value) { sel.focus(); return; }
         const t = sel.selectedOptions[0].text;
-        if (!window.confirm(`„${e.name}“ in „${t}“ zusammenführen? Verlauf und Bestwerte beider bleiben erhalten, „${t}“ bleibt als Übung.`)) return;
+        if (!FC.ask(mg, `„${e.name}“ in „${t}“ zusammenführen? Verlauf und Bestwerte beider bleiben erhalten. Zum Bestätigen nochmal tippen.`)) return;
         this.act({ action: "merge", exercise: e.exercise, into: sel.value }, `„${e.name}“ ist jetzt in „${t}“ enthalten.`);
       };
       body.append(el("div", { class: "ex-row" }, sel, mg));
