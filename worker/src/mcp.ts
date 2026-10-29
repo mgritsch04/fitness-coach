@@ -172,8 +172,8 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     "sync_now",
     {
       description:
-        "WHOOP und Wahoo jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten `days` Tage neu (Standard 30, höchstens 120). Ergebnis je Quelle; Wahoo wird übersprungen, solange es nicht verbunden ist.",
-      inputSchema: { full: z.boolean().optional(), days: z.number().int().min(1).max(120).optional() },
+        "WHOOP und Wahoo jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten `days` Tage neu (Standard 30, höchstens 365, so weit WHOOP und Wahoo zurückreichen). Ergebnis je Quelle; Wahoo wird übersprungen, solange es nicht verbunden ist.",
+      inputSchema: { full: z.boolean().optional(), days: z.number().int().min(1).max(365).optional() },
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
     async ({ full, days: d }) => {
