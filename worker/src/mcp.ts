@@ -173,11 +173,16 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
     {
       description:
         "WHOOP und Wahoo jetzt abgleichen (sonst stündlich automatisch). full=true lädt die letzten `days` Tage neu (Standard 30, höchstens 365, so weit WHOOP und Wahoo zurückreichen). Ergebnis je Quelle; Wahoo wird übersprungen, solange es nicht verbunden ist.",
-      inputSchema: { full: z.boolean().optional(), days: z.number().int().min(1).max(365).optional() },
+      inputSchema: {
+        full: z.boolean().optional(),
+        days: z.number().int().min(1).max(365).optional(),
+        beforeDays: z.number().int().min(1).max(365).optional().describe("nur WHOOP: Fenster endet vor so vielen Tagen (Backfill in Stücken, z. B. days=90 beforeDays=90 lädt Tag 90 bis 180 zurück)"),
+        source: z.enum(["whoop", "wahoo"]).optional().describe("nur diese Quelle abgleichen"),
+      },
       annotations: { readOnlyHint: false, idempotentHint: true },
     },
-    async ({ full, days: d }) => {
-      return json(await syncAll(env, props.whoopUserId, { full, days: d }));
+    async ({ full, days: d, beforeDays, source }) => {
+      return json(await syncAll(env, props.whoopUserId, { full, days: d, beforeDays, source }));
     },
   );
 
