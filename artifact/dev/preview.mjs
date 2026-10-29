@@ -311,6 +311,9 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#tiles .tile.tl").catch(() => errors.push(`${name}: Kachel nicht anklickbar`)); await p.waitForTimeout(250);
     const tl = await p.evaluate(() => ({ open: !!document.querySelector("#tiles .tile.open svg"), n: document.querySelectorAll("#tiles .tile.tl").length }));
     if (!tl.open || tl.n !== 6) errors.push(`${name}: Kachel-Verlauf falsch ${JSON.stringify(tl)}`);
+    await p.click("#tiles .tile.open button[data-n='180']").catch(() => errors.push(`${name}: Zeitraum-Knopf fehlt`)); await p.waitForTimeout(200);
+    if (!(await p.$("#tiles .tile.open svg"))) errors.push(`${name}: Kachel klappt beim Zeitraumwechsel zu`);
+    await (await p.$("#tiles .tile.open"))?.screenshot({ path: join(out, `${name}-kachel.png`) });
     await p.click("#tiles .tile.open .label").catch(() => {}); await p.waitForTimeout(150);
     if (await p.$("#tiles .tile.open")) errors.push(`${name}: Kachel-Verlauf schließt nicht`);
     // Heute (#191): bis „Heute dran“ offen, darunter eingeklappt.

@@ -118,6 +118,24 @@
         for (let i = n - 1; i >= 0; i--) { const v = s.value(days[i]); if (v != null) { svg.append(sv("circle", { cx: x(i), cy: y(v), r: 4, fill: s.color, stroke: cssVar("--panel"), "stroke-width": 2 })); break; } }
       }
     }
+    // opts.peaks: Höchst-, Tiefst- und letzten Wert der ersten Linie direkt beschriften (ohne sich zu überdecken).
+    if (opts.peaks) {
+      const s = series.find((q) => q.kind !== "stack"), pts = [];
+      days.forEach((p, i) => { const v = s.value(p); if (v != null) pts.push({ i, v }); });
+      if (pts.length) {
+        const hi = pts.reduce((a, b) => (b.v > a.v ? b : a)), lo = pts.reduce((a, b) => (b.v < a.v ? b : a));
+        const placed = [];
+        for (const q of [pts.at(-1), hi, lo]) {
+          const cx = Math.min(W - m.r - 16, Math.max(m.l + 16, x(q.i)));
+          if (placed.some((px) => Math.abs(px - cx) < 34)) continue;
+          placed.push(cx);
+          const cy = y(q.v), below = cy < m.t + 14;
+          svg.append(sv("circle", { cx: x(q.i), cy, r: 3, fill: s.color }));
+          const t = sv("text", { x: cx, y: below ? cy + 15 : cy - 7, "text-anchor": "middle", class: "pk" });
+          t.textContent = (s.fmt ?? ((v) => String(v)))(q.v); svg.append(t);
+        }
+      }
+    }
     const xh = sv("line", { y1: m.t, y2: m.t + ih, class: "xh", visibility: "hidden" });
     svg.append(xh);
     svg.append(sv("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }));

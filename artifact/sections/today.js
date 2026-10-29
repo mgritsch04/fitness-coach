@@ -83,7 +83,7 @@ FC.section({
       if (!trend) return t;
       const key = `${label}`;
       const draw = (box, n) => {
-        chart(box, { days: d.days.slice(-n), aria: `${label}, letzte ${n} Tage`, xFmt: (p) => fmtDay(p.day), height: 200,
+        chart(box, { days: d.days.slice(-n), aria: `${label}, letzte ${n} Tage`, xFmt: (p) => fmtDay(p.day), height: 200, peaks: true,
           series: [{ label, kind: trend.bar ? "bar" : "line", color, width: 2, value: trend.value, fmt: (v) => `${de(v, trend.digits ?? 0)} ${trend.unit}` }] });
       };
       const open = (on) => {
@@ -92,11 +92,17 @@ FC.section({
         if (FC.tileOpen === key && !on) FC.tileOpen = null;
         if (!on) return;
         FC.tileOpen = key;
-        const box = el("div", { class: "tl-chart" });
-        const bar = el("div", { class: "tl-range" });
-        for (const n of [30, 90, 180]) bar.append(el("button", { class: "link", type: "button", text: `${n} Tage`, onclick: (e) => { e.stopPropagation(); draw(box, n); } }));
-        const more = el("div", { class: "tl-more", onclick: (e) => e.stopPropagation() }, bar, box);
-        t.append(more); draw(box, 90);
+        const box = el("div", { class: "chart tl-chart" });
+        const bar = el("div", { class: "seg tl-range", role: "group", "aria-label": "Zeitraum" });
+        const pick = (n) => { draw(box, n); for (const b of bar.children) b.setAttribute("aria-pressed", String(b.dataset.n === String(n))); };
+        for (const n of [30, 90, 180]) {
+          const b = el("button", { type: "button", "data-n": n, "aria-pressed": "false", text: `${n} Tage` });
+          b.addEventListener("click", (e) => { e.stopPropagation(); pick(n); });
+          bar.append(b);
+        }
+        const more = el("div", { class: "tl-more" }, bar, box);
+        more.addEventListener("click", (e) => e.stopPropagation());
+        t.append(more); pick(90);
       };
       t.tabIndex = 0; t.setAttribute("role", "button"); t.setAttribute("aria-expanded", "false"); t.title = "Antippen: Verlauf anzeigen";
       t.classList.add("tl");
