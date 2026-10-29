@@ -179,7 +179,11 @@ FC.section({
         this.editId = null; FC.$("llMsg").textContent = "Gespeichert."; await this.refresh();
       } catch (err) { msg.textContent = err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err); save.disabled = false; }
     };
+    // Abbrechen auch oben, damit man bei langen Einheiten nicht ans Ende scrollen muss.
+    const cancelTop = el("button", { type: "button", text: "Abbrechen" });
+    cancelTop.onclick = cancel.onclick;
     return el("div", { class: "ll-body" }, el("div", { class: "ll-edit" },
+      el("div", { class: "ll-actions", style: "justify-content:space-between;align-items:center" }, el("h3", { text: "Einheit bearbeiten", style: "margin:0;font-size:1rem" }), cancelTop),
       el("div", { class: "ll-meta" }, day, dur, name, rpe), rows, el("div", { class: "ll-actions" }, addExBtn), unsure,
       el("div", { class: "ll-actions" }, save, cancel, msg)));
   },

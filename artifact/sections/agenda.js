@@ -150,7 +150,7 @@ FC.section({
     // Heutige Workouts ohne Anstrengung: kurz nachfragen (#134), verbessert die Belastungsschätzung beim Krafttraining.
     const open = isToday && FC.state.rpePicker ? d.workouts.filter((w) => w.day === d.today && !w.rpe && w.durationMin >= 10).slice(0, 2) : [];
     const ask = open.map((w) => el("div", { class: "ag-rpe" }, el("p", { text: `Wie anstrengend war dein ${FC.sport(w.sport)} (${de(w.durationMin)} min)? 1 sehr leicht, 10 maximal.` }), FC.state.rpePicker(w)));
-    $("agBody").replaceChildren(week, det, ...ask, isToday && (x.status === "done" || x.status === "partial") ? this.feedback(d) : "", isToday && x.actualMin > 0 && (this.RIDES.includes(x.type) || (x.actualSports ?? []).some((sp) => /cycl|bike|ride|rad/i.test(sp))) ? this.sweat(d, x) : "", act, el("p", { class: "muted", id: "agMsg", role: "status" }));
+    $("agBody").replaceChildren(week, det, ...ask, isToday && (x.status === "done" || x.status === "partial") ? this.feedback(d) : "", act, el("p", { class: "muted", id: "agMsg", role: "status" }));
   },
   /** Rückmeldung zur Tagesempfehlung (#216): passt / zu hart / zu leicht. */
   feedback(d) {
