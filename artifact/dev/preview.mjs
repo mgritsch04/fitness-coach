@@ -416,10 +416,9 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#moStart").catch(() => errors.push(`${name}: Mobility ohne Start-Knopf`)); await p.waitForTimeout(1200);
     if (!(await p.evaluate(() => !document.getElementById("moRun").hidden && /\d+ s/.test(document.getElementById("moRun").textContent)))) errors.push(`${name}: Mobility-Timer läuft nicht`);
     await p.click("#moStart").catch(() => {});
-    // Kraft pro kg (#203): Tabelle mit Stufen im Abschnitt Krafttraining.
+    // Kraft pro kg ist ausgeblendet (G braucht sie nicht).
     await p.evaluate(() => FC.goTo("strength")); await p.waitForTimeout(800);
-    const stdN = await p.$$eval("#stStd tbody tr", (r) => r.length).catch(() => 0);
-    if (stdN !== 2) errors.push(`${name}: Kraft pro kg zeigt ${stdN} statt 2 Zeilen`);
+    if (await p.$("#stStd")) errors.push(`${name}: Kraft pro kg sollte nicht mehr angezeigt werden`);
     await p.click("#tabbar [data-tab=heute]").catch(() => {}); await p.waitForTimeout(200);
     await p.click("#tabbar [data-tab=heute]"); await p.waitForTimeout(200);
   }
