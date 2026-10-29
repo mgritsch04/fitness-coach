@@ -55,13 +55,18 @@ export async function syncWhoop(
   creds: WhoopCredentials,
   store: WhoopTokenStore,
   userId: string,
-  opts: { now?: number; full?: boolean; days?: number; fetch?: Fetch } = {},
+  opts: { now?: number; full?: boolean; days?: number; beforeDays?: number; fetch?: Fetch } = {},
 ): Promise<SyncResult> {
   const now = opts.now ?? Date.now();
   const f = opts.fetch ?? fetch;
   const at = new Date(now).toISOString();
-  const state = opts.full ? null : await getSyncState(db, "whoop");
+  const state = opts.full || opts.beforeDays ? null : await getSyncState(db, "whoop");
   const window = syncWindow(state?.last_success_at, now, opts.days);
+  // Älteres Fenster nachladen (Backfill in Stücken, das Anfragenlimit des Workers reicht für ca. 150 Tage): Ende nach hinten schieben, Abgleichstand unberührt lassen.
+  if (opts.beforeDays) {
+    window.end = new Date(now - opts.beforeDays * DAY).toISOString();
+    window.start = new Date(Math.max(now - (opts.beforeDays + (opts.days ?? INITIAL_DAYS)) * DAY, now - 365 * DAY)).toISOString();
+  }
   try {
     const token = await validAccessToken(creds, store, userId, f, now);
     // Zyklen zuerst: Recovery wird an den Tag des Zyklus gehängt.
@@ -76,9 +81,9 @@ export async function syncWhoop(
       ...recoveries.map((r) => updateRecovery(db, mapRecovery(r))),
       ...sleeps.map((s) => upsertSleep(db, mapSleep(s))),
       ...workouts.map((w) => upsertWorkout(db, mapWorkout(w))),
-      upsertBody(db, mapBody(body, at.slice(0, 10))),
+      ...(opts.beforeDays ? [] : [upsertBody(db, mapBody(body, at.slice(0, 10)))]),
     ]);
-    await setSyncState(db, "whoop", true, null, at);
+    if (!opts.beforeDays) await setSyncState(db, "whoop", true, null, at);
     return { days: cycles.length, sleeps: sleeps.length, workouts: workouts.length, window };
   } catch (err) {
     await setSyncState(db, "whoop", false, err instanceof Error ? err.message : String(err), at);
