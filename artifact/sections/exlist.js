@@ -47,6 +47,7 @@ FC.section({
         <div class="ex-tools">
           <input type="search" id="exSearch" placeholder="Übung suchen" aria-label="Übung suchen" autocomplete="off">
           <p class="ex-note" id="exDeload" hidden></p>
+          <div id="exSides"></div>
           <details id="exDupBox" class="ex-more" hidden><summary id="exDupSum"></summary><div id="exDup"></div></details>
         </div>
         <div id="exList"><div class="empty">Lade Übungen …</div></div>
@@ -107,6 +108,7 @@ FC.section({
     $("exDupBox").hidden = !dups.length;
     $("exDupSum").textContent = `${dups.length} mögliche Dublette${dups.length === 1 ? "" : "n"} prüfen`;
     $("exDup").replaceChildren(...dups);
+    $("exSides").replaceChildren(...this.sidesMerge(shown));
     const nodes = [];
     for (const [k, t] of [...this.MUSCLES, ["other", "Sonstige"]]) {
       const g = vis.filter((e) => this.groupOf(e) === k);
@@ -120,6 +122,34 @@ FC.section({
       return el("div", { class: "ex-row", style: "padding:6px 0" }, el("span", { text: e.name, style: "flex:1 1 10em" }), b);
     }));
     if (focused?.id && document.getElementById(focused.id)) document.getElementById(focused.id).focus();
+  },
+  /** Zwei Übungen (z. B. „Rudern links“ und „Rudern rechts“) zu einer einseitigen zusammenführen: Sätze der ersten gelten als links, der zweiten als rechts. */
+  sidesMerge(shown) {
+    const { el } = FC;
+    if (shown.length < 2) return [];
+    const opts = () => shown.map((x) => el("option", { value: x.exercise, text: x.name }));
+    const a = el("select", { "aria-label": "Übung für links", id: "exSideL" }, ...opts()), b = el("select", { "aria-label": "Übung für rechts", id: "exSideR" }, ...opts());
+    if (shown.length > 1) b.selectedIndex = 1;
+    const nm = el("input", { type: "text", maxlength: 80, placeholder: "Name der neuen Übung, z. B. Rudern einarmig", "aria-label": "Name der einseitigen Übung", id: "exSideName" });
+    const go = el("button", { type: "button", text: "Zu einer einseitigen Übung zusammenführen" });
+    go.onclick = async () => {
+      const name = nm.value.trim();
+      if (!name) { nm.focus(); return; }
+      if (a.value === b.value) { this.msg("Bitte zwei verschiedene Übungen wählen."); return; }
+      const ta = a.selectedOptions[0].text, tb = b.selectedOptions[0].text;
+      if (!FC.ask(go, `„${ta}“ (links) und „${tb}“ (rechts) zu „${name}“ zusammenführen? Verlauf und Bestwerte bleiben erhalten. Zum Bestätigen nochmal tippen.`)) return;
+      go.disabled = true;
+      try {
+        await FC.call("manage_exercise", { action: "merge", exercise: a.value, into: name, side: "L" });
+        await FC.call("manage_exercise", { action: "merge", exercise: b.value, into: name, side: "R" });
+        await FC.call("manage_exercise", { action: "rename", exercise: name, name });
+      } catch (err) { go.disabled = false; this.msg(err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err)); return; }
+      await this.act({ action: "unilateral", exercise: name }, `„${ta}“ ist jetzt links und „${tb}“ rechts in „${name}“.`);
+    };
+    return [el("details", { class: "ex-dup" }, el("summary", { class: "muted", style: "cursor:pointer;min-height:40px", text: "Links- und Rechts-Übung zusammenführen" }),
+      el("span", { class: "ex-sub", text: "Die bisherigen Sätze der ersten Übung zählen danach als links, die der zweiten als rechts." }),
+      el("div", { class: "ex-row" }, el("label", { class: "muted", for: "exSideL", text: "Links:" }), a), el("div", { class: "ex-row" }, el("label", { class: "muted", for: "exSideR", text: "Rechts:" }), b),
+      el("div", { class: "ex-row" }, nm, go))];
   },
   /** Dubletten-Vorschläge: pro Gruppe die Übung wählen, die bleibt; die anderen gehen in sie auf. */
   dupGroups(d, shown) {
@@ -217,14 +247,15 @@ FC.section({
     const others = all.filter((x) => x.exercise !== e.exercise);
     if (others.length) {
       const sel = el("select", { "aria-label": `${e.name} zusammenführen mit` }, el("option", { value: "", text: "Zusammenführen mit …" }), ...others.map((x) => el("option", { value: x.exercise, text: x.name })));
+      const side = el("select", { "aria-label": `Seite von ${e.name} in der Zielübung` }, el("option", { value: "", text: "Seite: keine" }), el("option", { value: "L", text: "als links" }), el("option", { value: "R", text: "als rechts" }));
       const mg = el("button", { type: "button", text: "Zusammenführen" });
       mg.onclick = () => {
         if (!sel.value) { sel.focus(); return; }
         const t = sel.selectedOptions[0].text;
         if (!FC.ask(mg, `„${e.name}“ in „${t}“ zusammenführen? Verlauf und Bestwerte beider bleiben erhalten. Zum Bestätigen nochmal tippen.`)) return;
-        this.act({ action: "merge", exercise: e.exercise, into: sel.value }, `„${e.name}“ ist jetzt in „${t}“ enthalten.`);
+        this.act({ action: "merge", exercise: e.exercise, into: sel.value, ...(side.value ? { side: side.value } : {}) }, `„${e.name}“ ist jetzt in „${t}“ enthalten${side.value ? ` (${side.value === "L" ? "links" : "rechts"})` : ""}.`);
       };
-      kids.push(el("div", { class: "ex-row" }, sel, mg));
+      kids.push(el("div", { class: "ex-row" }, sel, side, mg));
     }
     const hide = el("button", { type: "button", text: "Ausblenden" });
     hide.onclick = () => this.act({ action: "hide", exercise: e.exercise }, `„${e.name}“ ausgeblendet. Der Verlauf bleibt; unten wieder einblendbar.`);

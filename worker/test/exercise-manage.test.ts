@@ -96,3 +96,24 @@ describe("Einseitige Übungen (links/rechts)", () => {
     expect((await readOverrides(db)).get("xyz")?.unilateral).toBe(true);
   });
 });
+
+describe("Zusammenführen mit Seitenzuordnung", () => {
+  it("macht aus „Rudern links“ und „Rudern rechts“ eine einseitige Übung", async () => {
+    const db = fakeD1();
+    await saveStrengthSession(db, { ...base, id: "a", day: "2026-03-01", sets: [set("rudern links", "Rudern links", 10, 20), set("rudern rechts", "Rudern rechts", 9, 22)] });
+    await saveStrengthSession(db, { ...base, id: "b", day: "2026-03-08", sets: [set("rudern links", "Rudern links", 12, 22), set("rudern rechts", "Rudern rechts", 10, 24)] });
+    const o = { hidden: false, musclesPrimary: null, musclesSecondary: null };
+    await saveOverride(db, { key: "rudern einarmig", mergedInto: null, displayName: "Rudern einarmig", unilateral: true, ...o });
+    await saveOverride(db, { key: "rudern links", mergedInto: "rudern einarmig", displayName: null, mergeSide: "L", ...o });
+    await saveOverride(db, { key: "rudern rechts", mergedInto: "rudern einarmig", displayName: null, mergeSide: "R", ...o });
+    const raw = await readStrengthSessions(db, "2026-01-01", { raw: true });
+    const m = manageExercises(raw, [], await readOverrides(db)).exercises;
+    expect(m).toHaveLength(1);
+    expect(m[0]).toMatchObject({ exercise: "rudern einarmig", name: "Rudern einarmig", sessions: 2, sets: 4, unilateral: true });
+    expect(m[0].history[0].sets).toEqual([{ reps: 12, weightKg: 22, side: "L" }, { reps: 10, weightKg: 24, side: "R" }]);
+    // Gespeicherte Sätze unverändert, Trennen stellt alles wieder her.
+    expect(raw.flatMap((s) => s.sets.map((x) => x.side ?? null))).toEqual([null, null, null, null]);
+    await saveOverride(db, { key: "rudern links", mergedInto: null, displayName: null, mergeSide: null, ...o });
+    expect((await readStrengthSessions(db, "2026-01-01")).flatMap((s) => s.sets).filter((x) => x.exercise === "rudern links")).toHaveLength(2);
+  });
+});
