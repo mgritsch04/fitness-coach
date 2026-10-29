@@ -32,7 +32,7 @@ export interface LegSession {
 export function legSessions(sessions: readonly StrengthSession[]): LegSession[] {
   return sessions
     .map((s) => {
-      const legSets = s.sets.filter((x) => musclesOf(x.exercise, x.muscles).primary.some((m) => LEG_MUSCLES.includes(m))).length;
+      const legSets = s.sets.filter((x) => musclesOf(x.exercise, x.muscles, x.muscleOverride).primary.some((m) => LEG_MUSCLES.includes(m))).length;
       // Ohne Startzeit: Mittag annehmen (Schätzung).
       const start = Date.parse(s.startTime ?? `${s.day}T12:00:00Z`);
       return { day: s.day, endMs: start + (s.durationMin ?? 60) * 60_000, legSets, rpe: s.rpe };

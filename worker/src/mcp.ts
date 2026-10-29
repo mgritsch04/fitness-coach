@@ -189,7 +189,7 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
         "Trends gegen die persönliche Basis, Wochenübersicht, Workouts mit geschätzter Belastung (Duplikate aus mehreren Quellen zusammengeführt) " +
         "und die regelbasierte Tagesempfehlung des Coachs. Belastungswerte sind Schätzungen.",
       inputSchema: {
-        days: z.number().int().min(7).max(365).optional().describe("Zeitraum der Ansicht in Tagen, Standard 90"),
+        days: z.number().int().min(7).max(3650).optional().describe("Zeitraum der Ansicht in Tagen, Standard 90"),
         compact: z.boolean().optional().describe("true: days und workouts als {keys, rows} statt Objektliste (halbe Größe, für das Dashboard-Artefakt)"),
       },
       annotations: { readOnlyHint: true },

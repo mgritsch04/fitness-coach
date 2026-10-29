@@ -43,7 +43,7 @@ const LOAD_WARMUP_DAYS = 120;
 const BASELINE_DAYS = 35;
 
 export async function buildDashboard(db: D1Database, opts: { days?: number; now?: number } = {}) {
-  const days = Math.min(365, Math.max(7, opts.days ?? 90));
+  const days = Math.min(3650, Math.max(7, opts.days ?? 90));
   const [userSettings, indoorMode, uiLayout] = await Promise.all([readSettings(db), readIndoor(db).catch(() => ({ on: false, until: null })), readLayout(db).catch(() => null)]);
   const today = todayIn(userSettings.timezone ?? "Europe/Berlin", opts.now);
   const viewFrom = addDays(today, -(days - 1));

@@ -152,6 +152,12 @@ Seit #297 zählt, was heute wirklich trainiert wurde (`mobilityKindForActual`). 
 
 Ist ein Gerät belegt, tauscht „Tauschen“ eine offene Übung gegen eine gleichwertige Alternative (gleiches Bewegungsmuster, ähnliche Muskeln). Die Satzzahl bleibt, das Startgewicht kommt aus deinem letzten Top-Satz dieser Alternative, sonst wählst du selbst. Tool: `get_exercise_alternatives {exercise, exclude?}` (Logik in `worker/src/core/exercises.ts`). Die Reihenfolge der Alternativen ist eine Faustregel.
 
+### Übungsverwaltung (#399)
+- **Tauschen im Gym-Modus:** neben den Alternativen (#204) lässt sich jede eigene Übung wählen oder eine neue eintippen; Sätze, Wdh. und Gewicht kommen vom letzten Mal der neuen Übung. Wurde in einer Einheit mit Vorlage getauscht, fragt das Dashboard nach dem Speichern „Vorlage mit den geänderten Übungen aktualisieren?“.
+- **Vorlage = Übungsliste:** `suggest_strength_session` liefert je Übung `lastSets` (Sätze, Wdh., Gewicht vom letzten Mal, auch aus anderen Einheiten); der Gym-Modus startet damit. Ob gesteigert wird, entscheidet G. Sätze/Wdh./kg in der Vorlage sind nur Rückfallwerte ohne Vorgeschichte.
+- **Meine Übungen** (`artifact/sections/exlist.js`): Verlauf je Übung (Datum, Sätze, kg, Wdh.), umbenennen, zusammenführen (Sätze bleiben unverändert, die Zuordnung steht in `exercise_overrides`, Migration 0016; lässt sich wieder trennen), ausblenden, Muskelgruppen (Haupt-/Hilfsmuskel) manuell setzen, Dubletten-Vorschläge. Tools: `get_exercises`, `manage_exercise` (Logik in `worker/src/core/exercise-manage.ts`).
+- **Muskelgruppen automatisch:** Übungen außerhalb des Katalogs werden aus dem Namen erkannt (`core/exercise-muscles.ts`, Stichwortregeln), vorher landete alles unter „Sonstige“. Manuelle Zuordnung geht vor.
+
 ## Konstanz und Serien (#209)
 
 Das Wochenziel besteht aus Kraft- und Radeinheiten. Es kommt aus den Trainingsvorlieben (`strengthPerWeek`, `ridesPerWeek`), sonst wird es als Median der letzten abgeschlossenen Wochen geschätzt und so gekennzeichnet. Kraft zählt einmal pro Tag, Rad ab 20 min. `get_consistency` liefert die letzten 12 Wochen (erreicht ja/nein), die aktuelle und die beste Serie, die Quote der abgeschlossenen Wochen und die Plan-Treue aus gespeicherten Plänen. Die laufende Woche bricht keine Serie ab. Karte „Konstanz und Serien“ im Coach-Tab (`artifact/sections/consistency.js`, Logik in `worker/src/core/consistency.ts`).

@@ -2,6 +2,8 @@
 // Fortschritt je Übung und Hinweise für den Coach. Reine Funktionen oben, D1-Zugriffe unten.
 // Alle 1RM- und Belastungswerte sind Schätzungen.
 import { addDays, weekStart, type MergedWorkout, type WorkoutLoad } from "./analysis";
+import { guessMuscles } from "./exercise-muscles";
+import { applyOverrides, readOverrides, resolveKey } from "./exercise-manage";
 
 // --- Übungskatalog -----------------------------------------------------------------------------
 
@@ -80,10 +82,13 @@ export function exerciseKey(name: string): { key: string; known: boolean } {
   return key ? { key, known: true } : { key: n, known: false };
 }
 
-export function musclesOf(key: string, custom?: Muscle[] | null): { primary: Muscle[]; secondary: Muscle[] } {
+/** Muskelgruppen: manuelle Zuordnung (Übungsverwaltung) vor Katalog, vor gespeicherten Gruppen, vor der Namens-Erkennung. */
+export function musclesOf(key: string, custom?: Muscle[] | null, manual?: { primary: Muscle[]; secondary: Muscle[] } | null): { primary: Muscle[]; secondary: Muscle[] } {
+  if (manual?.primary.length) return manual;
   const ex = EXERCISES[key];
   if (ex) return { primary: ex.primary, secondary: ex.secondary ?? [] };
-  return { primary: custom?.length ? custom : ["other"], secondary: [] };
+  if (custom?.length) return { primary: custom, secondary: [] };
+  return guessMuscles(key) ?? { primary: ["other"], secondary: [] };
 }
 
 /** Anzeigename; unbekannte Übungen, die nur noch als kleingeschriebener Schlüssel vorliegen, mit großem Anfangsbuchstaben. */
@@ -101,6 +106,8 @@ export interface StrengthSet {
   weightKg: number;
   rpe?: number | null;
   muscles?: Muscle[] | null;
+  /** Manuelle Zuordnung aus der Übungsverwaltung (überstimmt Katalog und Erkennung). */
+  muscleOverride?: { primary: Muscle[]; secondary: Muscle[] } | null;
 }
 
 export interface StrengthSession {
@@ -147,7 +154,7 @@ export function muscleVolume(sets: StrengthSet[]): MuscleVolume[] {
     acc.set(m, e);
   };
   for (const s of sets) {
-    const { primary, secondary } = musclesOf(s.exercise, s.muscles);
+    const { primary, secondary } = musclesOf(s.exercise, s.muscles, s.muscleOverride);
     for (const m of primary) add(m, 1, s.reps * s.weightKg);
     for (const m of secondary) add(m, 0.5, 0);
   }
@@ -367,13 +374,15 @@ export function strengthCoachNotes(sessions: StrengthSession[], today: string): 
 
 export interface TemplateExercise {
   exercise: string;
+  /** Anzeigename aus der Übungsverwaltung (wird nicht in der Vorlage gespeichert). */
+  name?: string;
   sets: number;
   reps: number;
   weightKg?: number | null;
 }
 
 /**
- * Vorschlag für die nächste Einheit aus einer Vorlage: Gewicht der letzten Einheit; wurden dort alle
+ * Vorschlag für die nächste Einheit aus einer Vorlage: Sätze vom letzten Mal (lastSets) und Gewicht der letzten Einheit; wurden dort alle
  * Sätze mit der Ziel-Wiederholungszahl geschafft, +2,5 kg (Beine/Kreuzheben +5 kg). Schätzung.
  */
 export function suggestFromTemplate(template: TemplateExercise[], sessions: StrengthSession[]) {
@@ -388,12 +397,14 @@ export function suggestFromTemplate(template: TemplateExercise[], sessions: Stre
     const weightKg = lastWeight != null && lastWeight > 0 ? (allDone ? lastWeight + step : lastWeight) : (t.weightKg ?? 0);
     return {
       exercise: key,
-      name: exerciseName(key, t.exercise),
+      name: exerciseName(key, t.name ?? t.exercise),
       sets: t.sets,
       reps: t.reps,
       weightKg,
       basis: lastWeight == null ? "template" : allDone ? "increase" : "repeat",
       lastDay: last?.day ?? null,
+      /** Sätze vom letzten Mal (#399): so oft und so schwer wie zuletzt, auch aus einer anderen Vorlage oder ohne Vorlage. */
+      lastSets: lastSets.map((x) => ({ reps: x.reps, weightKg: x.weightKg })),
     };
   });
 }
@@ -425,7 +436,7 @@ interface SetRow {
 }
 
 /** Standard: ohne Einheiten mit unzuverlässigen Wiederholungen (Statistik); withUnreliable für die reine Auflistung. */
-export async function readStrengthSessions(db: D1Database, fromDay: string, opts: { withUnreliable?: boolean } = {}): Promise<StrengthSession[]> {
+export async function readStrengthSessions(db: D1Database, fromDay: string, opts: { withUnreliable?: boolean; raw?: boolean } = {}): Promise<StrengthSession[]> {
   const only = opts.withUnreliable ? "" : " AND reps_unreliable = 0";
   const onlyX = opts.withUnreliable ? "" : " AND x.reps_unreliable = 0";
   const [{ results: sessions }, { results: sets }] = await Promise.all([
@@ -441,7 +452,7 @@ export async function readStrengthSessions(db: D1Database, fromDay: string, opts
     list.push({ exercise: r.exercise, exerciseName: r.exercise_name, reps: r.reps, weightKg: r.weight_kg, rpe: r.rpe, muscles: r.muscles ? (JSON.parse(r.muscles) as Muscle[]) : null });
     setsBySession.set(r.session_id, list);
   }
-  return sessions.map((s) => ({
+  return applyOverrides(sessions.map((s) => ({
     id: s.id,
     day: s.day,
     startTime: s.start_time,
@@ -453,7 +464,7 @@ export async function readStrengthSessions(db: D1Database, fromDay: string, opts
     linkedSourceId: s.linked_source_id,
     ...(s.reps_unreliable ? { repsUnreliable: true } : {}),
     sets: setsBySession.get(s.id) ?? [],
-  }));
+  })), opts.raw ? new Map() : await readOverrides(db));
 }
 
 /** Legt eine Einheit an oder ersetzt sie (gleiche id) samt aller Sätze. */
@@ -486,7 +497,15 @@ export async function deleteStrengthSession(db: D1Database, id: string): Promise
 
 export async function readTemplates(db: D1Database): Promise<{ name: string; exercises: TemplateExercise[] }[]> {
   const { results } = await db.prepare("SELECT name, exercises FROM strength_templates ORDER BY name").all<{ name: string; exercises: string }>();
-  return results.map((r) => ({ name: r.name, exercises: JSON.parse(r.exercises) as TemplateExercise[] }));
+  const map = await readOverrides(db);
+  return results.map((r) => ({
+    name: r.name,
+    // Zusammengeführte Übungen zeigen auf die Zielübung (Name aus der Übungsverwaltung, falls vergeben).
+    exercises: (JSON.parse(r.exercises) as TemplateExercise[]).map((e) => {
+      const key = resolveKey(exerciseKey(e.exercise).key, map);
+      return key === e.exercise && !map.get(key)?.displayName ? e : { ...e, exercise: key, name: map.get(key)?.displayName ?? undefined };
+    }),
+  }));
 }
 
 export async function saveTemplate(db: D1Database, name: string, exercises: TemplateExercise[]): Promise<void> {

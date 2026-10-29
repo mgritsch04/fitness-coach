@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const GYM_SECTIONS = ["gym", "strength"];
+export const GYM_SECTIONS = ["gym", "exlist", "strength"];
 
 export function buildGym(html) {
   const swap = (from, to) => { if (!html.includes(from)) throw new Error(`build-gym: „${from}“ fehlt in dashboard.html`); html = html.replace(from, to); };

@@ -82,9 +82,42 @@ FC.section({
         sub ? el("span", { class: "cmp", text: sub }) : null, extra, sparkVals ? spark(sparkVals, color) : null);
       if (!trend) return t;
       const key = `${label}`;
-      const draw = (box, n) => {
-        chart(box, { days: d.days.slice(-n), aria: `${label}, letzte ${n} Tage`, xFmt: (p) => fmtDay(p.day), height: 200,
-          series: [{ label, kind: trend.bar ? "bar" : "line", color, width: 2, value: trend.value, fmt: (v) => `${de(v, trend.digits ?? 0)} ${trend.unit}` }] });
+      // Bis 180 Tage kommen die Daten aus dem geladenen Dashboard; „1 Jahr“ und „Alles“ laden bei Bedarf mehr und
+      // werden zu Wochen- (bis ~13 Monate) oder Monatsmitteln verdichtet, damit es lesbar und schnell bleibt.
+      const RANGES = [[30, "30 Tage"], [90, "90 Tage"], [180, "180 Tage"], [365, "1 Jahr"], [3650, "Alles"]];
+      const bucketKey = (day, monthly) => (monthly ? day.slice(0, 7) + "-01" : FC.addDays(day, -((FC.dayDate(day).getUTCDay() + 6) % 7)));
+      const condense = (rows) => {
+        const first = rows.findIndex((p) => trend.value(p) != null);
+        if (first < 0) return { rows: [], note: "" };
+        rows = rows.slice(first);
+        const monthly = rows.length > 400, groups = new Map();
+        for (const p of rows) { const k = bucketKey(p.day, monthly), v = trend.value(p); if (!groups.has(k)) groups.set(k, []); if (v != null) groups.get(k).push(v); }
+        const out = [...groups].map(([day, vs]) => ({ day, v: vs.length ? vs.reduce((x, y) => x + y, 0) / vs.length : null }));
+        return { rows: out, monthly, note: monthly ? "Monatsmittel" : "Wochenmittel" };
+      };
+      const longCache = FC.longDays ?? (FC.longDays = {});
+      const draw = async (box, n) => {
+        const label2 = n >= 365 ? (n === 3650 ? "alle Daten" : "letztes Jahr") : `letzte ${n} Tage`;
+        if (n <= 180) {
+          chart(box, { days: d.days.slice(-n), aria: `${label}, ${label2}`, xFmt: (p) => fmtDay(p.day), height: 200, peaks: true,
+            series: [{ label, kind: trend.bar ? "bar" : "line", color, width: 2, value: trend.value, fmt: (v) => `${de(v, trend.digits ?? 0)} ${trend.unit}` }] });
+          return;
+        }
+        box.dataset.n = n;
+        if (!longCache[n]) {
+          box.replaceChildren(el("div", { class: "empty", text: "Lade Verlauf …" }));
+          try {
+            const r = await FC.call("get_dashboard", { days: n, compact: true });
+            const x = (c) => (c && Array.isArray(c.keys) ? c.rows.map((v) => Object.fromEntries(c.keys.map((k, i) => [k, v[i]]))) : c);
+            longCache[n] = x(r.days);
+          } catch { if (box.dataset.n === String(n)) box.replaceChildren(el("div", { class: "empty", text: "Verlauf konnte nicht geladen werden." })); return; }
+        }
+        if (box.dataset.n !== String(n)) return;
+        const c = condense(longCache[n]);
+        if (!c.rows.length) { box.replaceChildren(el("div", { class: "empty", text: "Keine Werte im Zeitraum." })); return; }
+        const xf = c.monthly ? (p) => FC.dayDate(p.day).toLocaleDateString("de-DE", { month: "short", year: "2-digit", timeZone: "UTC" }) : (p) => fmtDay(p.day);
+        chart(box, { days: c.rows, aria: `${label}, ${label2}, ${c.note}`, xFmt: xf, height: 200, peaks: true,
+          series: [{ label: `${label} (${c.note})`, kind: "line", color, width: 2, value: (p) => p.v, fmt: (v) => `${de(v, trend.digits ?? 0)} ${trend.unit}` }] });
       };
       const open = (on) => {
         t.classList.toggle("open", on); t.setAttribute("aria-expanded", String(on));
@@ -92,11 +125,17 @@ FC.section({
         if (FC.tileOpen === key && !on) FC.tileOpen = null;
         if (!on) return;
         FC.tileOpen = key;
-        const box = el("div", { class: "tl-chart" });
-        const bar = el("div", { class: "tl-range" });
-        for (const n of [30, 90, 180]) bar.append(el("button", { class: "link", type: "button", text: `${n} Tage`, onclick: (e) => { e.stopPropagation(); draw(box, n); } }));
-        const more = el("div", { class: "tl-more", onclick: (e) => e.stopPropagation() }, bar, box);
-        t.append(more); draw(box, 90);
+        const box = el("div", { class: "chart tl-chart" });
+        const bar = el("div", { class: "seg tl-range", role: "group", "aria-label": "Zeitraum" });
+        const pick = (n) => { draw(box, n); for (const b of bar.children) b.setAttribute("aria-pressed", String(b.dataset.n === String(n))); };
+        for (const [n, text] of RANGES) {
+          const b = el("button", { type: "button", "data-n": n, "aria-pressed": "false", text });
+          b.addEventListener("click", (e) => { e.stopPropagation(); pick(n); });
+          bar.append(b);
+        }
+        const more = el("div", { class: "tl-more" }, bar, box);
+        more.addEventListener("click", (e) => e.stopPropagation());
+        t.append(more); pick(90);
       };
       t.tabIndex = 0; t.setAttribute("role", "button"); t.setAttribute("aria-expanded", "false"); t.title = "Antippen: Verlauf anzeigen";
       t.classList.add("tl");

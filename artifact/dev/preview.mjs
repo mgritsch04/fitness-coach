@@ -83,13 +83,22 @@ const payloads = {
         { exercise: "bench_press", name: "Bankdrücken", sessions: 2, history: [[-4, 72.5], [0, 72.5]].map(([o, w]) => ({ day: d(o), e1rmKg: 91.8, topSet: { reps: 8, weightKg: w }, sets: 1 })), bestE1rmKg: 91.8, bestDay: d(-4), change4wPct: 0, status: "plateau", forecast: { available: false, reason: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen).", weeks: 8, currentKg: null, perWeekKg: null, points: [], targetKg: null, target: null, text: "Zu wenig Daten für eine Prognose (mindestens 3 Einheiten über 2 Wochen in den letzten 12 Wochen)." } }],
       repRecords: [{ exercise: "bench_press", name: "Bankdrücken", marks: [{ kg: 72.5, reps: 8, day: d(-4) }] }, { exercise: "dumbbell_bench_press", name: "Kurzhantel-Bankdrücken", marks: [{ kg: 32, reps: 6, day: d(-11) }, { kg: 28, reps: 8, day: d(-11) }] }],
       standards: { available: true, weightKg: 75, note: "Grobe Richtwerte für trainierte Erwachsene, keine Norm.", text: "", exercises: [{ exercise: "back_squat", name: "Kniebeuge", e1rmKg: 116.7, perKg: 1.56, level: "Stark", next: { level: "Sehr stark", e1rmKg: 150 }, day: t }, { exercise: "bench_press", name: "Bankdrücken", e1rmKg: 91.8, perKg: 1.22, level: "Stark", next: { level: "Sehr stark", e1rmKg: 113 }, day: d(-4) }] },
-      templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", sets: 3, reps: 5, weightKg: 100 }] }],
+      templates: [{ name: "Beine & Brust", exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 100 }] }],
       coachNotes: [{ effect: "down", text: "Schwere Beineinheit heute: morgen eher locker radeln, keine Intervalle." }],
       note: "1RM und Belastung sind Schätzungen." }; },
-  suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null }], coachNotes: [] }),
+  suggest_strength_session: (i) => ({ template: i.template, exercises: [{ exercise: "squat", name: "Kniebeuge", sets: 3, reps: 5, weightKg: 105, basis: "increase", lastDay: null, lastSets: [{ reps: 6, weightKg: 100 }, { reps: 5, weightKg: 102.5 }] }], coachNotes: [] }),
   log_strength_session: (i) => { window.__gymSaved = i; return { id: "s3", exercises: [], load: { value: 52 } }; },
   delete_strength_session: (i) => { window.__deleted = i.id; return { deleted: i.id }; },
   save_strength_template: (i) => { window.__tplSaved = i; return i; },
+  get_exercises: () => ({ exercises: [
+    { exercise: "bizeps schwarze", name: "Bizeps schwarze", sessions: 2, sets: 5, lastDay: "2026-03-08", bestE1rmKg: 26.7, hidden: false, mergedFrom: [], muscles: { primary: ["biceps"], secondary: [], source: "auto" },
+      last: { day: "2026-03-08", sets: [{ reps: 10, weightKg: 20 }] }, history: [{ day: "2026-03-08", sets: [{ reps: 10, weightKg: 20 }] }, { day: "2026-03-01", sets: [{ reps: 10, weightKg: 15 }, { reps: 8, weightKg: 17.5 }] }] },
+    { exercise: "bizeps curls", name: "Bizeps curls", sessions: 1, sets: 3, lastDay: "2026-03-02", bestE1rmKg: 22, hidden: false, mergedFrom: [], muscles: { primary: ["biceps"], secondary: [], source: "auto" },
+      last: { day: "2026-03-02", sets: [{ reps: 10, weightKg: 15 }, { reps: 8, weightKg: 17.5 }, { reps: 8, weightKg: 17.5 }] }, history: [{ day: "2026-03-02", sets: [{ reps: 10, weightKg: 15 }, { reps: 8, weightKg: 17.5 }, { reps: 8, weightKg: 17.5 }] }] },
+    { exercise: "xyz", name: "Maschine X", sessions: 0, sets: 0, lastDay: null, bestE1rmKg: null, hidden: false, mergedFrom: [], muscles: { primary: ["other"], secondary: [], source: "unknown" }, last: null, history: [] },
+    { exercise: "alt", name: "Alte Übung", sessions: 1, sets: 1, lastDay: "2026-01-01", bestE1rmKg: null, hidden: true, mergedFrom: [], muscles: { primary: ["core"], secondary: [], source: "auto" }, last: null, history: [] }],
+    duplicates: [{ reason: "Alle enthalten „bizeps“", exercises: [{ exercise: "bizeps schwarze", name: "Bizeps schwarze" }, { exercise: "bizeps curls", name: "Bizeps curls" }] }], note: "" }),
+  manage_exercise: (i) => { (window.__exActs ??= []).push(i); return { saved: i.action }; },
   save_gym_draft: () => ({ saved: true }),
   get_gym_draft: () => ({ draft: null, updatedAt: null }),
   set_training_prefs: (i) => { window.__prefsSaved = i; return i; },
@@ -262,6 +271,11 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#tplSave"); await p.waitForTimeout(200);
     const tp = await p.evaluate(() => ({ saved: window.__prefsSaved, msg: document.getElementById("tplMsg").textContent }));
     if (JSON.stringify(tp.saved?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || !/2 Tage/.test(tp.msg)) errors.push(`${name}: Vorlage je Wochentag speichern falsch ${JSON.stringify(tp)}`);
+    // Rad und Kraft getrennt je Tag (#399): Montag Kraft UND Rad, Mittwoch nur Rad; alles bleibt lesbar.
+    await p.check("#tplDays input[data-ride='0']"); await p.check("#tplDays input[data-ride='2']");
+    await p.click("#tplSave"); await p.waitForTimeout(200);
+    const tr2 = await p.evaluate(() => window.__prefsSaved);
+    if (JSON.stringify(tr2?.templateByDay) !== JSON.stringify(["Beine & Brust", "Beine & Brust", null, null, null, null, null]) || JSON.stringify(tr2?.rideByDay) !== JSON.stringify([true, null, true, null, null, null, null])) errors.push(`${name}: Rad und Kraft getrennt speichern falsch ${JSON.stringify(tr2)}`);
     // Radzeit je Wochentag (#336): Montag 0 min, Freitag 120 min, Dienstag locker; dazu „Heute nur 45 min“.
     await p.evaluate(() => { document.getElementById("timeBox").open = true; });
     await p.fill("#dayTimes input[data-day='0']", "0"); await p.fill("#dayTimes input[data-day='4']", "120"); await p.check("#dayTimes input[data-easy='1']");
@@ -311,6 +325,13 @@ for (const [name, vp, scheme, tab, file] of shots) {
     await p.click("#tiles .tile.tl").catch(() => errors.push(`${name}: Kachel nicht anklickbar`)); await p.waitForTimeout(250);
     const tl = await p.evaluate(() => ({ open: !!document.querySelector("#tiles .tile.open svg"), n: document.querySelectorAll("#tiles .tile.tl").length }));
     if (!tl.open || tl.n !== 6) errors.push(`${name}: Kachel-Verlauf falsch ${JSON.stringify(tl)}`);
+    await p.click("#tiles .tile.open button[data-n='180']").catch(() => errors.push(`${name}: Zeitraum-Knopf fehlt`)); await p.waitForTimeout(200);
+    if (!(await p.$("#tiles .tile.open svg"))) errors.push(`${name}: Kachel klappt beim Zeitraumwechsel zu`);
+    for (const n of [365, 3650]) {
+      await p.click(`#tiles .tile.open button[data-n='${n}']`).catch(() => errors.push(`${name}: Zeitraum ${n} fehlt`)); await p.waitForTimeout(400);
+      if (!(await p.$("#tiles .tile.open svg"))) errors.push(`${name}: Kachel-Verlauf ${n} ohne Diagramm`);
+    }
+    await (await p.$("#tiles .tile.open"))?.screenshot({ path: join(out, `${name}-kachel.png`) });
     await p.click("#tiles .tile.open .label").catch(() => {}); await p.waitForTimeout(150);
     if (await p.$("#tiles .tile.open")) errors.push(`${name}: Kachel-Verlauf schließt nicht`);
     // Heute (#191): bis „Heute dran“ offen, darunter eingeklappt.
@@ -396,7 +417,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     const jumps = await p.$$eval("#jump:not([hidden]) button", (b) => b.map((x) => x.textContent));
     if (jumps.length < 4 || !jumps.includes("Trittfrequenz")) errors.push(`${name}: Sprungleiste fehlt oder unvollständig ${JSON.stringify(jumps)}`);
     else {
-      await p.click("#jump button:text-is('Trittfrequenz')"); await p.waitForTimeout(900);
+      await p.click("#jump button:text-is('Trittfrequenz')"); await p.waitForTimeout(1800);
       const top = await p.evaluate(() => document.getElementById("sec-cadence").getBoundingClientRect().top);
       if (Math.abs(top) > 40) errors.push(`${name}: Sprungleiste springt nicht (top ${top})`);
       await p.evaluate(() => window.scrollTo(0, 0));
@@ -404,7 +425,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     // Heute ist die Vorlage je Wochentag (#370) vorausgewählt; die Planeinheit bleibt wählbar.
     const plan = await p.$eval("#gySrc", (s) => s.value);
-    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || !(await p.$("#gyWeek select"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
+    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || !(await p.$("#gyWeek select")) || !(await p.$("#gyWeek input[type=checkbox]"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
     // Verlauf und Prognose im Gym-Modus (#328)
@@ -455,6 +476,22 @@ for (const [name, vp, scheme, tab, file] of shots) {
       const tpl = await p.evaluate(() => ({ t: window.__tplSaved, opt: [...document.querySelectorAll("#gySrc option")].some((o) => o.value === "t:Beine Test") }));
       if (!(tpl.t?.name === "Beine Test" && tpl.t.exercises?.[0]?.sets === 1 && tpl.opt)) errors.push(`${name}: Vorlage aus Einheit falsch ${JSON.stringify(tpl)}`);
     }
+    // Vorlage wie letztes Mal, eigene Übung wählen, Vorlage aktualisieren (#399)
+    await p.selectOption("#gySrc", "t:Beine & Brust"); await p.click("#gyBody .gy-start button.primary"); await p.waitForTimeout(300);
+    const lm = await p.$$eval("#gyBody .gy-ex:first-of-type .gy-set", (l) => l.map((r) => [...r.querySelectorAll("input")].map((i) => i.value).join("/")));
+    if (JSON.stringify(lm) !== JSON.stringify(["6/100", "5/102.5"])) errors.push(`${name}: Vorlage nimmt nicht die Sätze vom letzten Mal ${JSON.stringify(lm)}`);
+    await p.click("#gyBody .gy-ex:first-of-type .gy-swap"); await p.waitForSelector("#gyBody .gy-swapbox input[list=gyEx]", { timeout: 2000 }).catch(() => errors.push(`${name}: Tauschen ohne Auswahl eigener Übungen`));
+    await p.fill("#gyBody .gy-swapbox input[list=gyEx]", "Bizeps curls"); await p.click("#gyBody .gy-swapbox input[list=gyEx] + button"); await p.waitForTimeout(150);
+    const sw2 = await p.evaluate(() => ({ h: document.querySelector("#gyBody .gy-ex h3")?.textContent, kg: [...document.querySelectorAll("#gyBody .gy-ex:first-of-type .gy-set input")].map((i) => i.value).join(",") }));
+    if (sw2.h !== "Bizeps curls" || sw2.kg !== "10,15,8,17.5,8,17.5") errors.push(`${name}: eigene Übung tauschen falsch ${JSON.stringify(sw2)}`);
+    await p.click("#gyBody .gy-ex:first-of-type .gy-set .ok"); await p.click("#gyBody .gy-row .primary"); await p.click("#gyFinish .gy-rpe button:nth-child(6)"); await p.click("#gyFinish .primary"); await p.waitForTimeout(300);
+    if (!(await p.$("#gyTplUpdate"))) errors.push(`${name}: keine Frage „Vorlage aktualisieren?“`);
+    else {
+      await p.click("#gyTplUpdate .primary"); await p.waitForTimeout(200);
+      const up = await p.evaluate(() => window.__tplSaved);
+      if (!(up?.name === "Beine & Brust" && up.exercises?.[0]?.exercise === "Bizeps curls" && !(await p.$("#gyTplUpdate")))) errors.push(`${name}: Vorlage aktualisieren falsch ${JSON.stringify(up)}`);
+    }
+    await p.click("#gyBody .linkish:text('Nein danke')").catch(() => errors.push(`${name}: „Nein danke“ fehlt`)); await p.waitForTimeout(100);
     // Krafttraining-Abschnitt: Verlauf und Prognose (#328), Einheit als Vorlage (#319)
     await p.click("#stProg tbody tr:first-child button").catch(() => errors.push(`${name}: Übung im Krafttraining nicht antippbar`)); await p.waitForTimeout(200);
     const sp = await p.evaluate(() => ({ svg: !!document.querySelector("#stProg .st-detail svg"), t: document.querySelector("#stProg .st-detail .chart-cap")?.textContent ?? "" }));
@@ -673,7 +710,18 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   if (heute.some((x) => ["highlights", "briefing", "mobility", "whatsnew", "sleeptarget", "recovery", "health"].includes(x)) || !heute.includes("today")) errors.push(`${name}: Heute zeigt Unnötiges: ${heute}`);
   await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(500);
   const tr = await secs();
-  if (tr.join() !== "gym,liftlog,fit,strength,bikewo,hrzones,periods,year,workouts") errors.push(`${name}: Training falsch: ${tr}`);
+  if (tr.join() !== "gym,liftlog,exlist,fit,strength,bikewo,hrzones,periods,year,workouts") errors.push(`${name}: Training falsch: ${tr}`);
+  // Übungsverwaltung (#399): Verlauf, Dubletten zusammenführen, Muskelgruppen
+  if (await p.$("#sec-exlist.folded .fold-bar")) { await p.click("#sec-exlist .fold-bar"); await p.waitForTimeout(500); }
+  await p.click("#sec-exlist .ex-item > summary"); await p.waitForTimeout(150);
+  const exv = await p.innerText("#sec-exlist .ex-item[open]");
+  if (!/Verlauf/.test(exv) || !/20 kg × 10/.test(exv) || !/17,5 kg × 8/.test(exv) || !/Bizeps/.test(exv)) errors.push(`${name}: Übungsverlauf falsch ${exv.slice(0, 300)}`);
+  if (!(await p.$("#exDup .ex-dup")) || !/Maschine X/.test(await p.innerText("#exList")) || !/nicht erkannt/.test(await p.innerText("#exList"))) errors.push(`${name}: Übungsverwaltung ohne Dubletten oder „nicht erkannt“`);
+  await p.click("#exDup .ex-dup button"); await p.waitForTimeout(300);
+  await p.click("#sec-exlist .ex-item[open] .ex-mus input[value=back]"); await p.click("#sec-exlist .ex-item[open] button:text-is('Muskelgruppen speichern')"); await p.waitForTimeout(200);
+  const acts = await p.evaluate(() => window.__exActs ?? []);
+  if (!acts.some((a) => a.action === "merge" && a.exercise === "bizeps curls" && a.into === "bizeps schwarze") || !acts.some((a) => a.action === "muscles" && a.primary?.includes("back"))) errors.push(`${name}: Übungsverwaltung sendet falsch ${JSON.stringify(acts)}`);
+  await p.screenshot({ path: join(out, "phone-exlist.png") });
   const n = await p.$$eval("#llList .ll-item", (l) => l.length);
   if (n !== 3) errors.push(`${name}: Krafteinheiten ${n} statt 3`);
   await p.click("#ll-s2 > summary"); await p.waitForTimeout(150);

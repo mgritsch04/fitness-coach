@@ -262,23 +262,28 @@ FC.section({
     if (this.tplDirty || box.contains(document.activeElement)) return;
     const names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
     box.replaceChildren(...names.map((n, i) => {
+      // Kraft-Vorlage und Rad getrennt je Tag (beides möglich), „Ruhetag“ schließt beides aus.
+      const cur = FC.dayPlan(prefs, i);
       const sel = el("select", { "data-day": String(i), "aria-label": `${n}: Kraft-Vorlage` },
-        el("option", { value: "", text: "keine" }), ...this.tplNames.map((t) => el("option", { value: t, text: t })));
-      const v = prefs?.templateByDay?.[i];
-      sel.value = v && this.tplNames.includes(v) ? v : "";
-      sel.onchange = () => { this.tplDirty = true; };
-      return el("label", {}, el("span", { text: n }), sel);
+        el("option", { value: "", text: "keine" }), el("option", { value: "@ruhe", text: "Ruhetag" }), ...this.tplNames.map((t) => el("option", { value: t, text: t })));
+      sel.value = cur.rest ? "@ruhe" : cur.strength && this.tplNames.includes(cur.strength) ? cur.strength : "";
+      const rad = el("input", { type: "checkbox", "data-ride": String(i), "aria-label": `${n}: Rad` }); rad.checked = cur.ride; rad.disabled = cur.rest;
+      sel.onchange = () => { this.tplDirty = true; rad.disabled = sel.value === "@ruhe"; if (rad.disabled) rad.checked = false; };
+      rad.onchange = () => { this.tplDirty = true; };
+      return el("label", {}, el("span", { text: n }), sel, el("span", { class: "row", style: "gap:6px" }, rad, "Rad"));
     }));
     if (!this.tplNames.length) box.append(el("p", { class: "fine muted", text: "Noch keine Vorlage gespeichert: Im Gym nach einer Einheit „Als Vorlage speichern“." }));
   },
   async saveTemplates() {
     const { $ } = FC, msg = $("tplMsg");
-    const vals = [...$("tplDays").querySelectorAll("select")].map((s) => s.value || null);
+    const sels = [...$("tplDays").querySelectorAll("select")], rides = [...$("tplDays").querySelectorAll("input[data-ride]")];
+    const vals = sels.map((s) => s.value || null), ride = rides.map((c) => (c.checked && !c.disabled ? true : null));
     $("tplSave").disabled = true; msg.textContent = "Speichere …";
     try {
-      await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null });
+      await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null, rideByDay: ride.some((v) => v) ? ride : null });
       this.tplDirty = false;
-      msg.textContent = vals.some((v) => v) ? `Gespeichert: ${vals.filter((v) => v).length} Tage mit Vorlage.` : "Gespeichert: keine Vorlage je Wochentag.";
+      const days = vals.map((v, i) => v || ride[i]).filter(Boolean).length;
+      msg.textContent = days ? `Gespeichert: ${days} Tage geplant.` : "Gespeichert: keine Planung je Wochentag.";
       await FC.reload();
     } catch (e) { msg.textContent = FC.errText(e); }
     finally { $("tplSave").disabled = false; }
