@@ -12,6 +12,7 @@ import { strengthStandards } from "./core/strength-standards";
 import { activeComplaints, adaptForComplaints, COMPLAINT_DAYS, COMPLAINT_NOTE } from "./core/complaints";
 import { readJournal } from "./core/journal";
 import { exerciseAlternatives } from "./core/exercises";
+import { manageExercises, readOverrides, resolveKey, saveOverride, type ExerciseOverride } from "./core/exercise-manage";
 import { readSettings } from "./core/settings";
 import { strengthDeload } from "./core/strength-deload";
 import {
@@ -129,8 +130,9 @@ export function registerStrengthTools(server: McpServer, env: Env) {
       await clearGymDraft(env.DB); // Entwurf der laufenden Einheit ist jetzt gespeichert
 
       const before = history.filter((h) => h.id !== session.id && h.day < session.day);
-      const exercises = [...new Set(sets.map((s) => s.exercise))].map((key) => {
-        const mine = sets.filter((s) => s.exercise === key);
+      const ov = await readOverrides(env.DB);
+      const exercises = [...new Set(sets.map((s) => resolveKey(s.exercise, ov)))].map((key) => {
+        const mine = sets.filter((s) => resolveKey(s.exercise, ov) === key);
         const e1rm = Math.max(0, ...mine.map((s) => estimate1RM(s.weightKg, s.reps) ?? 0)) || null;
         const prev = Math.max(0, ...before.flatMap((h) => h.sets.filter((s) => s.exercise === key).map((s) => estimate1RM(s.weightKg, s.reps) ?? 0))) || null;
         return { exercise: key, name: mine[0].exerciseName, sets: mine.length, e1rmKg: e1rm, previousBestE1rmKg: prev, newBest: e1rm != null && prev != null && e1rm > prev };
@@ -204,7 +206,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         standards: strengthStandards(all, ((await readLatestBody(env.DB).catch(() => null)) as { weight_kg?: number | null } | null)?.weight_kg ?? null, t),
         autoregulation: rirTrend(all, t),
         repRecords: repRecords(all, t),
-        templates: (await readTemplates(env.DB)).map((t) => ({ ...t, exercises: t.exercises.map((e) => ({ ...e, name: exerciseName(e.exercise) })) })),
+        templates: (await readTemplates(env.DB)).map((t) => ({ ...t, exercises: t.exercises.map((e) => ({ ...e, name: e.name ?? exerciseName(e.exercise) })) })),
         coachNotes: strengthCoachNotes(all, t),
         note: "1RM und Belastung sind Schätzungen. Volumen: Hauptmuskel zählt einen Satz, Hilfsmuskel einen halben.",
       });
@@ -230,6 +232,67 @@ export function registerStrengthTools(server: McpServer, env: Env) {
   );
 
   server.registerTool(
+    "get_exercises",
+    {
+      description:
+        "Übungsverwaltung: alle Übungen (aus Einheiten und Vorlagen) mit Anzahl Einheiten, letztem Mal (Sätze, Wiederholungen, Gewicht), komplettem Verlauf (history, neueste zuerst), " +
+        "Bestwert, Muskelgruppen (Haupt- und Hilfsmuskel; source = manual/catalog/auto aus dem Namen erkannt/unknown), ausgeblendet ja/nein und was darin zusammengeführt ist. " +
+        "Dazu Dubletten-Vorschläge (Übungen mit gemeinsamem Namensbestandteil, z. B. mehrere Bizeps-Varianten).",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const t = await today();
+      const sessions = await readStrengthSessions(env.DB, addDays(t, -3650), { withUnreliable: true, raw: true });
+      const ov = await readOverrides(env.DB);
+      return json({ ...manageExercises(sessions, await readTemplates(env.DB), ov), note: "Zusammenführen ändert keine gespeicherten Sätze: Verlauf und Bestwerte aller Namen bleiben erhalten und lassen sich wieder trennen. Muskelgruppen ohne manuelle Angabe sind aus dem Namen geschätzt." });
+    },
+  );
+
+  server.registerTool(
+    "manage_exercise",
+    {
+      description:
+        "Übung verwalten: rename (neuer Name), merge (exercise geht in into auf; Verlauf und Bestwerte bleiben), unmerge (Zusammenführung wieder lösen), hide/unhide (aus Auswahllisten ausblenden, Verlauf bleibt), " +
+        "muscles (Hauptmuskeln primary, optional Hilfsmuskeln secondary; leer = wieder automatisch). exercise und into als Name oder Schlüssel.",
+      inputSchema: {
+        action: z.enum(["rename", "merge", "unmerge", "hide", "unhide", "muscles"]),
+        exercise: z.string().min(1).max(80),
+        name: z.string().min(1).max(80).optional().describe("rename: neuer Name"),
+        into: z.string().min(1).max(80).optional().describe("merge: Zielübung, die bleibt"),
+        primary: z.array(muscleEnum).max(4).optional(),
+        secondary: z.array(muscleEnum).max(4).optional(),
+      },
+      annotations: { readOnlyHint: false },
+    },
+    async ({ action, exercise, name, into, primary, secondary }) => {
+      const map = await readOverrides(env.DB);
+      const raw = exerciseKey(exercise).key;
+      // unmerge arbeitet auf der Quellübung selbst, alles andere auf der Zielübung (nach Zusammenführungen).
+      const key = action === "unmerge" ? raw : resolveKey(raw, map);
+      const cur: ExerciseOverride = map.get(key) ?? { key, mergedInto: null, displayName: null, hidden: false, musclesPrimary: null, musclesSecondary: null };
+      if (action === "rename") {
+        if (!name) return fail("invalid_input", "Bitte name angeben.");
+        cur.displayName = name.trim();
+      } else if (action === "merge") {
+        if (!into) return fail("invalid_input", "Bitte into angeben.");
+        const target = resolveKey(exerciseKey(into).key, map);
+        if (target === key) return fail("invalid_input", "Diese Übungen sind schon dieselbe.");
+        cur.mergedInto = target;
+      } else if (action === "unmerge") {
+        if (!cur.mergedInto) return fail("invalid_input", "Diese Übung ist in keine andere aufgegangen.");
+        cur.mergedInto = null;
+      } else if (action === "hide" || action === "unhide") cur.hidden = action === "hide";
+      else {
+        cur.musclesPrimary = primary?.length ? primary : null;
+        cur.musclesSecondary = primary?.length ? (secondary ?? null) : null;
+      }
+      await saveOverride(env.DB, cur);
+      return json({ saved: action, exercise: key, override: cur });
+    },
+  );
+
+  server.registerTool(
     "describe_exercise",
     {
       description:
@@ -250,12 +313,12 @@ export function registerStrengthTools(server: McpServer, env: Env) {
   server.registerTool(
     "save_strength_template",
     {
-      description: "Vorlage für eine wiederkehrende Krafteinheit speichern (gleicher Name ersetzt sie) oder mit delete=true löschen.",
+      description: "Vorlage (= Übungsliste; Sätze, Wiederholungen und Gewicht kommen beim Start vom letzten Mal) für eine wiederkehrende Krafteinheit speichern (gleicher Name ersetzt sie) oder mit delete=true löschen.",
       inputSchema: {
         name: z.string().min(1).max(80),
         delete: z.boolean().optional(),
         exercises: z
-          .array(z.object({ exercise: z.string().min(1).max(80), sets: z.number().int().min(1).max(20), reps: z.number().int().min(1).max(100), weightKg: z.number().min(0).max(500).optional() }))
+          .array(z.object({ exercise: z.string().min(1).max(80), sets: z.number().int().min(1).max(20).optional().describe("nur Rückfallwert, im Gym-Modus zählt das letzte Mal"), reps: z.number().int().min(1).max(100).optional(), weightKg: z.number().min(0).max(500).optional() }))
           .max(30)
           .optional(),
       },
@@ -264,7 +327,8 @@ export function registerStrengthTools(server: McpServer, env: Env) {
     async ({ name, delete: del, exercises }) => {
       if (del) return (await deleteTemplate(env.DB, name)) ? json({ deleted: name }) : fail("not_found", `Keine Vorlage „${name}“.`);
       if (!exercises?.length) return fail("invalid_input", "Bitte exercises angeben.");
-      const normalized = exercises.map((e) => ({ ...e, exercise: exerciseKey(e.exercise).key }));
+      const ov = await readOverrides(env.DB);
+      const normalized = exercises.map((e) => ({ ...e, sets: e.sets ?? 3, reps: e.reps ?? 8, exercise: resolveKey(exerciseKey(e.exercise).key, ov) }));
       await saveTemplate(env.DB, name, normalized);
       return json({ saved: name, exercises: normalized.map((e) => ({ ...e, name: exerciseName(e.exercise) })) });
     },

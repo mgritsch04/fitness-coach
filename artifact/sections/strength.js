@@ -29,11 +29,10 @@ const STRENGTH = {
     .st-tm { display: grid; gap: 10px; }
     .st-tm details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
     .st-tm summary { cursor: pointer; font-weight: 600; }
-    .st-tmx { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 0.8fr)) auto auto auto; gap: 6px; align-items: end; padding: 6px 0; border-bottom: 1px solid var(--line); }
+    .st-tmx { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: end; padding: 6px 0; border-bottom: 1px solid var(--line); }
     .st-tmx label { display: grid; gap: 2px; font-size: 0.78rem; color: var(--ink-3); }
     .st-tmx button, .st-tm details > .row button { padding: 7px 10px; }
-    @media (max-width: 560px) { .st-tmx { grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto auto; } .st-tmx > label:first-child { grid-column: 1 / -1; } }
-    .st-desc { display: grid; gap: 8px; padding: 8px 0; }
+        .st-desc { display: grid; gap: 8px; padding: 8px 0; }
     .st-desc-in { flex: 1 1 14em; min-width: 0; }
     .st-desc-out { display: grid; gap: 6px; }
     .st-desc-out p { margin: 0; }
@@ -71,7 +70,7 @@ const STRENGTH = {
         <div class="panel span2"><h3>Kraft pro kg Körpergewicht</h3><p id="stStdText" class="muted" style="margin:0 0 8px"></p><div class="tablewrap"><table id="stStd" class="cards"><thead><tr>
           <th class="l">Übung</th><th>Geschätztes 1RM</th><th>Pro kg</th><th>Stufe</th><th>Nächste Stufe</th>
         </tr></thead><tbody></tbody></table></div><p class="chart-cap" id="stStdNote"></p></div>
-        <div class="panel span2"><h3>Vorlagen verwalten</h3><p class="muted" style="margin:0 0 8px">Name, Übungen, Sätze, Wiederholungen und Gewicht ändern oder eine Vorlage löschen. Änderungen gelten sofort im Gym-Modus.</p><div id="stTplMgr"><div class="empty">Noch keine Vorlagen.</div></div></div>
+        <div class="panel span2"><h3>Vorlagen verwalten</h3><p class="muted" style="margin:0 0 8px">Name und Übungen ändern oder eine Vorlage löschen. Sätze, Wiederholungen und Gewicht kommen im Gym-Modus automatisch vom letzten Mal, als du die Übung gemacht hast. Änderungen gelten sofort.</p><div id="stTplMgr"><div class="empty">Noch keine Vorlagen.</div></div></div>
         <div class="panel span2"><h3>Letzte Einheiten</h3><div id="stSessions"><div class="empty">Noch keine Krafteinheiten.</div></div><p class="chart-cap" id="stNotes"></p></div>
       </div>`;
 
@@ -151,9 +150,9 @@ const STRENGTH = {
       const msg = $("stMsg"); msg.textContent = "Hole Vorschlag …";
       try {
         const s = await FC.call("suggest_strength_session", { template: name });
-        resetRows(s.exercises);
-        const up = s.exercises.filter((x) => x.basis === "increase").length;
-        msg.textContent = up ? `Vorschlag: bei ${up} Übung${up > 1 ? "en" : ""} etwas mehr Gewicht als letztes Mal.` : "Vorschlag aus der Vorlage übernommen.";
+        // Sätze, Wdh. und Gewicht wie beim letzten Mal dieser Übung (#399); ohne Vorgeschichte die Werte der Vorlage.
+        resetRows(s.exercises.map((x) => (x.lastSets?.length ? { ...x, sets: x.lastSets } : x)));
+        msg.textContent = "Sätze, Wiederholungen und Gewicht wie beim letzten Mal übernommen.";
         if (s.coachNotes?.some((n) => n.effect === "down")) msg.textContent += " " + s.coachNotes.find((n) => n.effect === "down").text;
       } catch (err) { msg.textContent = FC.errText(err); }
     };
@@ -324,7 +323,11 @@ const STRENGTH = {
     };
 
     const load = async (fresh) => {
-      try { data = await FC.call("get_strength", { weeks: 12 }, fresh ? { cache: false } : { cache: { staleTime: 60_000, gcTime: 86_400_000 } }); show(); }
+      try { data = await FC.call("get_strength", { weeks: 12 }, fresh ? { cache: false } : { cache: { staleTime: 60_000, gcTime: 86_400_000 } });
+        // Eigene Übungen in die Auswahl (#399)
+        const have = new Set([...$("stEx").children].map((o) => o.value.toLowerCase()));
+        for (const p of data.progress ?? []) if (!have.has(p.name.toLowerCase())) $("stEx").append(el("option", { value: p.name }));
+        show(); }
       catch (err) { $("stMsg").textContent = FC.errText(err); }
     };
     this.load = load;
@@ -381,20 +384,19 @@ const STRENGTH = {
     }));
     return wrap;
   },
-  /** Vorlagen verwalten (#333): umbenennen, Übungen ändern/umsortieren, Sätze, Wdh., Gewicht, löschen. */
+  /** Vorlagen verwalten (#333): umbenennen, Übungen ändern/umsortieren, löschen (nur Übungsliste, #399). */
   drawTemplates(templates) {
     const { $, el } = FC, host = $("stTplMgr");
     if (!host) return;
     const openNames = new Set([...host.querySelectorAll("details[open]")].map((d) => d.dataset.name).concat([...(this.tplKeep ?? [])]));
     this.tplKeep = new Set();
     if (!templates.length) { host.replaceChildren(el("div", { class: "empty", text: "Noch keine Vorlagen." })); return; }
-    const num = (cls, label, v, attrs) => { const i = el("input", { class: cls, type: "number", inputmode: "decimal", "aria-label": label, ...attrs }); i.value = v ?? ""; return el("label", {}, el("span", { text: label }), i); };
     const exRow = (list, e) => {
       const name = el("input", { class: "ex", type: "text", list: "stEx", maxlength: 80, "aria-label": "Übung" });
       name.value = e.name ?? e.exercise ?? "";
-      const row = el("div", { class: "st-tmx", "data-key": e.exercise ?? "", "data-name": e.name ?? "" },
-        el("label", {}, el("span", { text: "Übung" }), name),
-        num("sets", "Sätze", e.sets ?? 3, { min: 1, max: 20, step: 1 }), num("reps", "Wdh", e.reps ?? 8, { min: 1, max: 100, step: 1 }), num("kg", "kg", e.weightKg ?? 0, { min: 0, max: 500, step: 0.5 }));
+      // Vorlage = nur Übungsliste (#399): Sätze, Wdh. und kg kommen im Gym-Modus vom letzten Mal; hier bleiben sie unsichtbar erhalten (Rückfallwerte).
+      const row = el("div", { class: "st-tmx", "data-key": e.exercise ?? "", "data-name": e.name ?? "", "data-sets": e.sets ?? 3, "data-reps": e.reps ?? 8, "data-kg": e.weightKg ?? 0 },
+        el("label", {}, el("span", { text: "Übung" }), name));
       const up = el("button", { type: "button", text: "↑", "aria-label": "Übung nach oben" }), down = el("button", { type: "button", text: "↓", "aria-label": "Übung nach unten" }), del = el("button", { type: "button", text: "×", "aria-label": "Übung entfernen" });
       up.onclick = () => { if (row.previousElementSibling) row.previousElementSibling.before(row); };
       down.onclick = () => { if (row.nextElementSibling) row.nextElementSibling.after(row); };
@@ -416,9 +418,8 @@ const STRENGTH = {
         if (!n) { out.textContent = "Bitte einen Namen eingeben."; nm.focus(); return; }
         if (n !== t.name && (this.tplData ?? templates).some((x) => x.name.toLowerCase() === n.toLowerCase())) { out.textContent = `Es gibt schon eine Vorlage „${n}“.`; return; }
         for (const r of list.children) {
-          const name = r.querySelector(".ex").value.trim(), sets = Number(r.querySelector(".sets").value), reps = Number(r.querySelector(".reps").value), kg = Number(r.querySelector(".kg").value || 0);
+          const name = r.querySelector(".ex").value.trim(), sets = Number(r.dataset.sets) || 3, reps = Number(r.dataset.reps) || 8, kg = Number(r.dataset.kg || 0);
           if (!name) continue;
-          if (!Number.isInteger(sets) || sets < 1 || sets > 20 || !Number.isInteger(reps) || reps < 1 || reps > 100 || !(kg >= 0 && kg <= 500)) { out.textContent = `Bei „${name}“: Sätze 1–20, Wiederholungen 1–100, Gewicht 0–500 kg.`; return; }
           // Unveränderter Name behält den gespeicherten Schlüssel.
           exercises.push({ exercise: r.dataset.key && name === r.dataset.name ? r.dataset.key : name, sets, reps, weightKg: kg });
         }
