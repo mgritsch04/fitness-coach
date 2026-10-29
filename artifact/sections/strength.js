@@ -64,9 +64,6 @@ const STRENGTH = {
         </form>
         <div class="panel"><h3>Volumen je Muskelgruppe</h3><p class="muted" id="stVolWeek" style="margin:0 0 8px"></p><div class="st-vol" id="stVol"><div class="empty">Noch keine Krafteinheiten.</div></div>
           <p class="chart-cap">Arbeitssätze diese Woche: Hauptmuskel zählt einen Satz, Hilfsmuskel einen halben.</p></div>
-        <div class="panel span2"><h3>Fortschritt je Übung</h3><p id="stDeload" hidden style="margin:0 0 8px"></p><div class="tablewrap"><table id="stProg" class="cards"><thead><tr>
-          <th class="l">Übung</th><th>Einheiten</th><th>Letzter Top-Satz</th><th>Geschätztes 1RM</th><th>4 Wochen</th><th>Verlauf</th><th>Status</th>
-        </tr></thead><tbody><tr><td colspan="7" class="empty">Noch keine Daten.</td></tr></tbody></table></div></div>
         <div class="panel span2"><h3>Vorlagen verwalten</h3><p class="muted" style="margin:0 0 8px">Name und Übungen ändern oder eine Vorlage löschen. Sätze, Wiederholungen und Gewicht kommen im Gym-Modus automatisch vom letzten Mal, als du die Übung gemacht hast. Änderungen gelten sofort.</p><div id="stTplMgr"><div class="empty">Noch keine Vorlagen.</div></div></div>
         <div class="panel span2"><h3>Letzte Einheiten</h3><div id="stSessions"><div class="empty">Noch keine Krafteinheiten.</div></div><p class="chart-cap" id="stNotes"></p></div>
       </div>`;
@@ -215,12 +212,11 @@ const STRENGTH = {
     });
 
     let data = null;
-    const openEx = new Set();
     // Offene Vorlagen-Formulare je Einheit (#332): überleben das Neuzeichnen samt eingetipptem Namen und Fokus.
     const openTpl = new Map();
     const show = () => {
       if (!data) return;
-      const { de, fmtDay, fmtDayLong, spark, cssVar } = FC;
+      const { de, fmtDay, fmtDayLong, cssVar } = FC;
       $("stSave").disabled = false;
       if (!$("stDay").value) $("stDay").value = data.today;
       const sel = $("stTpl"), cur = sel.value;
@@ -240,40 +236,6 @@ const STRENGTH = {
       for (const m of muscles) {
         const bar = el("div", { class: "b" }); bar.style.width = `${(m.sets / max) * 100}%`;
         vol.append(el("div", { class: "r" }, el("span", { text: m.label }), el("div", {}, bar), el("span", { class: "n", text: de(m.sets, m.sets % 1 ? 1 : 0) })));
-      }
-
-      // Plateau und Entlastungswoche (#202): Hinweis nur bei deload/watch.
-      const dl = data.deload, dlBox = $("stDeload");
-      dlBox.hidden = !dl || !["deload", "watch"].includes(dl.verdict);
-      if (!dlBox.hidden) dlBox.replaceChildren(el("strong", { text: dl.verdict === "deload" ? "Entlastungswoche empfohlen. " : "Plateau beobachten. " }), `${dl.text}${dl.suggestion ? ` ${dl.suggestion.text}` : ""}`);
-      const STATUS = { progress: "Fortschritt", plateau: "Plateau", decline: "Rückgang", new: "neu", unknown: "–" };
-      const tb = $("stProg").tBodies[0]; tb.replaceChildren();
-      if (!data.progress.length) tb.append(el("tr", {}, el("td", { colspan: 7, class: "empty", text: "Noch keine Daten." })));
-      for (const p of data.progress) {
-        const last = p.history.at(-1);
-        const sp = spark(p.history.slice(-12).map((h) => h.e1rmKg), cssVar("--accent")); sp.classList.add("st-spark");
-        // Verlauf und Prognose je Übung (#328): Antippen öffnet das Diagramm unter der Zeile.
-        const nameBtn = el("button", { type: "button", class: "linkish", text: p.name, "aria-expanded": "false", "aria-label": `Verlauf und Prognose für ${p.name}` });
-        // Offene Übungen bleiben beim Neuzeichnen offen.
-        const openDetail = (tr) => {
-          tr.after(el("tr", { class: "st-detail" }, el("td", { colspan: 7, class: "l" }, FC.state.exerciseDetail(p))));
-          nameBtn.setAttribute("aria-expanded", "true");
-        };
-        nameBtn.onclick = () => {
-          const tr = nameBtn.closest("tr");
-          if (tr.nextElementSibling?.classList.contains("st-detail")) { tr.nextElementSibling.remove(); nameBtn.setAttribute("aria-expanded", "false"); openEx.delete(p.exercise); return; }
-          openEx.add(p.exercise); openDetail(tr);
-        };
-        const row = el("tr", {},
-          el("td", {}, nameBtn),
-          el("td", { "data-k": "Einheiten", text: de(p.sessions) }),
-          el("td", { "data-k": "Letzter Top-Satz", text: last ? `${last.topSet.reps} × ${de(last.topSet.weightKg, last.topSet.weightKg % 1 ? 1 : 0)} kg (${fmtDay(last.day)})` : "–" }),
-          el("td", { "data-k": "Geschätztes 1RM", text: p.bestE1rmKg == null ? "–" : `${de(p.bestE1rmKg, 1)} kg` }),
-          el("td", { "data-k": "4 Wochen", text: p.change4wPct == null ? "–" : `${p.change4wPct > 0 ? "+" : ""}${de(p.change4wPct, 1)} %` }),
-          el("td", { "data-k": "Verlauf" }, sp),
-          el("td", { "data-k": "Status" }, el("span", { class: `pill ${p.status}`, text: STATUS[p.status] })));
-        tb.append(row);
-        if (openEx.has(p.exercise)) openDetail(row);
       }
 
       const list = $("stSessions"), focused = list.contains(document.activeElement) ? document.activeElement : null;

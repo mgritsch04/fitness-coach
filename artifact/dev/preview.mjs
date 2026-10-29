@@ -91,6 +91,10 @@ const payloads = {
   delete_strength_session: (i) => { window.__deleted = i.id; return { deleted: i.id }; },
   save_strength_template: (i) => { window.__tplSaved = i; return i; },
   get_exercises: () => ({ exercises: [
+    { exercise: "squat", name: "Kniebeuge", sessions: 3, sets: 9, lastDay: "2026-03-30", bestE1rmKg: 116.7, hidden: false, mergedFrom: [], muscles: { primary: ["quads"], secondary: ["glutes"], source: "catalog" },
+      last: { day: "2026-03-30", sets: [{ reps: 5, weightKg: 100 }] }, history: Array.from({ length: 7 }, (_, i) => ({ day: "2026-03-" + String(30 - i * 3).padStart(2, "0"), sets: [{ reps: 5, weightKg: 100 - i * 2.5 }] })) },
+    { exercise: "bench_press", name: "Bankdrücken", sessions: 2, sets: 2, lastDay: "2026-03-26", bestE1rmKg: 91.8, hidden: false, mergedFrom: [], muscles: { primary: ["chest"], secondary: ["triceps"], source: "catalog" },
+      last: { day: "2026-03-26", sets: [{ reps: 8, weightKg: 72.5 }] }, history: [{ day: "2026-03-26", sets: [{ reps: 8, weightKg: 72.5 }] }] },
     { exercise: "bizeps schwarze", name: "Bizeps schwarze", sessions: 2, sets: 5, lastDay: "2026-03-08", bestE1rmKg: 26.7, hidden: false, mergedFrom: [], muscles: { primary: ["biceps"], secondary: [], source: "auto" },
       last: { day: "2026-03-08", sets: [{ reps: 10, weightKg: 20 }] }, history: [{ day: "2026-03-08", sets: [{ reps: 10, weightKg: 20 }] }, { day: "2026-03-01", sets: [{ reps: 10, weightKg: 15 }, { reps: 8, weightKg: 17.5 }] }] },
     { exercise: "bizeps curls", name: "Bizeps curls", sessions: 1, sets: 3, lastDay: "2026-03-02", bestE1rmKg: 22, hidden: false, mergedFrom: [], muscles: { primary: ["biceps"], secondary: [], source: "auto" },
@@ -516,14 +520,8 @@ for (const [name, vp, scheme, tab, file] of shots) {
     const us = await p.evaluate(() => window.__gymSaved?.exercises?.[0]?.sets?.map((x) => x.side));
     if (JSON.stringify(us) !== JSON.stringify(["L", "R"])) errors.push(`${name}: Seiten nicht gespeichert ${JSON.stringify(us)}`);
     await p.click("#gyBody .linkish:text('Nein danke')").catch(() => {}); await p.waitForTimeout(100);
-    // Krafttraining-Abschnitt: Verlauf und Prognose (#328), Einheit als Vorlage (#319)
-    await p.click("#stProg tbody tr:first-child button").catch(() => errors.push(`${name}: Übung im Krafttraining nicht antippbar`)); await p.waitForTimeout(200);
-    const sp = await p.evaluate(() => ({ svg: !!document.querySelector("#stProg .st-detail svg"), t: document.querySelector("#stProg .st-detail .chart-cap")?.textContent ?? "" }));
-    if (!sp.svg || !/Schätzung/.test(sp.t)) errors.push(`${name}: Übungsverlauf falsch ${JSON.stringify(sp)}`);
-    await p.screenshot({ path: join(out, "phone-strength-forecast.png") });
-    await p.click("#stProg tbody tr.st-detail + tr button").catch(() => {}); await p.waitForTimeout(200);
-    const sp2 = await p.$$eval("#stProg .st-detail .chart-cap", (l) => l.map((x) => x.textContent));
-    if (!sp2.some((t) => /Zu wenig Daten/.test(t))) errors.push(`${name}: Übung ohne Prognose zeigt keinen Hinweis ${JSON.stringify(sp2)}`);
+    // Krafttraining-Abschnitt: „Fortschritt je Übung“ ist in den Reiter Übungen gewandert
+    if (await p.$("#stProg")) errors.push(`${name}: Fortschritt je Übung steht noch im Krafttraining`);
     window_tpl: {
       await p.click("#stSessions button.linkish[aria-expanded]").catch(() => errors.push(`${name}: Einheitenliste ohne „Als Vorlage speichern“`));
       // #332: Das Feld muss das Neuzeichnen (ResizeObserver, Zeitraumwechsel) überleben, samt Text.
@@ -738,12 +736,30 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   // Übungsverwaltung (#399): eigener Reiter „Übungen“: Verlauf, Dubletten zusammenführen, Muskelgruppen
   await p.click("#tabbar [data-tab=uebungen]"); await p.waitForTimeout(500);
   if (await p.$("#sec-exlist.folded .fold-bar")) { await p.click("#sec-exlist .fold-bar"); await p.waitForTimeout(500); }
-  await p.click("#sec-exlist .ex-item > summary"); await p.waitForTimeout(150);
-  const exv = await p.innerText("#sec-exlist .ex-item[open]");
-  if (!/Verlauf/.test(exv) || !/20 kg × 10/.test(exv) || !/17,5 kg × 8/.test(exv) || !/Bizeps/.test(exv)) errors.push(`${name}: Übungsverlauf falsch ${exv.slice(0, 300)}`);
-  if (!(await p.$("#exDup .ex-dup")) || !/Maschine X/.test(await p.innerText("#exList")) || !/nicht erkannt/.test(await p.innerText("#exList"))) errors.push(`${name}: Übungsverwaltung ohne Dubletten oder „nicht erkannt“`);
-  await p.click("#exDup .ex-dup button"); await p.waitForTimeout(100); await p.click("#exDup .ex-dup button"); await p.waitForTimeout(300);
-  await p.click("#sec-exlist .ex-item[open] .ex-mus input[value=back]"); await p.click("#sec-exlist .ex-item[open] button:text-is('Muskelgruppen speichern')"); await p.waitForTimeout(200);
+  // Liste nach Muskelgruppe, Suche, Fortschritt je Übung (Diagramm und Prognose, #328) in der Übung
+  const groups = await p.$$eval("#exList .ex-group", (l) => l.map((x) => x.textContent));
+  if (!groups.some((g) => /^Brust/.test(g)) || !groups.some((g) => /^Sonstige/.test(g))) errors.push(`${name}: Übungen nicht nach Muskelgruppe gruppiert ${JSON.stringify(groups)}`);
+  await p.screenshot({ path: join(out, "phone-exlist-liste.png") });
+  await p.fill("#exSearch", "kniebe"); await p.waitForTimeout(100);
+  if ((await p.$$eval("#exList .ex-item", (l) => l.length)) !== 1) errors.push(`${name}: Suche „kniebe“ findet nicht genau eine Übung`);
+  await p.click("#sec-exlist .ex-item > summary"); await p.waitForTimeout(300);
+  const sp = await p.evaluate(() => ({ svg: !!document.querySelector("#exList .ex-item[open] .st-chart svg"), t: document.querySelector("#exList .ex-item[open] .chart-cap")?.textContent ?? "", pill: !!document.querySelector("#exList .ex-item .pill"), hist: document.querySelectorAll("#exList .ex-item[open] .ex-hist li").length }));
+  if (!sp.svg || !/Schätzung/.test(sp.t) || !sp.pill) errors.push(`${name}: Fortschritt in der Übung falsch ${JSON.stringify(sp)}`);
+  if (sp.hist !== 5) errors.push(`${name}: Verlauf zeigt ${sp.hist} statt 5 Einheiten`);
+  await p.click("#sec-exlist .ex-item[open] .ex-body button:text-is('Alle 7 Einheiten zeigen')"); await p.waitForTimeout(100);
+  if ((await p.$$eval("#exList .ex-item[open] .ex-hist li", (l) => l.length)) !== 7) errors.push(`${name}: „Alle zeigen“ zeigt nicht alle`);
+  await p.screenshot({ path: join(out, "phone-strength-forecast.png") });
+  await p.click("#sec-exlist .ex-item[open] > summary"); await p.fill("#exSearch", "bank"); await p.waitForTimeout(100);
+  await p.click("#sec-exlist .ex-item > summary"); await p.waitForTimeout(300);
+  if (!/Zu wenig Daten/.test(await p.innerText("#exList .ex-item[open]"))) errors.push(`${name}: Übung ohne Prognose zeigt keinen Hinweis`);
+  await p.fill("#exSearch", ""); await p.waitForTimeout(100);
+  await p.click("#ex-bizeps-schwarze > summary"); await p.waitForTimeout(150);
+  const exv = await p.innerText("#ex-bizeps-schwarze");
+  if (!/Verlauf/.test(exv) || !/20 kg × 10/.test(exv) || !/17,5 kg × 8/.test(exv)) errors.push(`${name}: Übungsverlauf falsch ${exv.slice(0, 300)}`);
+  if (!(await p.$("#exDup .ex-dup")) || !/Maschine X/.test(await p.innerText("#exList")) || !/Sonstige/i.test(await p.innerText("#exList"))) errors.push(`${name}: Übungsverwaltung ohne Dubletten oder Sonstige`);
+  await p.click("#exDupBox > summary"); await p.click("#exDup .ex-dup button"); await p.waitForTimeout(100); await p.click("#exDup .ex-dup button"); await p.waitForTimeout(300);
+  await p.click("#ex-bizeps-schwarze details.ex-more:has(> summary:text-is('Einstellungen')) > summary");
+  await p.click("#ex-bizeps-schwarze .ex-mus input[value=back]"); await p.click("#ex-bizeps-schwarze button:text-is('Muskelgruppen speichern')"); await p.waitForTimeout(200);
   const acts = await p.evaluate(() => window.__exActs ?? []);
   if (!acts.some((a) => a.action === "merge" && a.exercise === "bizeps curls" && a.into === "bizeps schwarze") || !acts.some((a) => a.action === "muscles" && a.primary?.includes("back"))) errors.push(`${name}: Übungsverwaltung sendet falsch ${JSON.stringify(acts)}`);
   await p.screenshot({ path: join(out, "phone-exlist.png") });
