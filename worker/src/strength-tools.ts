@@ -253,19 +253,20 @@ export function registerStrengthTools(server: McpServer, env: Env) {
     "manage_exercise",
     {
       description:
-        "Übung verwalten: rename (neuer Name), merge (exercise geht in into auf; Verlauf und Bestwerte bleiben), unmerge (Zusammenführung wieder lösen), hide/unhide (aus Auswahllisten ausblenden, Verlauf bleibt), " +
+        "Übung verwalten: rename (neuer Name), merge (exercise geht in into auf; Verlauf und Bestwerte bleiben; mit side L/R zählen die Sätze der Quelle als links/rechts der Zielübung, die dann einseitig wird), unmerge (Zusammenführung wieder lösen), hide/unhide (aus Auswahllisten ausblenden, Verlauf bleibt), " +
         "muscles (Hauptmuskeln primary, optional Hilfsmuskeln secondary; leer = wieder automatisch), unilateral/bilateral (einseitige Übung: Sätze je Seite links/rechts erfassen). exercise und into als Name oder Schlüssel.",
       inputSchema: {
         action: z.enum(["rename", "merge", "unmerge", "hide", "unhide", "muscles", "unilateral", "bilateral"]),
         exercise: z.string().min(1).max(80),
         name: z.string().min(1).max(80).optional().describe("rename: neuer Name"),
         into: z.string().min(1).max(80).optional().describe("merge: Zielübung, die bleibt"),
+        side: z.enum(["L", "R"]).optional().describe("merge: Sätze der Quelle gelten als links (L) bzw. rechts (R)"),
         primary: z.array(muscleEnum).max(4).optional(),
         secondary: z.array(muscleEnum).max(4).optional(),
       },
       annotations: { readOnlyHint: false },
     },
-    async ({ action, exercise, name, into, primary, secondary }) => {
+    async ({ action, exercise, name, into, side, primary, secondary }) => {
       const map = await readOverrides(env.DB);
       const raw = exerciseKey(exercise).key;
       // unmerge arbeitet auf der Quellübung selbst, alles andere auf der Zielübung (nach Zusammenführungen).
@@ -279,9 +280,15 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         const target = resolveKey(exerciseKey(into).key, map);
         if (target === key) return fail("invalid_input", "Diese Übungen sind schon dieselbe.");
         cur.mergedInto = target;
+        cur.mergeSide = side ?? null;
+        if (side) {
+          const t: ExerciseOverride = map.get(target) ?? { key: target, mergedInto: null, displayName: null, hidden: false, musclesPrimary: null, musclesSecondary: null };
+          if (!t.unilateral) await saveOverride(env.DB, { ...t, unilateral: true });
+        }
       } else if (action === "unmerge") {
         if (!cur.mergedInto) return fail("invalid_input", "Diese Übung ist in keine andere aufgegangen.");
         cur.mergedInto = null;
+        cur.mergeSide = null;
       } else if (action === "hide" || action === "unhide") cur.hidden = action === "hide";
       else if (action === "unilateral" || action === "bilateral") cur.unilateral = action === "unilateral";
       else {
