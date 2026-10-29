@@ -38,26 +38,37 @@ FC.section({
       el("p", { class: "fo-tip", text: c.headline }));
     // Heute dran
     const x = t?.thisWeek?.comparison?.days?.find((y) => y.day === d.today);
-    const kraft = (t?.strengthWorkouts?.days ?? []).find((k) => k.day === d.today);
+    const wd = (new Date(`${d.today}T12:00:00Z`).getUTCDay() + 6) % 7;
+    const kraft = t?.prefs?.templateByDay?.[wd] ?? null;
     const plan = el("div", { class: "fo-row" }, el("span", { class: "label", text: "Heute dran" }));
     const act = el("div", { class: "fo-act" });
-    if (!x) plan.append(el("p", { class: "fo-big", text: "Noch kein Wochenplan" }), el("p", { class: "fo-tip", text: "Im Tab „Coach“ kannst du Ziele und Vorlieben eintragen." }));
-    else {
-      const ride = this.RIDES.includes(x.type);
-      plan.append(el("p", { class: "fo-big", text: x.type === "rest" ? "Ruhetag" : `${x.title}${x.durationMin ? `, ${x.durationMin} min` : ""}` }));
-      const tip = (t.today?.text || x.intensity || (x.description ?? "").split(/(?<=[.!?])\s/)[0] || "").trim();
-      if (tip) plan.append(el("p", { class: "fo-tip", text: tip }));
-      if (kraft) {
-        const b = el("button", { type: "button", class: "primary", text: FC.state.gym?.st ? "Zum Gym-Modus" : "Gym-Vorlage starten" });
-        b.onclick = () => { FC.goTo("gym"); FC.state.gym?.startPlan(d.today); };
+    // Eigener Plan (prefs.templateByDay): Kraft-Vorlage, „@rad“ oder „@ruhe“ ersetzt den App-Vorschlag.
+    const own = kraft && kraft !== "@rad" && kraft !== "@ruhe" ? kraft : null;
+    const ride = this.RIDES.includes(x?.type);
+    if (kraft) {
+      plan.append(el("p", { class: "fo-big", text: kraft === "@rad" ? "Radeinheit" : kraft === "@ruhe" ? "Ruhetag" : `Kraft: ${kraft}` }), el("p", { class: "fo-tip", text: "Von dir geplant." }));
+      if (own) {
+        const b = el("button", { type: "button", class: "primary", text: FC.state.gym?.st ? "Zum Gym-Modus" : `Vorlage „${own}“ starten` });
+        b.onclick = () => { FC.goTo("gym"); FC.state.gym?.startTemplate(own); };
         act.append(b);
       }
+      if (kraft === "@rad") {
+        const b = el("button", { type: "button", class: "primary", text: "Workout für MyWhoosh" });
+        b.onclick = () => FC.goTo("bikewo");
+        act.append(b);
+      }
+    } else if (!x) plan.append(el("p", { class: "fo-big", text: "Noch kein Wochenplan" }), el("p", { class: "fo-tip", text: "Du kannst unten selbst festlegen, was heute dran ist." }));
+    else {
+      plan.append(el("p", { class: "fo-big", text: x.type === "rest" ? "Ruhetag" : `${x.title}${x.durationMin ? `, ${x.durationMin} min` : ""}` }));
+      const tip = (t.today?.text || x.intensity || (x.description ?? "").split(/(?<=[.!?])\s/)[0] || "").trim();
+      plan.append(el("p", { class: "fo-tip", text: `Vorschlag der App${tip ? `: ${tip}` : ""}` }));
       if (ride) {
-        const b = el("button", { type: "button", class: kraft ? "" : "primary", text: "Workout für MyWhoosh" });
+        const b = el("button", { type: "button", class: "primary", text: "Workout für MyWhoosh" });
         b.onclick = () => FC.goTo("bikewo");
         act.append(b);
       }
     }
+    plan.append(this.dayPicker(wd, kraft));
     // Höchstens eine Warnung: Frühwarnung vor den Hinweisen der Tagesform.
     const w = d.earlyWarning && d.earlyWarning.level !== "none" ? { level: d.earlyWarning.level, text: d.earlyWarning.headline } : c.warnings?.length ? { level: "", text: c.warnings[0] } : null;
     const warn = w ? el("p", { class: `fo-warn ${w.level}`, role: "status", text: w.text }) : null;
@@ -66,6 +77,22 @@ FC.section({
     const foot = el("div", { class: "fo-foot" }, el("label", { for: "foLean" }, lean, "Heute schlank halten (Rest ausblenden)"), el("span", { class: "muted", id: "foHint" }));
     body.replaceChildren(form, plan, act.children.length ? act : "", warn ?? "", foot);
     this.hint();
+  },
+  /** Heutigen Plan selbst festlegen, auch spontan: Kraft-Vorlage, Rad, Ruhetag oder zurück zum App-Vorschlag. */
+  names: null,
+  dayPicker(wd, cur) {
+    const { el } = FC;
+    const sel = el("select", { "aria-label": "Heute stattdessen" }, el("option", { value: "", text: "App-Vorschlag" }), el("option", { value: "@rad", text: "Rad" }), el("option", { value: "@ruhe", text: "Ruhetag" }));
+    const fill = () => { for (const n of this.names ?? []) sel.append(el("option", { value: n, text: `Kraft: ${n}` })); if (cur && ![...sel.options].some((o) => o.value === cur)) sel.append(el("option", { value: cur, text: `Kraft: ${cur}` })); sel.value = cur ?? ""; };
+    if (this.names) fill(); else FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } }).then((r) => { this.names = (r.templates ?? []).map((x) => x.name); fill(); }).catch(() => { this.names = []; fill(); });
+    const msg = el("span", { class: "muted", role: "status" });
+    sel.onchange = async () => {
+      const vals = [...(FC.state.data?.training?.prefs?.templateByDay ?? [])]; while (vals.length < 7) vals.push(null);
+      vals[wd] = sel.value || null; sel.disabled = true; msg.textContent = "Speichere …";
+      try { await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null }); await FC.reload(); }
+      catch (e) { msg.textContent = FC.errText(e); sel.disabled = false; }
+    };
+    return el("label", { class: "fo-pick", style: "display:grid;gap:2px;font-size:.85rem;color:var(--ink-3)" }, el("span", { text: "Heute stattdessen" }), sel, msg);
   },
   /** Hinweis auf den Vorschlag „Ungenutztes ausblenden“, sobald genug Nutzung gezählt ist. */
   hint() {

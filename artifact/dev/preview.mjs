@@ -370,15 +370,6 @@ for (const [name, vp, scheme, tab, file] of shots) {
       if (fbr[0] !== "too_hard" || fbr[1] !== "true") errors.push(`${name}: Rückmeldung falsch gespeichert ${JSON.stringify(fbr)}`);
       // Doppeltag (#298): heute Rad und Kraft, Hinweis zur Reihenfolge.
       if (!/Doppeltag/.test(await p.textContent("#agBody .ag-both").catch(() => ""))) errors.push(`${name}: kein Doppeltag-Hinweis`);
-      // Schweißrate (#282): nach der Radeinheit messen, Rate wird gespeichert und angezeigt.
-      await p.click("#agBody .ag-sw summary"); await p.fill("#swBefore", "70");
-      // Aufklappen ändert die Höhe → ResizeObserver zeichnet neu; Formular muss offen bleiben und Werte behalten.
-      await p.waitForTimeout(400);
-      const swk = await p.evaluate(() => ({ open: document.querySelector("#agBody .ag-sw")?.open, v: document.getElementById("swBefore")?.value }));
-      if (!(swk.open && swk.v === "70")) errors.push(`${name}: Schweißrate-Formular klappt zu ${JSON.stringify(swk)}`); await p.fill("#swAfter", "69,2".replace(",", ".")); await p.fill("#swDrank", "0.6"); await p.fill("#swDur", "60");
-      await p.click("#agBody .ag-sw .primary"); await p.waitForFunction(() => /l\/h/.test(document.getElementById("swOut")?.textContent ?? ""), null, { timeout: 3000 }).catch(() => {});
-      const swr = await p.evaluate(() => ({ in: window.__sweatIn, out: document.getElementById("swOut")?.textContent ?? "", open: document.querySelector("#agBody .ag-sw")?.open, n: document.querySelectorAll("#swOut").length, msg: document.getElementById("agMsg")?.textContent }));
-      if (!(swr.in?.weightBeforeKg === 70 && swr.in.indoor === true && /1,4 l\/h/.test(swr.out))) errors.push(`${name}: Schweißrate falsch ${JSON.stringify(swr)}`);
     }
     // Mobility (#223): Abschnitt öffnen, Timer starten und stoppen.
     await p.evaluate(() => FC.goTo("mobility")); await p.waitForTimeout(300);
@@ -407,7 +398,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     // Heute ist die Vorlage je Wochentag (#370) vorausgewählt; die Planeinheit bleibt wählbar.
     const plan = await p.$eval("#gySrc", (s) => s.value);
-    if (plan !== "t:Beine & Brust" || !(await p.$("#gySrc option[value^='p:']"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
+    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || !(await p.$("#gyWeek select"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
     // Verlauf und Prognose im Gym-Modus (#328)

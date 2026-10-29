@@ -122,9 +122,8 @@ FC.section({
   drawStart() {
     const { $, el, fmtDayLong } = FC, body = $("gyBody"), d = this.data;
     if (!d) { body.replaceChildren(el("div", { class: "empty", text: this.err ?? "Lädt …" })); return; }
-    const today = FC.state.data?.today, planned = (FC.state.data?.training?.strengthWorkouts?.days ?? []).filter((w) => w.day >= today).slice(0, 3);
+    const today = FC.state.data?.today;
     const sel = el("select", { id: "gySrc" },
-      planned.length ? el("optgroup", { label: "Aus dem Wochenplan" }, ...planned.map((w) => el("option", { value: `p:${w.day}`, text: `${w.day === today ? "Heute" : fmtDayLong(w.day)}: ${w.focus}` }))) : null,
       d.templates.length ? el("optgroup", { label: "Vorlage (mit Gewichtsvorschlag)" }, ...d.templates.map((t) => el("option", { value: `t:${t.name}`, text: t.name }))) : null,
       d.sessions.length ? el("optgroup", { label: "Wie eine letzte Einheit" }, ...d.sessions.slice(0, 6).map((s) => el("option", { value: `s:${s.id}`, text: `${fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}` }))) : null,
       el("option", { value: "", text: "Leer starten" }));
@@ -138,10 +137,39 @@ FC.section({
     const go = el("button", { type: "button", class: "primary", text: "Einheit starten" });
     go.onclick = () => this.start(sel.value, go, Number(time.value) || null);
     body.replaceChildren(this.savedPanel() ?? "", el("div", { class: "panel" },
-      el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Was trainierst du?", sel), el("label", { for: "gyTime" }, "Zeit", time), go),
-      hasSugg ? el("p", { class: "chart-cap", id: "gyTplHint", text: `Für heute vorgeschlagen: Vorlage „${sugg}“. Oben änderst du sie mit einem Tipp.` }) : null,
-      el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })));
+      el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Vorlage für diese Einheit", sel), el("label", { for: "gyTime" }, "Zeit", time), go),
+      hasSugg ? el("p", { class: "chart-cap", id: "gyTplHint", text: `Für heute vorgeschlagen: Vorlage „${sugg}“. Unten planst du deine Woche.` }) : null,
+      el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })),
+      this.weekPanel(d.templates, wd));
   },
+  /** Meine Woche: je Wochentag eine eigene Vorlage (prefs.templateByDay, #370); speichert beim Ändern, der heutige Tag steht vorn im Start. */
+  weekPanel(templates, wd) {
+    const { el } = FC, names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+    const have = new Set(templates.map((t) => t.name));
+    const cur = () => { const a = FC.state.data?.training?.prefs?.templateByDay ?? []; return names.map((_, i) => (a[i] && (have.has(a[i]) || a[i] === "@rad" || a[i] === "@ruhe") ? a[i] : null)); };
+    const out = el("span", { class: "muted", role: "status", id: "gyWeekMsg" });
+    const rows = names.map((n, i) => {
+      const sel = el("select", { "aria-label": `${n}: Vorlage` }, el("option", { value: "", text: "frei / keine" }), el("option", { value: "@rad", text: "Rad" }), el("option", { value: "@ruhe", text: "Ruhetag" }), ...templates.map((t) => el("option", { value: t.name, text: `Kraft: ${t.name}` })));
+      sel.value = cur()[i] ?? "";
+      sel.onchange = async () => {
+        const vals = cur(); vals[i] = sel.value || null;
+        sel.disabled = true; out.textContent = "Speichere …";
+        try {
+          await FC.call("set_training_prefs", { templateByDay: vals.some((v) => v) ? vals : null });
+          out.textContent = `${n}: ${sel.value ? `„${sel.value}“` : "keine Vorlage"} gespeichert.`;
+          await FC.reload();
+        } catch (e) { out.textContent = FC.errText(e); }
+        finally { sel.disabled = false; }
+      };
+      return el("label", { class: "gy-wk", style: i === wd ? "font-weight:600" : "" }, el("span", { text: i === wd ? `${n} (heute)` : n }), sel);
+    });
+    return el("div", { class: "panel", id: "gyWeek", style: "margin-top:12px;display:grid;gap:8px" },
+      el("h3", { text: "Meine Woche" }),
+      el("p", { class: "chart-cap", style: "margin:0", text: templates.length ? "Lege fest, welche Vorlage an welchem Tag dran ist. Am Tag ist sie beim Start vorausgewählt." : "Noch keine Vorlage gespeichert: nach einer Einheit „Als Vorlage speichern“, dann kannst du hier deine Woche planen." }),
+      templates.length ? el("div", { style: "display:grid;gap:6px" }, ...rows) : "", out);
+  },
+  /** Vorlage direkt starten (z. B. von der Startseite); läuft schon eine Einheit, bleibt sie. */
+  startTemplate(name) { if (!this.st) this.start(`t:${name}`); },
   /** Nach dem Speichern (#319): die Einheit mit Namen als Vorlage übernehmen. */
   savedPanel() {
     const { el } = FC, sv = this.saved;
