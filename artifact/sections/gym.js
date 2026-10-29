@@ -53,6 +53,7 @@ FC.section({
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-gym">Gym-Modus</h2><span class="muted">Sätze abhaken, während du trainierst</span></div>
       <div id="gyBody"></div>
+      <datalist id="gyEx"></datalist>
       <p class="muted" id="gyMsg" role="status" style="margin:8px 0 0"></p>`;
     this.root = root;
     this.st = this.loadState();
@@ -63,9 +64,36 @@ FC.section({
     FC.call("get_strength", { weeks: 12 }, { cache: { staleTime: 60_000, gcTime: 86_400_000 } })
       .then((d) => { this.data = d; if (!this.st || !FC.$("gyBody")?.contains(document.activeElement)) this.draw(); })
       .catch((err) => { this.err = FC.errText(err); if (!this.st) this.draw(); });
+    this.loadEx(false);
     this.draw();
   },
   render() { if (!this.drawn) this.draw(); },
+
+  // --- Meine Übungen (#399): Auswahl beim Tauschen/Hinzufügen und „wie letztes Mal“ ---------------------
+  loadEx(fresh) {
+    return FC.call("get_exercises", {}, fresh ? { cache: false } : { cache: { staleTime: 60_000, gcTime: 86_400_000 } })
+      .then((d) => { this.ex = d; this.fillEx(); })
+      .catch(() => {});
+  },
+  /** Auswahlliste: alle nicht ausgeblendeten Übungen. */
+  fillEx() {
+    const dl = FC.$("gyEx"); if (!dl) return;
+    dl.replaceChildren(...(this.ex?.exercises ?? []).filter((e) => !e.hidden).map((e) => FC.el("option", { value: e.name })));
+  },
+  /** Übung nach Name (auch nach einem Namen, der in sie zusammengeführt wurde). */
+  exByName(name) {
+    const k = String(name ?? "").trim().toLowerCase();
+    return k ? this.ex?.exercises.find((e) => e.name.toLowerCase() === k || e.mergedFrom.some((m) => m.name.toLowerCase() === k)) ?? null : null;
+  },
+  /** Sätze, Wdh. und Gewicht vom letzten Mal in die offenen Sätze übernehmen (true, wenn es ein letztes Mal gibt). */
+  fillLast(x) {
+    const last = this.exByName(x.name)?.last?.sets;
+    if (!last?.length) return false;
+    if (!x.sets.some((s) => s.done)) x.sets = last.slice(0, 10).map((s) => ({ reps: s.reps, kg: s.weightKg, done: false }));
+    else { const top = Math.max(...last.map((s) => s.weightKg)); for (const t of x.sets) if (!t.done) t.kg = top; }
+    return true;
+  },
+  newEx(name) { const e = { name, rest: this.restFor(name), sets: [{ reps: 8, kg: 0, done: false }] }; this.fillLast(e); return e; },
 
   loadState() { try { const v = JSON.parse(localStorage.getItem(this.KEY) ?? "null"); return v?.exercises ? v : null; } catch { return null; } },
   persist() {
@@ -137,10 +165,32 @@ FC.section({
     if (hasSugg) sel.value = `t:${sugg}`;
     const go = el("button", { type: "button", class: "primary", text: "Einheit starten" });
     go.onclick = () => this.start(sel.value, go, Number(time.value) || null);
-    body.replaceChildren(this.savedPanel() ?? "", el("div", { class: "panel" },
+    body.replaceChildren(this.updatePanel() ?? "", this.savedPanel() ?? "", el("div", { class: "panel" },
       el("div", { class: "gy-start" }, el("label", { for: "gySrc" }, "Was trainierst du?", sel), el("label", { for: "gyTime" }, "Zeit", time), go),
       hasSugg ? el("p", { class: "chart-cap", id: "gyTplHint", text: `Für heute vorgeschlagen: Vorlage „${sugg}“. Oben änderst du sie mit einem Tipp.` }) : null,
       el("p", { class: "chart-cap", text: "Nach jedem Satz läuft eine Pause (Grundübungen 3 min, sonst 90 s). Gewichte aus Vorlagen sind Vorschläge, nach Gefühl anpassen." })));
+  },
+  /** Nach dem Speichern (#399): wurde eine Übung der Vorlage getauscht, fragen, ob die Vorlage mitzieht. */
+  updatePanel() {
+    const { el } = FC, u = this.tplUpdate;
+    if (!u) return null;
+    const out = el("span", { class: "muted", role: "status" });
+    const yes = el("button", { type: "button", class: "primary", text: "Ja, Vorlage aktualisieren" });
+    const no = el("button", { type: "button", text: "Nein, nur diese Einheit" });
+    no.onclick = () => { this.tplUpdate = null; this.draw(); };
+    yes.onclick = async () => {
+      yes.disabled = true; out.textContent = "Speichere …";
+      try {
+        await FC.call("save_strength_template", { name: u.name, exercises: u.exercises });
+        if (this.data) this.data.templates = this.data.templates.map((t) => (t.name === u.name ? { ...t, exercises: u.exercises } : t));
+        await FC.state.mcp?.invalidate(FC.SERVER, "get_strength").catch(() => {});
+        this.tplUpdate = null; this.draw(); this.msg(`Vorlage „${u.name}“ aktualisiert.`);
+      } catch (err) { out.textContent = FC.errText(err); yes.disabled = false; }
+    };
+    return el("div", { class: "panel", id: "gyTplUpdate", style: "margin-bottom:12px;display:grid;gap:8px" },
+      el("h3", { text: "Vorlage mit den geänderten Übungen aktualisieren?" }),
+      el("p", { class: "muted", style: "margin:0", text: `„${u.name}“: ${u.swaps.join(", ")}` }),
+      el("div", { class: "gy-row" }, yes, no), out);
   },
   /** Nach dem Speichern (#319): die Einheit mit Namen als Vorlage übernehmen. */
   savedPanel() {
@@ -174,7 +224,7 @@ FC.section({
     if (btn) btn.disabled = true;
     this.msg("");
     try {
-      let list = [], name = null;
+      let list = [], name = null, tpl = null;
       if (src.startsWith("p:")) {
         const w = FC.state.data.training.strengthWorkouts.days.find((x) => x.day === src.slice(2));
         name = w?.focus ?? null;
@@ -183,7 +233,9 @@ FC.section({
       } else if (src.startsWith("t:")) {
         name = src.slice(2);
         const s = await FC.call("suggest_strength_session", { template: name });
-        list = s.exercises.map((x) => ({ name: x.name, sets: Array.from({ length: x.sets }, () => ({ reps: x.reps, kg: x.weightKg ?? 0 })) }));
+        tpl = name;
+        // Sätze, Wdh. und Gewicht wie beim letzten Mal dieser Übung (#399); ohne Vorgeschichte die Werte der Vorlage.
+        list = s.exercises.map((x) => ({ name: x.name, from: x.name, sets: x.lastSets?.length ? x.lastSets.slice(0, 10).map((y) => ({ reps: y.reps, kg: y.weightKg })) : Array.from({ length: x.sets }, () => ({ reps: x.reps, kg: x.weightKg ?? 0 })) }));
         const down = s.coachNotes?.find((n) => n.effect === "down");
         if (down) this.msg(down.text);
       } else if (src.startsWith("s:")) {
@@ -199,8 +251,8 @@ FC.section({
         list = r.exercises.map((e) => ({ name: e.name, unit: e.unit, restS: e.restS, superset: e.superset, sets: Array.from({ length: e.sets }, () => ({ reps: e.reps, kg: e.weightKg })) }));
         this.msg(r.text);
       }
-      this.st = { startedAt: new Date().toISOString(), name, cur: 0, restEnd: null, rpe: null, finishing: false,
-        exercises: list.map((x) => ({ name: x.name, unit: x.unit === "s" ? "s" : undefined, rest: x.restS ?? this.restFor(x.name), superset: x.superset ?? undefined, sets: x.sets.map((y) => ({ ...y, done: false })) })) };
+      this.st = { startedAt: new Date().toISOString(), name, tpl, cur: 0, restEnd: null, rpe: null, finishing: false,
+        exercises: list.map((x) => ({ name: x.name, from: x.from, unit: x.unit === "s" ? "s" : undefined, rest: x.restS ?? this.restFor(x.name), superset: x.superset ?? undefined, sets: x.sets.map((y) => ({ ...y, done: false })) })) };
       if (!this.st.exercises.length) this.st.exercises.push({ name: "", rest: 90, sets: [{ reps: 8, kg: 0, done: false }] });
       this.persist(); this.draw();
     } catch (err) { this.msg(err?.code === "tool_error" ? `Vorschlag nicht verfügbar: ${String(err.message).slice(0, 160)}` : FC.errText(err)); }
@@ -223,16 +275,16 @@ FC.section({
     const bar = el("div", { class: "gy-bar" }, clock, since, rest, note);
 
     const list = el("div", { class: "gy-list" }, ...st.exercises.map((x, i) => this.exCard(x, i)));
-    const addName = el("input", { type: "text", list: "stEx", maxlength: 80, placeholder: "Übung hinzufügen", "aria-label": "Übung hinzufügen", style: "flex:1 1 12em;min-width:0" });
+    const addName = el("input", { type: "text", list: "gyEx", maxlength: 80, placeholder: "Übung hinzufügen", "aria-label": "Übung hinzufügen", style: "flex:1 1 12em;min-width:0" });
     const add = el("button", { type: "button", text: "+ Übung" });
-    add.onclick = () => { const n = addName.value.trim(); if (!n) { addName.focus(); return; } st.exercises.push({ name: n, rest: this.restFor(n), sets: [{ reps: 8, kg: 0, done: false }] }); st.cur = st.exercises.length - 1; this.persist(); this.draw(); };
+    add.onclick = () => { const n = addName.value.trim(); if (!n) { addName.focus(); return; } st.exercises.push(this.newEx(this.exByName(n)?.name ?? n)); st.cur = st.exercises.length - 1; this.persist(); this.draw(); };
     const finish = el("button", { type: "button", class: "primary", text: "Einheit beenden" });
     finish.onclick = () => { st.finishing = true; this.persist(); this.draw(); FC.$("gyFinish")?.scrollIntoView({ block: "nearest" }); };
 
     // Übung beschreiben (#327), Vorschläge aus dem Krafttraining-Abschnitt.
     const descB = FC.state.describePanel ? el("button", { type: "button", class: "linkish", text: "Übung beschreiben", "aria-expanded": String(!!this.descOpen) }) : null;
     if (descB) descB.onclick = () => { this.descOpen = !this.descOpen; this.draw(); };
-    const desc = this.descOpen && descB ? FC.state.describePanel((n) => { this.descOpen = false; st.exercises.push({ name: n, rest: this.restFor(n), sets: [{ reps: 8, kg: 0, done: false }] }); st.cur = st.exercises.length - 1; this.persist(); this.draw(); }) : "";
+    const desc = this.descOpen && descB ? FC.state.describePanel((n) => { this.descOpen = false; st.exercises.push(this.newEx(this.exByName(n)?.name ?? n)); st.cur = st.exercises.length - 1; this.persist(); this.draw(); }) : "";
     body.replaceChildren(bar, list, el("div", { class: "gy-row", style: "margin-top:12px" }, addName, add, descB ?? ""), desc, st.finishing ? this.finishPanel() : el("div", { class: "gy-row", style: "margin-top:12px" }, finish));
     this.tickNow();
     this.tick = setInterval(() => this.tickNow(), 500);
@@ -242,7 +294,7 @@ FC.section({
     const doneSets = x.sets.filter((s) => s.done).length;
     const restBtn = el("button", { type: "button", class: "linkish", text: `Pause ${this.mmss(x.rest)}`, "aria-label": `Pausenlänge für ${x.name || "diese Übung"} ändern` });
     restBtn.onclick = () => { const r = this.RESTS; x.rest = r[(r.indexOf(x.rest) + 1) % r.length] ?? 90; this.persist(); restBtn.textContent = `Pause ${this.mmss(x.rest)}`; };
-    const title = x.name ? el("h3", { text: x.name }) : (() => { const inp = el("input", { type: "text", list: "stEx", maxlength: 80, placeholder: "Übung", "aria-label": "Name der Übung" }); inp.onchange = () => { x.name = inp.value.trim(); x.rest = this.restFor(x.name); this.persist(); }; return inp; })();
+    const title = x.name ? el("h3", { text: x.name }) : (() => { const inp = el("input", { type: "text", list: "gyEx", maxlength: 80, placeholder: "Übung", "aria-label": "Name der Übung" }); inp.onchange = () => { x.name = this.exByName(inp.value)?.name ?? inp.value.trim(); x.rest = this.restFor(x.name); if (this.fillLast(x)) this.draw(); this.persist(); }; return inp; })();
     const card = el("div", { class: `gy-ex${i === st.cur ? " cur" : ""}${doneSets === x.sets.length ? " done" : ""}` },
       el("div", { class: "gy-exh" }, title, el("span", { class: "muted" }, x.superset ? `Supersatz ${x.superset} · ` : "", `${doneSets}/${x.sets.length} Sätze · `, restBtn)),
       (() => {
@@ -307,13 +359,27 @@ FC.section({
       const b = el("button", { type: "button", text: `${a.name}${a.startKg != null ? ` · ${de(a.startKg, a.startKg % 1 ? 1 : 0)} kg` : ""}` });
       b.onclick = () => {
         x.name = a.name; x.rest = this.restFor(a.name);
-        for (const t of x.sets) if (!t.done) t.kg = a.startKg ?? null;
+        if (!this.fillLast(x)) for (const t of x.sets) if (!t.done) t.kg = a.startKg ?? null;
         this.swapAt = null; this.persist(); this.draw();
       };
       return b;
     });
+    // Jede eigene Übung wählbar (#399), auch eine neue (wird mit dem Speichern der Einheit angelegt).
+    const pick = el("input", { type: "text", list: "gyEx", maxlength: 80, placeholder: "Eigene Übung wählen oder neu eingeben", "aria-label": `${x.name} ersetzen durch`, style: "flex:1 1 14em;min-width:0" });
+    const go = el("button", { type: "button", text: "Tauschen" });
+    go.onclick = () => {
+      const n = pick.value.trim();
+      if (!n) { pick.focus(); return; }
+      const known = this.exByName(n);
+      x.name = known?.name ?? n; x.rest = this.restFor(x.name);
+      this.fillLast(x);
+      this.swapAt = null; this.persist(); this.draw();
+      if (!known) this.msg(`Neue Übung „${x.name}“: wird mit dem Speichern der Einheit angelegt.`);
+    };
+    const own = el("div", { class: "gy-row" }, pick, go);
     return el("div", { class: "gy-swapbox", role: "group", "aria-label": `Alternativen zu ${x.name}` },
       opts.length ? el("div", { class: "gy-row" }, ...opts) : el("p", { class: "muted", text: "Keine passende Alternative bekannt." }),
+      own,
       el("p", { class: "fine muted", text: r.note ?? "" }));
   },
   plateRow(x) {
@@ -499,10 +565,23 @@ FC.section({
       const best = (r.exercises ?? []).filter((x) => x.newBest).map((x) => x.name);
       // Vorlage aus der Einheit (#319): je Übung Satzzahl und bester Satz.
       this.saved = { name: st.name ?? "", exercises: exercises.map((x) => { const top = x.sets.reduce((a, b) => (b.weightKg > a.weightKg ? b : a)); return { exercise: x.exercise, sets: Math.min(20, x.sets.length), reps: Math.min(100, top.reps), weightKg: top.weightKg }; }) };
+      // Übung der Vorlage getauscht (#399)? Dann nachfragen, ob die Vorlage mitzieht.
+      const tpl = st.tpl ? this.data?.templates.find((t) => t.name === st.tpl) : null;
+      const swaps = tpl ? st.exercises.filter((x) => x.from && x.name && x.from.toLowerCase() !== x.name.toLowerCase() && this.saved.exercises.some((e) => e.exercise === x.name)) : [];
+      this.tplUpdate = swaps.length ? {
+        name: tpl.name, swaps: swaps.map((x) => `${x.from} → ${x.name}`),
+        exercises: tpl.exercises.map((te) => {
+          const sw = swaps.find((x) => x.from.toLowerCase() === (te.name ?? te.exercise).toLowerCase());
+          const sv = sw && this.saved.exercises.find((e) => e.exercise === sw.name);
+          return sv ? { exercise: sv.exercise, sets: sv.sets, reps: sv.reps, weightKg: sv.weightKg } : { exercise: te.exercise, sets: te.sets, reps: te.reps, weightKg: te.weightKg ?? 0 };
+        }),
+      } : null;
       this.st = null; this.persist();
       this.msg(["Gespeichert.", r.load?.value != null ? `Belastung ≈ ${FC.de(r.load.value)} (Schätzung).` : "", best.length ? `Neue Bestwerte: ${best.join(", ")}.` : ""].filter(Boolean).join(" "));
       this.draw();
       await FC.state.mcp?.invalidate(FC.SERVER, "get_strength").catch(() => {});
+      await FC.state.mcp?.invalidate(FC.SERVER, "get_exercises").catch(() => {});
+      this.loadEx(true);
       FC.reload();
     } catch (err) { this.msg(err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err)); btn.disabled = false; }
   },
