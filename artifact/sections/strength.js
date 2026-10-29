@@ -79,10 +79,10 @@ const STRENGTH = {
 
     // Je Übung beliebig viele Sätze mit eigenem Gewicht, Wiederholungen und optionaler Anstrengung (#344).
     const numIn = (cls, label, attrs) => el("label", {}, el("span", { text: label }), el("input", { class: cls, type: "number", inputmode: "decimal", ...attrs }));
-    const renumber = (box) => box.querySelectorAll(".st-set").forEach((r, i) => { r.querySelector(".st-n").textContent = `Satz ${i + 1}`; });
+    const renumber = (box) => { let c = 0; box.querySelectorAll(".st-set").forEach((r) => { const sd = r.dataset.side; if (sd !== "R") c++; r.querySelector(".st-n").textContent = sd ? `Satz ${c || 1} ${sd}` : `Satz ${c}`; }); };
     const addSet = (box, v = {}) => {
       const list = box.querySelector(".st-sets"), prev = list.lastElementChild;
-      const row = el("div", { class: "st-set" }, el("span", { class: "st-n" }),
+      const row = el("div", { class: "st-set", "data-side": v.side ?? "" }, el("span", { class: "st-n" }),
         numIn("kg", "kg", { min: 0, max: 500, step: 0.5, placeholder: "kg", "aria-label": "Gewicht in kg" }),
         numIn("reps", "Wdh", { min: 1, max: 100, step: 1, placeholder: "Wdh", "aria-label": "Wiederholungen" }),
         numIn("rpe", "Anstr.", { min: 1, max: 10, step: 0.5, placeholder: "optional", "aria-label": "Anstrengung 1 bis 10 (optional)" }));
@@ -163,7 +163,7 @@ const STRENGTH = {
     const startEdit = (s) => {
       editing = s;
       const by = new Map();
-      for (const x of s.sets) { if (!by.has(x.exercise)) by.set(x.exercise, { name: x.exerciseName, muscles: x.muscles, sets: [] }); by.get(x.exercise).sets.push({ reps: x.reps, weightKg: x.weightKg, rpe: x.rpe }); }
+      for (const x of s.sets) { if (!by.has(x.exercise)) by.set(x.exercise, { name: x.exerciseName, muscles: x.muscles, sets: [] }); by.get(x.exercise).sets.push({ reps: x.reps, weightKg: x.weightKg, rpe: x.rpe, side: x.side }); }
       resetRows([...by.values()]);
       $("stDay").value = s.day; $("stRpe").value = s.rpe ?? ""; $("stDurMin").value = s.durationMin ?? ""; $("stTpl").value = "";
       $("stEditText").textContent = `Du bearbeitest die Einheit vom ${FC.fmtDayLong(s.day)}${s.name ? ` · ${s.name}` : ""}. Speichern ersetzt sie.`;
@@ -184,7 +184,7 @@ const STRENGTH = {
           const reps = n(sr.querySelector(".reps").value), kg = n(sr.querySelector(".kg").value), rpe = n(sr.querySelector(".rpe").value);
           if (reps == null && kg == null && rpe == null) continue;
           if (!reps || reps < 1) { msg.textContent = `Bei „${name}“ fehlen Wiederholungen in einem Satz.`; return; }
-          sets.push({ reps: Math.round(reps), weightKg: kg ?? 0, ...(rpe != null ? { rpe } : {}) });
+          sets.push({ reps: Math.round(reps), weightKg: kg ?? 0, ...(rpe != null ? { rpe } : {}), ...(sr.dataset.side ? { side: sr.dataset.side } : {}) });
         }
         if (!sets.length) { msg.textContent = `Bei „${name}“ fehlt mindestens ein Satz.`; return; }
         const ex = { exercise: name, sets };

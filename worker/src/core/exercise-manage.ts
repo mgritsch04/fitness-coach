@@ -10,6 +10,8 @@ export interface ExerciseOverride {
   hidden: boolean;
   musclesPrimary: Muscle[] | null;
   musclesSecondary: Muscle[] | null;
+  /** Einseitige Übung (einarmig/einbeinig): Sätze je Seite links/rechts. */
+  unilateral?: boolean;
 }
 
 export type OverrideMap = Map<string, ExerciseOverride>;
@@ -21,6 +23,7 @@ interface OverrideRow {
   hidden: number;
   muscles_primary: string | null;
   muscles_secondary: string | null;
+  unilateral: number;
 }
 
 export async function readOverrides(db: D1Database): Promise<OverrideMap> {
@@ -35,6 +38,7 @@ export async function readOverrides(db: D1Database): Promise<OverrideMap> {
         hidden: !!r.hidden,
         musclesPrimary: r.muscles_primary ? (JSON.parse(r.muscles_primary) as Muscle[]) : null,
         musclesSecondary: r.muscles_secondary ? (JSON.parse(r.muscles_secondary) as Muscle[]) : null,
+        unilateral: !!r.unilateral,
       },
     ]),
   );
@@ -43,12 +47,12 @@ export async function readOverrides(db: D1Database): Promise<OverrideMap> {
 export async function saveOverride(db: D1Database, o: ExerciseOverride): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO exercise_overrides (key, merged_into, display_name, hidden, muscles_primary, muscles_secondary, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `INSERT INTO exercise_overrides (key, merged_into, display_name, hidden, muscles_primary, muscles_secondary, unilateral, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT (key) DO UPDATE SET merged_into = excluded.merged_into, display_name = excluded.display_name, hidden = excluded.hidden,
-         muscles_primary = excluded.muscles_primary, muscles_secondary = excluded.muscles_secondary, updated_at = excluded.updated_at`,
+         muscles_primary = excluded.muscles_primary, muscles_secondary = excluded.muscles_secondary, unilateral = excluded.unilateral, updated_at = excluded.updated_at`,
     )
-    .bind(o.key, o.mergedInto, o.displayName, o.hidden ? 1 : 0, o.musclesPrimary?.length ? JSON.stringify(o.musclesPrimary) : null, o.musclesPrimary?.length && o.musclesSecondary?.length ? JSON.stringify(o.musclesSecondary) : null)
+    .bind(o.key, o.mergedInto, o.displayName, o.hidden ? 1 : 0, o.musclesPrimary?.length ? JSON.stringify(o.musclesPrimary) : null, o.musclesPrimary?.length && o.musclesSecondary?.length ? JSON.stringify(o.musclesSecondary) : null, o.unilateral ? 1 : 0)
     .run();
 }
 
@@ -89,13 +93,15 @@ export interface ManagedExercise {
   lastDay: string | null;
   bestE1rmKg: number | null;
   hidden: boolean;
+  /** Einseitig (einarmig/einbeinig): markiert oder schon mit Seiten erfasst. */
+  unilateral: boolean;
   /** Übungen, die hier aufgegangen sind (lassen sich wieder trennen). */
   mergedFrom: { exercise: string; name: string }[];
   muscles: { primary: Muscle[]; secondary: Muscle[]; source: "manual" | "catalog" | "auto" | "unknown" };
   /** Alle bisherigen Durchgänge, neueste zuerst. */
-  history: { day: string; sets: { reps: number; weightKg: number }[] }[];
+  history: { day: string; sets: { reps: number; weightKg: number; side?: "L" | "R" }[] }[];
   /** Sätze vom letzten Mal (Reihenfolge wie erfasst). */
-  last: { day: string; sets: { reps: number; weightKg: number }[] } | null;
+  last: { day: string; sets: { reps: number; weightKg: number; side?: "L" | "R" }[] } | null;
 }
 
 export interface DuplicateGroup {
@@ -166,8 +172,9 @@ export function manageExercises(rawSessions: StrengthSession[], templates: { exe
       hidden: !!o?.hidden,
       mergedFrom: [...map.values()].filter((x) => x.mergedInto && x.key !== key && resolveKey(x.key, map) === key).map((x) => ({ exercise: x.key, name: map.get(x.key)?.displayName ?? exerciseName(x.key, rawNames.get(x.key)) })),
       muscles: { ...m, source },
-      history: days.map(([day, sets]) => ({ day, sets: sets.map((x) => ({ reps: x.reps, weightKg: x.weightKg })) })).reverse(),
-      last: lastDay ? { day: lastDay[0], sets: lastDay[1].map((s) => ({ reps: s.reps, weightKg: s.weightKg })) } : null,
+      unilateral: !!o?.unilateral || all.some((s) => s.side),
+      history: days.map(([day, sets]) => ({ day, sets: sets.map((x) => ({ reps: x.reps, weightKg: x.weightKg, ...(x.side ? { side: x.side } : {}) })) })).reverse(),
+      last: lastDay ? { day: lastDay[0], sets: lastDay[1].map((s) => ({ reps: s.reps, weightKg: s.weightKg, ...(s.side ? { side: s.side } : {}) })) } : null,
     };
   });
   exercises.sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name, "de"));

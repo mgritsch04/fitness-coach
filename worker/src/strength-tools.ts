@@ -51,7 +51,7 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const exerciseInput = z.object({
   exercise: z.string().min(1).max(80).describe("Übungsname, deutsch oder englisch (z. B. Kniebeuge, Bankdrücken, deadlift)"),
   sets: z
-    .array(z.object({ reps: z.number().int().min(1).max(100), weightKg: z.number().min(0).max(500).optional(), rpe: z.number().min(1).max(10).optional() }))
+    .array(z.object({ reps: z.number().int().min(1).max(100), weightKg: z.number().min(0).max(500).optional(), rpe: z.number().min(1).max(10).optional(), side: z.enum(["L", "R"]).optional().describe("Einseitige Übung (einarmig/einbeinig): L = links, R = rechts; je Seite ein eigener Satz") }))
     .max(30)
     .optional()
     .describe("Jeder Satz einzeln"),
@@ -66,7 +66,7 @@ function toSets(items: z.infer<typeof exerciseInput>[]): StrengthSet[] | string 
   for (const it of items) {
     const { key, known } = exerciseKey(it.exercise);
     const base = { exercise: key, exerciseName: exerciseName(key, it.exercise.trim()), muscles: known ? null : (it.muscles ?? null) };
-    if (it.sets?.length) for (const s of it.sets) out.push({ ...base, reps: s.reps, weightKg: s.weightKg ?? 0, rpe: s.rpe ?? null });
+    if (it.sets?.length) for (const s of it.sets) out.push({ ...base, reps: s.reps, weightKg: s.weightKg ?? 0, rpe: s.rpe ?? null, ...(s.side ? { side: s.side } : {}) });
     else if (it.setCount && it.reps) for (let i = 0; i < it.setCount; i++) out.push({ ...base, reps: it.reps, weightKg: it.weightKg ?? 0, rpe: null });
     else return `Bei „${it.exercise}“ fehlen die Sätze (sets oder setCount + reps).`;
   }
@@ -254,9 +254,9 @@ export function registerStrengthTools(server: McpServer, env: Env) {
     {
       description:
         "Übung verwalten: rename (neuer Name), merge (exercise geht in into auf; Verlauf und Bestwerte bleiben), unmerge (Zusammenführung wieder lösen), hide/unhide (aus Auswahllisten ausblenden, Verlauf bleibt), " +
-        "muscles (Hauptmuskeln primary, optional Hilfsmuskeln secondary; leer = wieder automatisch). exercise und into als Name oder Schlüssel.",
+        "muscles (Hauptmuskeln primary, optional Hilfsmuskeln secondary; leer = wieder automatisch), unilateral/bilateral (einseitige Übung: Sätze je Seite links/rechts erfassen). exercise und into als Name oder Schlüssel.",
       inputSchema: {
-        action: z.enum(["rename", "merge", "unmerge", "hide", "unhide", "muscles"]),
+        action: z.enum(["rename", "merge", "unmerge", "hide", "unhide", "muscles", "unilateral", "bilateral"]),
         exercise: z.string().min(1).max(80),
         name: z.string().min(1).max(80).optional().describe("rename: neuer Name"),
         into: z.string().min(1).max(80).optional().describe("merge: Zielübung, die bleibt"),
@@ -283,6 +283,7 @@ export function registerStrengthTools(server: McpServer, env: Env) {
         if (!cur.mergedInto) return fail("invalid_input", "Diese Übung ist in keine andere aufgegangen.");
         cur.mergedInto = null;
       } else if (action === "hide" || action === "unhide") cur.hidden = action === "hide";
+      else if (action === "unilateral" || action === "bilateral") cur.unilateral = action === "unilateral";
       else {
         cur.musclesPrimary = primary?.length ? primary : null;
         cur.musclesSecondary = primary?.length ? (secondary ?? null) : null;
