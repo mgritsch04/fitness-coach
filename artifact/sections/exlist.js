@@ -28,7 +28,7 @@ FC.section({
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-exlist">Meine Übungen</h2><span class="muted" id="exCount"></span></div>
-      <div class="panel"><div id="exDup"></div><div id="exList"><div class="empty">Lade Übungen …</div></div>
+      <div class="panel"><div id="exDup"></div><div id="exSides"></div><div id="exList"><div class="empty">Lade Übungen …</div></div>
         <details id="exHidden" style="margin-top:12px" hidden><summary class="muted" style="cursor:pointer">Ausgeblendete Übungen</summary><div id="exHiddenList"></div></details>
         <p class="muted" id="exMsg" role="status" style="margin:8px 0 0"></p></div>`;
     this.open = new Set();
@@ -68,6 +68,7 @@ FC.section({
     $("exCount").textContent = shown.length ? `${shown.length} Übung${shown.length > 1 ? "en" : ""}` : "";
     const focused = $("exList").contains(document.activeElement) ? document.activeElement : null;
     $("exDup").replaceChildren(...this.dupGroups(d, shown));
+    $("exSides").replaceChildren(...this.sidesMerge(shown));
     $("exList").replaceChildren(...(shown.length ? shown.map((e) => this.item(e, shown)) : [el("div", { class: "empty", text: "Noch keine Übungen. Sie entstehen mit der ersten gespeicherten Einheit." })]));
     $("exHidden").hidden = !hidden.length;
     $("exHiddenList").replaceChildren(...hidden.map((e) => {
@@ -92,6 +93,34 @@ FC.section({
       return el("div", { class: "ex-dup" }, el("b", { text: "Mögliche Dubletten" }), el("span", { class: "muted", text: `${g.exercises.map((x) => x.name).join(" · ")}` }),
         el("span", { class: "ex-sub", text: `${g.reason}. Nur ein Vorschlag, du entscheidest.` }), el("div", { class: "ex-row" }, el("label", { class: "muted", for: `exDupSel${gi}`, text: "Behalten:" }), sel, go));
     });
+  },
+  /** Zwei Übungen (z. B. „Rudern links“ und „Rudern rechts“) zu einer einseitigen zusammenführen: Sätze der ersten gelten als links, der zweiten als rechts. */
+  sidesMerge(shown) {
+    const { el } = FC;
+    if (shown.length < 2) return [];
+    const opts = () => shown.map((x) => el("option", { value: x.exercise, text: x.name }));
+    const a = el("select", { "aria-label": "Übung für links", id: "exSideL" }, ...opts()), b = el("select", { "aria-label": "Übung für rechts", id: "exSideR" }, ...opts());
+    if (shown.length > 1) b.selectedIndex = 1;
+    const nm = el("input", { type: "text", maxlength: 80, placeholder: "Name der neuen Übung, z. B. Rudern einarmig", "aria-label": "Name der einseitigen Übung", id: "exSideName" });
+    const go = el("button", { type: "button", text: "Zu einer einseitigen Übung zusammenführen" });
+    go.onclick = async () => {
+      const name = nm.value.trim();
+      if (!name) { nm.focus(); return; }
+      if (a.value === b.value) { this.msg("Bitte zwei verschiedene Übungen wählen."); return; }
+      const ta = a.selectedOptions[0].text, tb = b.selectedOptions[0].text;
+      if (!FC.ask(go, `„${ta}“ (links) und „${tb}“ (rechts) zu „${name}“ zusammenführen? Verlauf und Bestwerte bleiben erhalten. Zum Bestätigen nochmal tippen.`)) return;
+      go.disabled = true;
+      try {
+        await FC.call("manage_exercise", { action: "merge", exercise: a.value, into: name, side: "L" });
+        await FC.call("manage_exercise", { action: "merge", exercise: b.value, into: name, side: "R" });
+        await FC.call("manage_exercise", { action: "rename", exercise: name, name });
+      } catch (err) { go.disabled = false; this.msg(err?.code === "tool_error" ? `Nicht gespeichert: ${String(err.message).slice(0, 160)}` : FC.errText(err)); return; }
+      await this.act({ action: "unilateral", exercise: name }, `„${ta}“ ist jetzt links und „${tb}“ rechts in „${name}“.`);
+    };
+    return [el("details", { class: "ex-dup" }, el("summary", { class: "muted", style: "cursor:pointer;min-height:40px", text: "Links- und Rechts-Übung zusammenführen" }),
+      el("span", { class: "ex-sub", text: "Die bisherigen Sätze der ersten Übung zählen danach als links, die der zweiten als rechts." }),
+      el("div", { class: "ex-row" }, el("label", { class: "muted", for: "exSideL", text: "Links:" }), a), el("div", { class: "ex-row" }, el("label", { class: "muted", for: "exSideR", text: "Rechts:" }), b),
+      el("div", { class: "ex-row" }, nm, go))];
   },
   item(e, all) {
     const { el, de, fmtDayLong } = FC;
@@ -123,14 +152,15 @@ FC.section({
     const others = all.filter((x) => x.exercise !== e.exercise);
     if (others.length) {
       const sel = el("select", { "aria-label": `${e.name} zusammenführen mit` }, el("option", { value: "", text: "Zusammenführen mit …" }), ...others.map((x) => el("option", { value: x.exercise, text: x.name })));
+      const side = el("select", { "aria-label": `Seite von ${e.name} in der Zielübung` }, el("option", { value: "", text: "Seite: keine" }), el("option", { value: "L", text: "als links" }), el("option", { value: "R", text: "als rechts" }));
       const mg = el("button", { type: "button", text: "Zusammenführen" });
       mg.onclick = () => {
         if (!sel.value) { sel.focus(); return; }
         const t = sel.selectedOptions[0].text;
         if (!FC.ask(mg, `„${e.name}“ in „${t}“ zusammenführen? Verlauf und Bestwerte beider bleiben erhalten. Zum Bestätigen nochmal tippen.`)) return;
-        this.act({ action: "merge", exercise: e.exercise, into: sel.value }, `„${e.name}“ ist jetzt in „${t}“ enthalten.`);
+        this.act({ action: "merge", exercise: e.exercise, into: sel.value, ...(side.value ? { side: side.value } : {}) }, `„${e.name}“ ist jetzt in „${t}“ enthalten${side.value ? ` (${side.value === "L" ? "links" : "rechts"})` : ""}.`);
       };
-      body.append(el("div", { class: "ex-row" }, sel, mg));
+      body.append(el("div", { class: "ex-row" }, sel, side, mg));
     }
     // Muskelgruppen: Haupt- und Hilfsmuskel, automatisch oder manuell
     const checks = (cls, selected) => el("div", { class: "ex-mus", role: "group" }, ...this.MUSCLES.map(([k, t]) => {

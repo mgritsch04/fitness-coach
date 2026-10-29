@@ -12,6 +12,8 @@ export interface ExerciseOverride {
   musclesSecondary: Muscle[] | null;
   /** Einseitige Übung (einarmig/einbeinig): Sätze je Seite links/rechts. */
   unilateral?: boolean;
+  /** Beim Zusammenführen: Sätze dieser Übung ohne Seite zählen als links (L) bzw. rechts (R) der Zielübung. */
+  mergeSide?: "L" | "R" | null;
 }
 
 export type OverrideMap = Map<string, ExerciseOverride>;
@@ -24,6 +26,7 @@ interface OverrideRow {
   muscles_primary: string | null;
   muscles_secondary: string | null;
   unilateral: number;
+  merge_side: string | null;
 }
 
 export async function readOverrides(db: D1Database): Promise<OverrideMap> {
@@ -39,6 +42,7 @@ export async function readOverrides(db: D1Database): Promise<OverrideMap> {
         musclesPrimary: r.muscles_primary ? (JSON.parse(r.muscles_primary) as Muscle[]) : null,
         musclesSecondary: r.muscles_secondary ? (JSON.parse(r.muscles_secondary) as Muscle[]) : null,
         unilateral: !!r.unilateral,
+        mergeSide: r.merge_side === "L" || r.merge_side === "R" ? r.merge_side : null,
       },
     ]),
   );
@@ -47,12 +51,12 @@ export async function readOverrides(db: D1Database): Promise<OverrideMap> {
 export async function saveOverride(db: D1Database, o: ExerciseOverride): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO exercise_overrides (key, merged_into, display_name, hidden, muscles_primary, muscles_secondary, unilateral, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `INSERT INTO exercise_overrides (key, merged_into, display_name, hidden, muscles_primary, muscles_secondary, unilateral, merge_side, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT (key) DO UPDATE SET merged_into = excluded.merged_into, display_name = excluded.display_name, hidden = excluded.hidden,
-         muscles_primary = excluded.muscles_primary, muscles_secondary = excluded.muscles_secondary, unilateral = excluded.unilateral, updated_at = excluded.updated_at`,
+         muscles_primary = excluded.muscles_primary, muscles_secondary = excluded.muscles_secondary, unilateral = excluded.unilateral, merge_side = excluded.merge_side, updated_at = excluded.updated_at`,
     )
-    .bind(o.key, o.mergedInto, o.displayName, o.hidden ? 1 : 0, o.musclesPrimary?.length ? JSON.stringify(o.musclesPrimary) : null, o.musclesPrimary?.length && o.musclesSecondary?.length ? JSON.stringify(o.musclesSecondary) : null, o.unilateral ? 1 : 0)
+    .bind(o.key, o.mergedInto, o.displayName, o.hidden ? 1 : 0, o.musclesPrimary?.length ? JSON.stringify(o.musclesPrimary) : null, o.musclesPrimary?.length && o.musclesSecondary?.length ? JSON.stringify(o.musclesSecondary) : null, o.unilateral ? 1 : 0, o.mergeSide ?? null)
     .run();
 }
 
@@ -65,6 +69,18 @@ export function resolveKey(key: string, map: OverrideMap): string {
     k = next;
   }
   return k;
+}
+
+/** Seite aus der Zusammenführungskette (erste Zuordnung gewinnt); Sätze mit eigener Seite behalten sie. */
+function mergedSide(key: string, map: OverrideMap): "L" | "R" | null {
+  let k = key;
+  for (let i = 0; i < 20; i++) {
+    const o = map.get(k);
+    if (!o?.mergedInto || o.mergedInto === k) return null;
+    if (o.mergeSide) return o.mergeSide;
+    k = o.mergedInto;
+  }
+  return null;
 }
 
 /** Wendet Zusammenführung, Anzeigename und manuelle Muskelgruppen auf gelesene Einheiten an. */
@@ -80,7 +96,8 @@ export function applyOverrides(sessions: StrengthSession[], map: OverrideMap): S
       if (key === x.exercise && !o) return x;
       const name = o?.displayName ?? (key === x.exercise ? x.exerciseName : (own.get(key) ?? exerciseName(key)));
       const muscleOverride = o?.musclesPrimary?.length ? { primary: o.musclesPrimary, secondary: o.musclesSecondary ?? [] } : null;
-      return { ...x, exercise: key, exerciseName: name, ...(muscleOverride ? { muscleOverride } : {}) };
+      const side = x.side ?? (key === x.exercise ? null : mergedSide(x.exercise, map));
+      return { ...x, exercise: key, exerciseName: name, ...(side ? { side } : {}), ...(muscleOverride ? { muscleOverride } : {}) };
     }),
   }));
 }
