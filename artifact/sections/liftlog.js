@@ -94,7 +94,7 @@ FC.section({
     edit.onclick = () => { this.editId = s.id; this.open.add(s.id); this.draw(); };
     const del = el("button", { type: "button", class: "ll-danger", text: "Löschen" });
     del.onclick = async () => {
-      if (!window.confirm(`Einheit vom ${FC.fmtDayLong(s.day)} wirklich löschen?`)) return;
+      if (!FC.ask(del, `Einheit vom ${FC.fmtDayLong(s.day)} wirklich löschen? Zum Bestätigen nochmal tippen.`)) return;
       del.disabled = true; FC.$("llMsg").textContent = "Lösche …";
       try { await FC.call("delete_strength_session", { id: s.id }); FC.$("llMsg").textContent = "Gelöscht."; await this.refresh(); }
       catch (err) { FC.$("llMsg").textContent = FC.errText(err); del.disabled = false; }

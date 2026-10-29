@@ -239,6 +239,15 @@
     inp.value = value; inp.disabled = !!disabled;
     return inp;
   };
+  /** Bestätigung ohne window.confirm (im Artefakt-Fenster blockiert): erster Tipp fragt, zweiter innerhalb von 8 s führt aus. */
+  const ask = (btn, question) => {
+    if (btn._armed) { btn._armed(); return true; }
+    const note = FC.el("span", { class: "muted", role: "status", text: question }), label = btn.textContent;
+    btn.after(note); btn.textContent = "Ja, ausführen";
+    const t = setTimeout(() => btn._armed?.(), 8000);
+    btn._armed = () => { clearTimeout(t); note.remove(); btn.textContent = label; btn._armed = null; };
+    return false;
+  };
   const errText = (e) => (ERR[e?.code] ?? "Die Anfrage ist fehlgeschlagen.") + (e?.code === "tool_error" && e.message ? ` (${String(e.message).slice(0, 200)})` : "");
   const SAMPLE_ERR = { not_granted: "Der Coach ist für diese Seite nicht freigegeben.", sampling_disabled: "Claude ist für dein Konto hier nicht verfügbar.", rate_limited: "Gerade zu viele Anfragen oder dein Limit ist erreicht. Bitte später noch einmal.", session_expired: "Bitte melde dich in claude.ai neu an.", refused: "Dazu kann der Coach nichts sagen. Formuliere die Frage anders.", invalid_json: "Die Antwort kam nicht im erwarteten Format. Bitte noch einmal versuchen.", prompt_too_large: "Zu viele Daten für eine Anfrage.", upstream_error: "Claude ist gerade kurz gestört. Bitte gleich noch einmal versuchen.", empty_completion: "Der Coach hat keine Antwort geschrieben. Bitte die Frage einfacher stellen.", tools_unavailable: "Der Coach kann hier keine Zusatzdaten abrufen. Bitte noch einmal fragen." };
   // Fehlercode immer mit anzeigen und protokollieren, damit die Ursache erkennbar ist (#338).
@@ -349,6 +358,7 @@
     { id: "coach", label: "Coach", icon: "M4 5h16v10H9l-5 4V5Z" },
     { id: "verlauf", label: "Verlauf", icon: "M3 17l5-6 4 4 6-8 3 3M3 21h18" },
     { id: "training", label: "Training", icon: "M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12" },
+    { id: "uebungen", label: "Übungen", icon: "M4 6h16M4 12h16M4 18h10" },
     { id: "mehr", label: "Mehr", icon: "M5 12h.01M12 12h.01M19 12h.01" },
   ];
   let tab = "heute";
@@ -664,7 +674,7 @@
 
   window.FC = Object.freeze({
     SERVER, state, $, el, sv, de, dayDate, fmtDay, fmtDayLong, fmtWeekday, fmtH, ago, addDays, sport, SOURCES, recStatus, cssVar,
-    chart, spark, rolling, richText, dayPlan, dayPlanPatch, rideInput, errText, sampleErrText, banner, call, watch, reload, section, rerender, setRange,
+    chart, spark, rolling, richText, dayPlan, dayPlanPatch, rideInput, ask, errText, sampleErrText, banner, call, watch, reload, section, rerender, setRange,
     onRange: (f) => listeners.add(f), boot, showTab, goTo, layout: layoutApi, usage: usageApi,
     lean: { on: () => lean, set: setLean, onChange: (f) => { leanListeners.add(f); return () => leanListeners.delete(f); } },
     invalidate: () => state.mcp?.invalidate(SERVER, "get_dashboard").catch(() => {}),

@@ -716,28 +716,30 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
   p.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
-  p.on("dialog", (d) => d.accept());
+  p.on("dialog", (d) => d.dismiss()); // wie im Artefakt-Fenster: confirm() liefert false
   await p.goto("file://" + join(out, "preview.html"));
   await p.waitForTimeout(800);
   const tabs = await p.evaluate(() => [...document.querySelectorAll("#tabbar button")].filter((b) => !b.hidden).map((b) => b.dataset.tab).join());
-  if (tabs !== "heute,coach,verlauf,training,mehr") errors.push(`${name}: Reiter der einfachen Ansicht falsch: ${tabs}`);
+  if (tabs !== "heute,coach,verlauf,training,uebungen,mehr") errors.push(`${name}: Reiter der einfachen Ansicht falsch: ${tabs}`);
   const secs = async () => (await p.evaluate(() => [...document.querySelectorAll("#sections > section.on")].filter((x) => !x.hidden && x.offsetHeight > 0).map((x) => x.id.slice(4)).join())).split(",");
   const heute = await secs();
   if (heute.some((x) => ["highlights", "briefing", "mobility", "whatsnew", "sleeptarget", "recovery", "health"].includes(x)) || !heute.includes("today")) errors.push(`${name}: Heute zeigt Unnötiges: ${heute}`);
   await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(500);
   const tr = await secs();
-  if (tr.join() !== "gym,liftlog,exlist,fit,strength,bikewo,hrzones,periods,year,workouts") errors.push(`${name}: Training falsch: ${tr}`);
-  // Übungsverwaltung (#399): Verlauf, Dubletten zusammenführen, Muskelgruppen
+  if (tr.join() !== "gym,liftlog,fit,strength,bikewo,hrzones,periods,year,workouts") errors.push(`${name}: Training falsch: ${tr}`);
+  // Übungsverwaltung (#399): eigener Reiter „Übungen“: Verlauf, Dubletten zusammenführen, Muskelgruppen
+  await p.click("#tabbar [data-tab=uebungen]"); await p.waitForTimeout(500);
   if (await p.$("#sec-exlist.folded .fold-bar")) { await p.click("#sec-exlist .fold-bar"); await p.waitForTimeout(500); }
   await p.click("#sec-exlist .ex-item > summary"); await p.waitForTimeout(150);
   const exv = await p.innerText("#sec-exlist .ex-item[open]");
   if (!/Verlauf/.test(exv) || !/20 kg × 10/.test(exv) || !/17,5 kg × 8/.test(exv) || !/Bizeps/.test(exv)) errors.push(`${name}: Übungsverlauf falsch ${exv.slice(0, 300)}`);
   if (!(await p.$("#exDup .ex-dup")) || !/Maschine X/.test(await p.innerText("#exList")) || !/nicht erkannt/.test(await p.innerText("#exList"))) errors.push(`${name}: Übungsverwaltung ohne Dubletten oder „nicht erkannt“`);
-  await p.click("#exDup .ex-dup button"); await p.waitForTimeout(300);
+  await p.click("#exDup .ex-dup button"); await p.waitForTimeout(100); await p.click("#exDup .ex-dup button"); await p.waitForTimeout(300);
   await p.click("#sec-exlist .ex-item[open] .ex-mus input[value=back]"); await p.click("#sec-exlist .ex-item[open] button:text-is('Muskelgruppen speichern')"); await p.waitForTimeout(200);
   const acts = await p.evaluate(() => window.__exActs ?? []);
   if (!acts.some((a) => a.action === "merge" && a.exercise === "bizeps curls" && a.into === "bizeps schwarze") || !acts.some((a) => a.action === "muscles" && a.primary?.includes("back"))) errors.push(`${name}: Übungsverwaltung sendet falsch ${JSON.stringify(acts)}`);
   await p.screenshot({ path: join(out, "phone-exlist.png") });
+  await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(500);
   const n = await p.$$eval("#llList .ll-item", (l) => l.length);
   if (n !== 3) errors.push(`${name}: Krafteinheiten ${n} statt 3`);
   await p.click("#ll-s2 > summary"); await p.waitForTimeout(150);
@@ -753,7 +755,7 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   const sv = await p.evaluate(() => window.__gymSaved);
   const first = sv?.exercises?.[0];
   if (sv?.id !== "s2" || sv.day !== "2026-03-30" || sv.name !== "Beine & Brust" || first?.exercise !== "Kniebeuge" || first.sets.length !== 2 || first.sets[0].weightKg !== 102.5 || first.sets[1].reps !== 6) errors.push(`${name}: Bearbeiten speichert falsch ${JSON.stringify(sv)}`);
-  await p.click("#ll-s1 > summary"); await p.click("#ll-s1 .ll-actions >> text=Löschen"); await p.waitForTimeout(400);
+  await p.click("#ll-s1 > summary"); await p.click("#ll-s1 .ll-actions >> text=Löschen"); await p.waitForTimeout(100); await p.click("#ll-s1 .ll-actions button.ll-danger"); await p.waitForTimeout(400);
   if ((await p.evaluate(() => window.__deleted)) !== "s1") errors.push(`${name}: Löschen ruft nicht delete_strength_session`);
   const sw = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (sw > 0) errors.push(`${name}: horizontal overflow ${sw}px`);
@@ -763,7 +765,7 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   await p.click("#tabbar [data-tab=mehr]"); await p.waitForTimeout(300);
   await p.uncheck("#loSimple"); await p.waitForTimeout(500);
   const all = await p.evaluate(() => [...document.querySelectorAll("#tabbar button")].filter((b) => !b.hidden).length);
-  if (all !== 5) errors.push(`${name}: Voller Umfang zeigt ${all} statt 5 Reiter`);
+  if (all !== 6) errors.push(`${name}: Voller Umfang zeigt ${all} statt 6 Reiter`);
   await ctx.close();
 }
 await browser.close();

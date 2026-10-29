@@ -434,7 +434,7 @@ const STRENGTH = {
         } catch (err) { out.textContent = FC.errText(err); save.disabled = false; }
       };
       rm.onclick = async () => {
-        if (!window.confirm(`Vorlage „${t.name}“ wirklich löschen?`)) return;
+        if (!FC.ask(rm, `Vorlage „${t.name}“ wirklich löschen? Zum Bestätigen nochmal tippen.`)) return;
         rm.disabled = true; out.textContent = "Lösche …";
         try {
           await FC.call("save_strength_template", { name: t.name, delete: true });

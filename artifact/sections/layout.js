@@ -23,7 +23,7 @@ FC.section({
     insights: "Was beeinflusst deine Erholung?", health: "Körpersignale", strain: "Belastung und Erholung", load: "Trainingslast", fit: "Rolle und Leistung",
     hrzones: "Pulszonen", strength: "Krafttraining", weeks: "Wochen", periods: "Monate und Jahre", year: "Jahr im Überblick", workouts: "Workouts",
     settings: "Einstellungen", sources: "Datenquellen", body: "Gewicht", export: "Daten exportieren", bikewo: "Workout für MyWhoosh", records: "Bestleistungen", review: "Wochenrückblick", weather: "Radwetter", ftp: "FTP-Test", endurance: "Ausdauer-Profil", gym: "Gym-Modus", forecast: "Erholung morgen (Prognose)", agenda: "Heute dran", interference: "Kraft und Rad im Wechselspiel", hrvtrend: "HRV-Trend", timing: "Beste Trainingszeit", durability: "Ermüdungsresistenz", whatsnew: "Neu im Dashboard", aerobic: "Aerobe Basis", intervals: "Intervall-Qualität", cadence: "Trittfrequenz", riderprofile: "Fahrertyp", musclebalance: "Muskelbalance", readiness: "Training nach der Erholungsampel", comeback: "Wiedereinstieg", eftp: "FTP-Schätzung im Verlauf", sleeptarget: "Schlafziel heute Nacht", block: "Trainingsblock", indooroutdoor: "Rolle gegen Straße", mobility: "Mobility nach der Einheit", consistency: "Konstanz und Serien", favorites: "Deine Favoriten" },
-  TABS: [["heute", "Heute"], ["coach", "Coach"], ["verlauf", "Verlauf"], ["training", "Training"], ["mehr", "Mehr"]],
+  TABS: [["heute", "Heute"], ["coach", "Coach"], ["verlauf", "Verlauf"], ["training", "Training"], ["uebungen", "Übungen"], ["mehr", "Mehr"]],
   mount(root) {
     root.innerHTML = `
       <div class="sec-head"><h2 id="h-layout">Dashboard anpassen</h2><span class="muted" id="loScope"></span></div>

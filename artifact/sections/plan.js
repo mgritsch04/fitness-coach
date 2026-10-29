@@ -3,6 +3,7 @@
 // Ziele mit Countdown. Daten: get_dashboard → training; Aktionen: save_plan, set_goals (docs/COACH.md).
 FC.section({
   id: "plan",
+  simple: true,
   tab: "coach",
   order: 15,
   css: `
@@ -66,11 +67,11 @@ FC.section({
           <div class="daytimes" id="dayTimes"></div>
           <div class="coach-actions"><button type="button" id="timeSave">Zeiten speichern</button><span class="muted" id="timeMsg" role="status"></span></div>
         </details>
-        <details id="tplBox">
-          <summary>Kraft-Vorlage je Wochentag</summary>
-          <p class="fine muted" style="margin:6px 0">Wähle, welche gespeicherte Vorlage das Gym an welchem Tag vorschlägt. Beim Start ist sie vorausgewählt, du kannst sie dort mit einem Tipp ändern. „keine“ = kein Vorschlag. Der Wochenplan bleibt davon unberührt.</p>
+        <details id="tplBox" open>
+          <summary>Meine Woche: Kraft und Rad je Tag</summary>
+          <p class="fine muted" style="margin:6px 0">Trag pro Tag ein, welche Kraft-Vorlage und welche Rad-Einheit (z. B. Z2, Intervalle, Threshold) geplant ist. Die Vorlage schlägt das Gym an dem Tag vor. Beim Start ist sie vorausgewählt, du kannst sie dort mit einem Tipp ändern. „keine“ = kein Vorschlag. Der Wochenplan bleibt davon unberührt.</p>
           <div class="fixdays" id="tplDays"></div>
-          <div class="coach-actions"><button type="button" id="tplSave">Vorlagen speichern</button><span class="muted" id="tplMsg" role="status"></span></div>
+          <div class="coach-actions"><button type="button" id="tplSave">Woche speichern</button><span class="muted" id="tplMsg" role="status"></span></div>
         </details>
         <details id="fixBox">
           <summary>Feste Krafttage (eigener Wochenplan)</summary>
