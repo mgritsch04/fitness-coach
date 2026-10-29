@@ -1,6 +1,7 @@
 // Zeit in Pulszonen je Woche (WHOOP-Zonen aus get_dashboard.hrZones, #19) als gestapelte Balken.
 FC.section({
   id: "hrzones",
+  simple: true,
   tab: "training",
   order: 47,
   css: `

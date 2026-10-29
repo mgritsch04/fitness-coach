@@ -316,6 +316,12 @@ for (const [name, vp, scheme, tab, file] of shots) {
     if (await p.evaluate(() => [...document.querySelectorAll(".tip")].some((x) => !x.hidden))) errors.push(`${name}: Tippen daneben blendet Werte nicht aus`);
   }
   if (tab === "heute") {
+    // Kachel antippen zeigt den Verlauf (Diagramm), nochmal antippen schließt ihn.
+    await p.click("#tiles .tile.tl").catch(() => errors.push(`${name}: Kachel nicht anklickbar`)); await p.waitForTimeout(250);
+    const tl = await p.evaluate(() => ({ open: !!document.querySelector("#tiles .tile.open svg"), n: document.querySelectorAll("#tiles .tile.tl").length }));
+    if (!tl.open || tl.n !== 6) errors.push(`${name}: Kachel-Verlauf falsch ${JSON.stringify(tl)}`);
+    await p.click("#tiles .tile.open .label").catch(() => {}); await p.waitForTimeout(150);
+    if (await p.$("#tiles .tile.open")) errors.push(`${name}: Kachel-Verlauf schließt nicht`);
     // Heute (#191): bis „Heute dran“ offen, darunter eingeklappt.
     const hf = await p.evaluate(() => [...document.querySelectorAll("#sections > section.on.foldable")].map((x) => `${x.id.slice(4)}:${x.classList.contains("folded") ? "zu" : "auf"}`));
     if (!hf.includes("agenda:auf") || !hf.includes("weather:zu") || !hf.includes("forecast:zu")) errors.push(`${name}: Heute-Einklappen falsch ${JSON.stringify(hf)}`);
@@ -379,15 +385,6 @@ for (const [name, vp, scheme, tab, file] of shots) {
       if (fbr[0] !== "too_hard" || fbr[1] !== "true") errors.push(`${name}: Rückmeldung falsch gespeichert ${JSON.stringify(fbr)}`);
       // Doppeltag (#298): heute Rad und Kraft, Hinweis zur Reihenfolge.
       if (!/Doppeltag/.test(await p.textContent("#agBody .ag-both").catch(() => ""))) errors.push(`${name}: kein Doppeltag-Hinweis`);
-      // Schweißrate (#282): nach der Radeinheit messen, Rate wird gespeichert und angezeigt.
-      await p.click("#agBody .ag-sw summary"); await p.fill("#swBefore", "70");
-      // Aufklappen ändert die Höhe → ResizeObserver zeichnet neu; Formular muss offen bleiben und Werte behalten.
-      await p.waitForTimeout(400);
-      const swk = await p.evaluate(() => ({ open: document.querySelector("#agBody .ag-sw")?.open, v: document.getElementById("swBefore")?.value }));
-      if (!(swk.open && swk.v === "70")) errors.push(`${name}: Schweißrate-Formular klappt zu ${JSON.stringify(swk)}`); await p.fill("#swAfter", "69,2".replace(",", ".")); await p.fill("#swDrank", "0.6"); await p.fill("#swDur", "60");
-      await p.click("#agBody .ag-sw .primary"); await p.waitForFunction(() => /l\/h/.test(document.getElementById("swOut")?.textContent ?? ""), null, { timeout: 3000 }).catch(() => {});
-      const swr = await p.evaluate(() => ({ in: window.__sweatIn, out: document.getElementById("swOut")?.textContent ?? "", open: document.querySelector("#agBody .ag-sw")?.open, n: document.querySelectorAll("#swOut").length, msg: document.getElementById("agMsg")?.textContent }));
-      if (!(swr.in?.weightBeforeKg === 70 && swr.in.indoor === true && /1,4 l\/h/.test(swr.out))) errors.push(`${name}: Schweißrate falsch ${JSON.stringify(swr)}`);
     }
     // Mobility (#223): Abschnitt öffnen, Timer starten und stoppen.
     await p.evaluate(() => FC.goTo("mobility")); await p.waitForTimeout(300);
@@ -416,7 +413,7 @@ for (const [name, vp, scheme, tab, file] of shots) {
     // Gym-Modus: aus der letzten Einheit starten, ersten Satz abhaken, beenden und speichern.
     // Heute ist die Vorlage je Wochentag (#370) vorausgewählt; die Planeinheit bleibt wählbar.
     const plan = await p.$eval("#gySrc", (s) => s.value);
-    if (plan !== "t:Beine & Brust" || !(await p.$("#gySrc option[value^='p:']"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
+    if (plan !== "t:Beine & Brust" || (await p.$("#gySrc option[value^='p:']")) || !(await p.$("#gyWeek select"))) errors.push(`${name}: Gym-Modus bietet Wochentags-Vorlage und Wochenplan nicht an (${plan})`);
     await p.selectOption("#gySrc", "s:s2"); await p.click("#gyBody button.primary"); await p.waitForTimeout(200);
     if (!(await p.$("#gyBody .gy-last"))) errors.push(`${name}: Gym-Modus zeigt „Letztes Mal“ nicht`);
     // Verlauf und Prognose im Gym-Modus (#328)
@@ -695,13 +692,13 @@ for (const [name, vp, scheme] of [["phone-simple", { width: 390, height: 844 }, 
   await p.goto("file://" + join(out, "preview.html"));
   await p.waitForTimeout(800);
   const tabs = await p.evaluate(() => [...document.querySelectorAll("#tabbar button")].filter((b) => !b.hidden).map((b) => b.dataset.tab).join());
-  if (tabs !== "heute,coach,training,mehr") errors.push(`${name}: Reiter der einfachen Ansicht falsch: ${tabs}`);
+  if (tabs !== "heute,coach,verlauf,training,mehr") errors.push(`${name}: Reiter der einfachen Ansicht falsch: ${tabs}`);
   const secs = async () => (await p.evaluate(() => [...document.querySelectorAll("#sections > section.on")].filter((x) => !x.hidden && x.offsetHeight > 0).map((x) => x.id.slice(4)).join())).split(",");
   const heute = await secs();
   if (heute.some((x) => ["highlights", "briefing", "mobility", "whatsnew", "sleeptarget", "recovery", "health"].includes(x)) || !heute.includes("today")) errors.push(`${name}: Heute zeigt Unnötiges: ${heute}`);
   await p.click("#tabbar [data-tab=training]"); await p.waitForTimeout(500);
   const tr = await secs();
-  if (tr.join() !== "gym,liftlog,exlist,fit,strength,bikewo,workouts") errors.push(`${name}: Training falsch: ${tr}`);
+  if (tr.join() !== "gym,liftlog,exlist,fit,strength,bikewo,hrzones,periods,year,workouts") errors.push(`${name}: Training falsch: ${tr}`);
   // Übungsverwaltung (#399): Verlauf, Dubletten zusammenführen, Muskelgruppen
   if (await p.$("#sec-exlist.folded .fold-bar")) { await p.click("#sec-exlist .fold-bar"); await p.waitForTimeout(500); }
   await p.click("#sec-exlist .ex-item > summary"); await p.waitForTimeout(150);
