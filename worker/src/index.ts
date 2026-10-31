@@ -8,6 +8,7 @@ import { handleWahooCallback } from "./wahoo";
 import { handleWahooWebhook, handleWhoopWebhook } from "./webhooks";
 import type { AuthProps, Env } from "./env";
 import { syncAll } from "./sync";
+import { handleCalendarFeed } from "./calendar-feed";
 
 const WORKER_URL = "https://fitness-coach.fitness-coach-worker.workers.dev";
 
@@ -29,6 +30,7 @@ const site: ExportedHandler<Env> = {
     if (pathname === "/auth/wahoo/callback") return handleWahooCallback(request, env, ctx);
     if (pathname === "/webhooks/wahoo") return handleWahooWebhook(request, env);
     if (pathname === "/webhooks/whoop") return handleWhoopWebhook(request, env, ctx);
+    if (pathname.startsWith("/calendar/")) return handleCalendarFeed(pathname, env);
     if (pathname === "/privacy") return html("Privacy Policy – Fitness Coach", markdownToHtml(privacyMarkdown));
     if (pathname === "/") return html("Fitness Coach", '<h1>Fitness Coach</h1><p>Private application. <a href="/privacy">Privacy Policy</a></p>');
     return new Response("Not found", { status: 404 });
