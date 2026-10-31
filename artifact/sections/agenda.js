@@ -52,6 +52,20 @@ FC.section({
     };
     return cal;
   },
+  /** Kalender-Abo (#373): geheimer Link, den der Worker als iCal-Feed ausliefert; das iPhone aktualisiert ihn selbst. */
+  subButton() {
+    const b = FC.el("button", { type: "button", class: "ag-sub", text: "Kalender abonnieren" });
+    b.onclick = async () => {
+      const msg = FC.$("agMsg");
+      try {
+        const st = await FC.call("manage_calendar_feed", { action: "status" });
+        if (st.active && !window.confirm("Es gibt schon einen Abo-Link. Ein neuer macht den alten ungültig. Neuen erzeugen?")) return;
+        const r = await FC.call("manage_calendar_feed", { action: "create" });
+        msg.replaceChildren(FC.el("span", { text: "Abo-Link (nur jetzt sichtbar, geheim halten): " }), FC.el("a", { href: r.subscribeUrl, text: "Im Kalender abonnieren" }), FC.el("span", { text: ` oder Adresse kopieren: ${r.url}` }));
+      } catch { msg.textContent = "Abo-Link konnte nicht erzeugt werden."; }
+    };
+    return b;
+  },
   /** Kalenderdatei (RFC 5545) mit ganztägigen Terminen ab heute, ohne Ruhetage. */
   ics(days, today, t) {
     const esc = (v) => String(v ?? "").replace(/[\\;,]/g, (c) => "\\" + c).replace(/\r?\n/g, "\\n");
@@ -147,6 +161,7 @@ FC.section({
     act.append(all);
     const cal = this.calButton();
     if (cal) act.append(cal);
+    act.append(this.subButton());
     // Heutige Workouts ohne Anstrengung: kurz nachfragen (#134), verbessert die Belastungsschätzung beim Krafttraining.
     const open = isToday && FC.state.rpePicker ? d.workouts.filter((w) => w.day === d.today && !w.rpe && w.durationMin >= 10).slice(0, 2) : [];
     const ask = open.map((w) => el("div", { class: "ag-rpe" }, el("p", { text: `Wie anstrengend war dein ${FC.sport(w.sport)} (${de(w.durationMin)} min)? 1 sehr leicht, 10 maximal.` }), FC.state.rpePicker(w)));
