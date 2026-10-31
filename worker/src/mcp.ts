@@ -9,6 +9,7 @@ import { getSyncState, readDaily, readLatestBody, readPowerCurves, readSleeps, r
 import { combineCurves } from "./core/power";
 import { FitImportError, importFit } from "./providers/mywhoosh/import";
 import { loadWorkoutDetail } from "./core/workout-detail";
+import { loadWorkoutCompare } from "./core/workout-compare";
 import { buildDashboard } from "./core/dashboard";
 import { readSettings, writeSettings } from "./core/settings";
 import { readIndoor, writeIndoor } from "./core/indoor";
@@ -160,6 +161,24 @@ export function createServer(env: Env, props: AuthProps, origin: string) {
       annotations: { readOnlyHint: true },
     },
     async ({ source, sourceId, maxPoints }) => json(await loadWorkoutDetail(env.DB, source, sourceId, maxPoints)),
+  );
+
+  server.registerTool(
+    "compare_workouts",
+    {
+      description:
+        "Zwei Fahrten mit Sekundenwerten (FIT-Import) nebeneinander: Kennzahlen mit Differenz (B − A), Puls bei gleicher Leistung in 20-W-Stufen, " +
+        "Bestleistungen je Dauer und ein Kurzfazit. Ohne b kommen Vorschläge ähnlicher Fahrten (gleiche Sportart, Dauer ±25 %). Schätzungen, keine Diagnose.",
+      inputSchema: {
+        aSource: z.string().max(20).optional().describe("Quelle der Fahrt A (aus get_workouts); ohne Angabe die neueste Fahrt"),
+        aSourceId: z.string().max(100).optional(),
+        bSource: z.string().max(20).optional().describe("Quelle der Fahrt B"),
+        bSourceId: z.string().max(100).optional(),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ aSource, aSourceId, bSource, bSourceId }) =>
+      json(await loadWorkoutCompare(env.DB, aSource && aSourceId ? { source: aSource, sourceId: aSourceId } : undefined, bSource && bSourceId ? { source: bSource, sourceId: bSourceId } : undefined)),
   );
 
   server.registerTool(

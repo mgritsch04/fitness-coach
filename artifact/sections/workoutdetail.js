@@ -131,6 +131,37 @@
       el("span", { class: "b", style: `width:${Math.max(2, (z.seconds / max) * 100).toFixed(1)}%`, "aria-hidden": "true" }))));
   }
 
+  /** Vergleich mit einer zweiten Fahrt (#219): Auswahl, dann Kennzahlen, Puls bei gleicher Leistung und Bestleistungen. */
+  function compareBox(d) {
+    const me = d.workout, others = (d.available ?? []).filter((w) => !(w.source === me?.source && w.source_id === me?.source_id));
+    if (!me || !others.length) return null;
+    const sel = el("select", { "aria-label": "Fahrt zum Vergleichen" }, el("option", { value: "", text: "– Fahrt wählen –" }),
+      ...others.map((w) => el("option", { value: `${w.source}|${w.source_id}`, text: `${fmtDayLong(w.day)} · ${de(Math.round(w.duration_s / 60))} min${w.avg_power_w ? ` · ${de(w.avg_power_w)} W` : ""}` })));
+    const out = el("div", { class: "wd-cmp" });
+    sel.onchange = async () => {
+      if (!sel.value) { out.replaceChildren(); return; }
+      const [bs, bid] = sel.value.split("|");
+      out.replaceChildren(note("Vergleiche …"));
+      let r;
+      try { r = await FC.call("compare_workouts", { aSource: me.source, aSourceId: String(me.source_id), bSource: bs, bSourceId: bid }); }
+      catch (err) { out.replaceChildren(note(FC.errText(err))); return; }
+      if (!r?.found) { out.replaceChildren(note(r?.message ?? "Kein Vergleich möglich.")); return; }
+      const NAMES = { durationS: "Dauer (s)", avgPowerW: "Ø Leistung (W)", normalizedPowerW: "NP (W)", maxPowerW: "Max. Leistung (W)", intensityFactor: "IF", variabilityIndex: "VI", tssEstimate: "TSS (Schätzung)", workKj: "Arbeit (kJ)", avgHr: "Ø Puls", maxHr: "Max. Puls", avgCadence: "Ø Trittfrequenz" };
+      const v = (x) => (x == null ? "–" : de(x, x % 1 ? 1 : 0));
+      const sg = (x) => (x == null ? "–" : `${x > 0 ? "+" : ""}${de(x, x % 1 ? 1 : 0)}`);
+      const tbl = (head, rows) => el("table", { class: "wd-tbl" }, el("thead", {}, el("tr", {}, ...head.map((h) => el("th", { text: h })))), el("tbody", {}, ...rows.map((row) => el("tr", {}, ...row.map((c) => el("td", { text: c }))))));
+      const parts = [el("h4", { text: "Vergleich: diese Fahrt (A) gegen die gewählte (B)" }),
+        tbl(["Kennzahl", "A", "B", "B − A"], r.stats.filter((x) => x.a != null || x.b != null).map((x) => [NAMES[x.key] ?? x.key, v(x.a), v(x.b), sg(x.diff)]))];
+      if (r.hrAtPower?.length) parts.push(el("h4", { text: "Puls bei gleicher Leistung" }), tbl(["Leistung", "Puls A", "Puls B", "B − A"], r.hrAtPower.map((x) => [`${x.fromW}–${x.toW} W`, v(x.aHr), v(x.bHr), sg(x.diffHr)])));
+      else parts.push(note("Keine Leistungsstufe, in der beide Fahrten lange genug mit Puls liegen."));
+      if (r.bestPower?.length) parts.push(el("h4", { text: "Bestleistung je Dauer" }), tbl(["Dauer", "A (W)", "B (W)", "B − A"], r.bestPower.map((x) => [x.durationS < 60 ? `${x.durationS} s` : `${x.durationS / 60} min`, v(x.a), v(x.b), sg(x.diffW)])));
+      if (r.verdict) parts.push(el("p", { text: r.verdict }));
+      parts.push(el("p", { class: "chart-cap", text: r.notes?.join(" ") ?? "" }));
+      out.replaceChildren(...parts);
+    };
+    return section("Mit anderer Fahrt vergleichen", sel, out);
+  }
+
   function ride(d) {
     const s = d.stats, out = [];
     out.push(kpis([
@@ -150,6 +181,7 @@
           el("td", { text: d.intervals.basis === "ftp" && i.pctFtp != null ? de(i.pctFtp) : "–" }), el("td", { text: i.avgHr ? de(i.avgHr) : "–" })))))));
     }
     const ref = d.reference?.ftpW ? `FTP ${d.reference.ftpW} W${d.ftpOrigin && d.ftpOrigin !== "user" ? " (geschätzt)" : ""}` : "ohne FTP keine Zonen und kein IF";
+    out.push(compareBox(d));
     out.push(el("p", { class: "chart-cap", text: `Bezug: ${ref}. Zonen, IF und TSS beruhen darauf. Aus der FIT-Datei berechnet, Hinweise statt Diagnose.` }));
     return out.filter(Boolean);
   }
